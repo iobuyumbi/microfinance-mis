@@ -1,54 +1,215 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { groupService } from "../../services/api";
-import Table from "../../components/Table";
 import { toast } from "sonner";
 import { Card, CardHeader, CardContent } from "../../components/ui/card";
-import { Skeleton } from "../../components/ui/skeleton";
+import { Button } from "../../components/ui/button";
 import {
   Dialog,
-  DialogTrigger,
   DialogContent,
+  DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import Table from "../../components/Table";
+import CrudForm from "../../components/CrudForm";
+
+const formFields = [
+  {
+    name: "name",
+    label: "Group Name",
+    type: "text",
+    required: true,
+    placeholder: "Enter group name",
+  },
+  {
+    name: "description",
+    label: "Description",
+    type: "textarea",
+    placeholder: "Enter group description",
+  },
+  {
+    name: "meetingDay",
+    label: "Meeting Day",
+    type: "select",
+    required: true,
+    options: [
+      { value: "monday", label: "Monday" },
+      { value: "tuesday", label: "Tuesday" },
+      { value: "wednesday", label: "Wednesday" },
+      { value: "thursday", label: "Thursday" },
+      { value: "friday", label: "Friday" },
+      { value: "saturday", label: "Saturday" },
+      { value: "sunday", label: "Sunday" },
+    ],
+  },
+  {
+    name: "meetingTime",
+    label: "Meeting Time",
+    type: "time",
+    required: true,
+  },
+  {
+    name: "maxMembers",
+    label: "Maximum Members",
+    type: "number",
+    min: 1,
+    max: 100,
+    required: true,
+  },
+];
+
+const columns = [
+  { key: "name", label: "Name", sortable: true },
+  { key: "description", label: "Description" },
+  {
+    key: "members",
+    label: "Members",
+    render: (row) => row.members?.length || 0,
+  },
+  {
+    key: "meetingSchedule",
+    label: "Meeting Schedule",
+    render: (row) =>
+      `${
+        row.meetingDay.charAt(0).toUpperCase() + row.meetingDay.slice(1)
+      }s at ${row.meetingTime}`,
+  },
+  {
+    key: "status",
+    label: "Status",
+    render: (row) => (
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          row.status === "active"
+            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+        }`}
+      >
+        {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+      </span>
+    ),
+  },
+];
 
 export default function Groups() {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [newGroup, setNewGroup] = useState({ name: "", description: "" });
-  const [adding, setAdding] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(null);
+  const [sortColumn, setSortColumn] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+    from: 0,
+    to: 0,
+  });
 
   useEffect(() => {
     fetchGroups();
-  }, []);
+  }, [sortColumn, sortDirection, pagination.currentPage]);
 
-  const fetchGroups = () => {
-    setLoading(true);
-    groupService
-      .getAllGroups()
-      .then((data) => setGroups(data.groups || []))
-      .catch(() => toast.error("Failed to load groups"))
-      .finally(() => setLoading(false));
-  };
-
-  const handleAddGroup = async (e) => {
-    e.preventDefault();
-    setAdding(true);
+  const fetchGroups = async () => {
     try {
-      await groupService.createGroup(newGroup);
-      toast.success("Group added!");
-      setModalOpen(false);
-      setNewGroup({ name: "", description: "" });
-      fetchGroups();
-    } catch {
-      toast.error("Failed to add group");
+      const response = await groupService.getAllGroups({
+        page: pagination.currentPage,
+        sort: sortColumn,
+        order: sortDirection,
+      });
+      setGroups(response.groups);
+      setPagination(response.pagination);
+    } catch (error) {
+      toast.error("Failed to load groups");
     } finally {
-      setAdding(false);
+      setLoading(false);
     }
   };
+
+  const handleSort = (column, direction) => {
+    setSortColumn(column);
+    setSortDirection(direction);
+  };
+
+  const handlePageChange = (page) => {
+    setPagination((prev) => ({ ...prev, currentPage: page }));
+  };
+
+  const handleCreateGroup = async (data) => {
+    try {
+      await groupService.createGroup(data);
+      toast.success("Group created successfully");
+      setModalOpen(false);
+      fetchGroups();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to create group");
+      throw error;
+    }
+  };
+
+  const handleEditGroup = async (data) => {
+    try {
+      await groupService.updateGroup(editingGroup._id, data);
+      toast.success("Group updated successfully");
+      setEditingGroup(null);
+      fetchGroups();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update group");
+      throw error;
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    try {
+      await groupService.deleteGroup(deletingGroup._id);
+      toast.success("Group deleted successfully");
+      setDeleteModalOpen(false);
+      setDeletingGroup(null);
+      fetchGroups();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete group");
+    }
+  };
+
+  const rowActions = (row) => (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => navigate(`/groups/${row._id}`)}
+      >
+        <span className="sr-only">View</span>
+        View
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => {
+          setEditingGroup(row);
+          setModalOpen(true);
+        }}
+      >
+        <Pencil className="h-4 w-4" />
+        <span className="sr-only">Edit</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => {
+          setDeletingGroup(row);
+          setDeleteModalOpen(true);
+        }}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span className="sr-only">Delete</span>
+      </Button>
+    </>
+  );
 
   return (
     <Card>
@@ -56,52 +217,70 @@ export default function Groups() {
         <h1 className="text-2xl font-bold">Groups</h1>
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogTrigger asChild>
-            <Button>Add Group</Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Group
+            </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogTitle>Add New Group</DialogTitle>
-            <form onSubmit={handleAddGroup} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={newGroup.name}
-                  onChange={(e) =>
-                    setNewGroup((g) => ({ ...g, name: e.target.value }))
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={newGroup.description}
-                  onChange={(e) =>
-                    setNewGroup((g) => ({ ...g, description: e.target.value }))
-                  }
-                />
-              </div>
-              <Button type="submit" disabled={adding} className="w-full">
-                {adding ? "Adding..." : "Add Group"}
-              </Button>
-            </form>
+            <DialogHeader>
+              <DialogTitle>
+                {editingGroup ? "Edit Group" : "Create New Group"}
+              </DialogTitle>
+            </DialogHeader>
+            <CrudForm
+              fields={formFields}
+              initialData={editingGroup}
+              onSubmit={editingGroup ? handleEditGroup : handleCreateGroup}
+              onCancel={() => {
+                setModalOpen(false);
+                setEditingGroup(null);
+              }}
+            />
           </DialogContent>
         </Dialog>
       </CardHeader>
+
       <CardContent>
-        {loading ? (
-          <Skeleton className="h-32 w-full" />
-        ) : (
-          <Table
-            columns={[
-              { key: "name", label: "Name" },
-              { key: "description", label: "Description" },
-            ]}
-            data={groups}
-          />
-        )}
+        <Table
+          columns={columns}
+          data={groups}
+          loading={loading}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          pagination={pagination}
+          onPageChange={handlePageChange}
+          rowActions={rowActions}
+        />
       </CardContent>
+
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Group</DialogTitle>
+          </DialogHeader>
+          <p>
+            Are you sure you want to delete{" "}
+            <strong>{deletingGroup?.name}</strong>? This action cannot be
+            undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteModalOpen(false);
+                setDeletingGroup(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteGroup}>
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

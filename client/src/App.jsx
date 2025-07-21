@@ -34,6 +34,7 @@ import Users from "./pages/users/Users";
 import UserDetail from "./pages/users/UserDetail";
 import Settings from "./pages/settings/Settings";
 import Profile from "./pages/profile/Profile";
+import Notifications from "./pages/notifications/Notifications";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/notifications" element={<Notifications />} />
           </Route>
 
           {/* 404 Route */}

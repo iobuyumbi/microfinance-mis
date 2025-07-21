@@ -1,88 +1,113 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { authService } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { authService } from "../services/api";
 
 const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Load user from localStorage on mount
   useEffect(() => {
-    // Check for existing user session
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-    }
-    setLoading(false);
+    const loadUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          const userData = await authService.getCurrentUser();
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error("Failed to load user:", error);
+        localStorage.removeItem("token");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadUser();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (credentials) => {
     try {
-      const data = await authService.login({ email, password });
-      setUser(data.user);
+      const { token, user: userData } = await authService.login(credentials);
+      localStorage.setItem("token", token);
+      setUser(userData);
       toast.success("Welcome back!");
       navigate("/dashboard");
-      return data;
+      return true;
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
-      throw error;
+      return false;
     }
   };
 
   const register = async (userData) => {
     try {
-      const data = await authService.register(userData);
-      toast.success("Registration successful! Please log in.");
-      navigate("/login");
-      return data;
+      const { token, user: newUser } = await authService.register(userData);
+      localStorage.setItem("token", token);
+      setUser(newUser);
+      toast.success("Registration successful!");
+      navigate("/dashboard");
+      return true;
     } catch (error) {
       toast.error(error.response?.data?.message || "Registration failed");
-      throw error;
+      return false;
     }
   };
 
   const logout = () => {
-    authService.logout();
+    localStorage.removeItem("token");
     setUser(null);
-    toast.success("Logged out successfully");
     navigate("/login");
+    toast.success("Logged out successfully");
   };
 
   const forgotPassword = async (email) => {
     try {
       await authService.forgotPassword(email);
       toast.success("Password reset instructions sent to your email");
+      return true;
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Failed to send reset email"
       );
-      throw error;
+      return false;
     }
   };
 
-  const resetPassword = async (token, password) => {
+  const resetPassword = async (token, newPassword) => {
     try {
-      await authService.resetPassword(token, password);
-      toast.success("Password reset successful! Please log in");
+      await authService.resetPassword(token, newPassword);
+      toast.success(
+        "Password reset successful. Please login with your new password."
+      );
       navigate("/login");
+      return true;
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to reset password");
-      throw error;
+      return false;
     }
   };
 
-  const updateProfile = async (userData) => {
+  const updateProfile = async (updates) => {
     try {
-      const data = await authService.updateProfile(userData);
-      setUser(data.user);
+      const updatedUser = await authService.updateProfile(updates);
+      setUser(updatedUser);
       toast.success("Profile updated successfully");
-      return data;
+      return true;
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update profile");
-      throw error;
+      return false;
     }
   };
 
@@ -95,19 +120,9 @@ export const AuthProvider = ({ children }) => {
     forgotPassword,
     resetPassword,
     updateProfile,
+    isAuthenticated: !!user,
+    isAdmin: user?.role === "admin",
   };
 
-  if (loading) {
-    return <div>Loading...</div>; // Replace with your loading component
-  }
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 };

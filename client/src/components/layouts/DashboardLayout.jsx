@@ -1,86 +1,60 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Navbar from "../Navbar";
-import Footer from "../Footer";
+import Sidebar from "../ui/sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import { Button } from "../ui/button";
+import { Menu } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 export default function DashboardLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
 
-  const sidebarLinks = [
-    { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
-    { label: "Groups", href: "/groups", icon: "group" },
-    { label: "Loans", href: "/loans", icon: "payments" },
-    { label: "Meetings", href: "/meetings", icon: "event" },
-    { label: "Reports", href: "/reports", icon: "assessment" },
-    { label: "Savings", href: "/savings", icon: "savings" },
-    { label: "Transactions", href: "/transactions", icon: "receipt_long" },
-    { label: "Accounts", href: "/accounts", icon: "account_balance" },
+  const navigationItems = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/groups", label: "Groups" },
+    { href: "/loans", label: "Loans" },
+    { href: "/meetings", label: "Meetings" },
+    { href: "/savings", label: "Savings" },
+    { href: "/transactions", label: "Transactions" },
+    { href: "/accounts", label: "Accounts" },
+    ...(user?.role === "admin"
+      ? [
+          { href: "/users", label: "Users" },
+          { href: "/reports", label: "Reports" },
+        ]
+      : []),
   ];
-
-  // Add admin-only links
-  if (user?.role === "admin") {
-    sidebarLinks.push(
-      { label: "Users", href: "/users", icon: "people" },
-      { label: "Settings", href: "/settings", icon: "settings" }
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      {/* Mobile Sidebar */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetTrigger asChild className="lg:hidden">
+          <Button variant="ghost" className="fixed left-4 top-4 z-40">
+            <Menu className="h-6 w-6" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-72">
+          <Sidebar items={navigationItems} />
+        </SheetContent>
+      </Sheet>
 
-      <div className="flex">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex w-64 min-h-[calc(100vh-4rem)] flex-col border-r">
-          <nav className="flex-1 space-y-1 px-2 py-4">
-            {sidebarLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-              >
-                <span className="material-icons text-xl">{link.icon}</span>
-                {link.label}
-              </a>
-            ))}
-          </nav>
-        </aside>
-
-        {/* Mobile Sidebar */}
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon" className="ml-2 mt-2">
-              <span className="material-icons">menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
-            <nav className="flex-1 space-y-1 px-2 py-4">
-              {sidebarLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <span className="material-icons text-xl">{link.icon}</span>
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-          </SheetContent>
-        </Sheet>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6">
-          <Outlet />
-        </main>
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
+        <Sidebar items={navigationItems} />
       </div>
 
-      <Footer />
+      {/* Main Content */}
+      <div className="lg:pl-72">
+        <Navbar />
+        <main className="py-10">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
