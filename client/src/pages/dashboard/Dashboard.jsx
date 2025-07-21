@@ -1,181 +1,96 @@
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { reportService } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import { reportService } from "../../services/reportService";
+import { memberService } from "../../services/memberService";
+import { loanService } from "../../services/loanService";
+import { savingsService } from "../../services/savingsService";
+import { transactionService } from "../../services/transactionService";
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const [stats, setStats] = useState({
-    totalLoans: 0,
-    activeLoanDefaulters: 0,
-    upcomingRepayments: [],
-    financialSummary: {
-      totalDisbursed: 0,
-      totalCollected: 0,
-      totalOutstanding: 0,
-    },
-  });
+  const [stats, setStats] = useState(null);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [loansDisbursed, defaulters, repayments, financials] =
-          await Promise.all([
-            reportService.getTotalLoansDisbursed(),
-            reportService.getActiveLoanDefaulters(),
-            reportService.getUpcomingRepayments(),
-            reportService.getFinancialSummary(),
-          ]);
-
+    Promise.all([
+      memberService.getAll(),
+      loanService.getAll(),
+      savingsService.getAll(),
+      reportService.getFinancialSummary(),
+      transactionService.getAll({ limit: 5 }),
+    ])
+      .then(([members, loans, savings, financial, txs]) => {
         setStats({
-          totalLoans: loansDisbursed.total,
-          activeLoanDefaulters: defaulters.length,
-          upcomingRepayments: repayments,
-          financialSummary: financials,
+          totalMembers: (members.members || members || []).length,
+          totalLoans: (loans.loans || loans || []).length,
+          totalSavings: (savings.savings || savings || []).reduce(
+            (sum, s) => sum + (s.amount || 0),
+            0
+          ),
+          totalPaid: financial?.totalPaid || 0,
         });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
+        setTransactions(txs.transactions || txs || []);
+      })
+      .catch((err) =>
+        setError(err.response?.data?.message || "Failed to load dashboard")
+      )
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <div>Loading dashboard...</div>;
-  }
+  if (loading) return <div>Loading dashboard...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {user?.name}
-        </h1>
-        <p className="text-muted-foreground">
-          Here's what's happening with your microfinance operations today.
-        </p>
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-card rounded shadow p-6">
+          <div className="text-muted-foreground text-sm mb-1">
+            Total Members
+          </div>
+          <div className="text-2xl font-bold">{stats.totalMembers}</div>
+        </div>
+        <div className="bg-card rounded shadow p-6">
+          <div className="text-muted-foreground text-sm mb-1">Total Loans</div>
+          <div className="text-2xl font-bold">{stats.totalLoans}</div>
+        </div>
+        <div className="bg-card rounded shadow p-6">
+          <div className="text-muted-foreground text-sm mb-1">
+            Total Savings
+          </div>
+          <div className="text-2xl font-bold">{stats.totalSavings}</div>
+        </div>
+        <div className="bg-card rounded shadow p-6">
+          <div className="text-muted-foreground text-sm mb-1">Total Paid</div>
+          <div className="text-2xl font-bold">{stats.totalPaid}</div>
+        </div>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Loans</CardTitle>
-            <span className="material-icons text-muted-foreground">
-              account_balance
-            </span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalLoans}</div>
-            <p className="text-xs text-muted-foreground">
-              Active loans in the system
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Disbursed
-            </CardTitle>
-            <span className="material-icons text-muted-foreground">
-              payments
-            </span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${stats.financialSummary.totalDisbursed.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Lifetime loan amount disbursed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Collected
-            </CardTitle>
-            <span className="material-icons text-muted-foreground">
-              savings
-            </span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${stats.financialSummary.totalCollected.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Total repayments received
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Defaulters</CardTitle>
-            <span className="material-icons text-muted-foreground">
-              warning
-            </span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.activeLoanDefaulters}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Active loans in default
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Repayments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {stats.upcomingRepayments.slice(0, 5).map((repayment) => (
-                <div
-                  key={repayment._id}
-                  className="flex items-center justify-between"
-                >
-                  <div>
-                    <p className="font-medium">{repayment.borrower.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Due: {new Date(repayment.dueDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="font-bold">
-                    ${repayment.amount.toLocaleString()}
-                  </div>
-                </div>
+      <div className="bg-card rounded shadow p-6">
+        <div className="text-lg font-semibold mb-2">Recent Transactions</div>
+        {transactions.length === 0 ? (
+          <div className="text-muted-foreground">No recent transactions.</div>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr>
+                <th className="px-4 py-2 text-left">Type</th>
+                <th className="px-4 py-2 text-left">Amount</th>
+                <th className="px-4 py-2 text-left">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((t) => (
+                <tr key={t.id || t._id} className="border-b">
+                  <td className="px-4 py-2">{t.type}</td>
+                  <td className="px-4 py-2">{t.amount}</td>
+                  <td className="px-4 py-2">
+                    {t.date ? new Date(t.date).toLocaleDateString() : "-"}
+                  </td>
+                </tr>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Outstanding Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold">
-              ${stats.financialSummary.totalOutstanding.toLocaleString()}
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Total amount yet to be collected from all active loans
-            </p>
-          </CardContent>
-        </Card>
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
