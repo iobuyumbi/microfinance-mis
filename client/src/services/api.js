@@ -1,15 +1,15 @@
 // api.js - API service for Microfinance MIS
 import axios from "axios";
 
-// Axios instance with base URL
+// Create axios instance with base URL
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor for auth
+// Add request interceptor for authentication
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -18,13 +18,16 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor for error handling
+// Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle authentication errors
     if (error.response && error.response.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -34,159 +37,215 @@ api.interceptors.response.use(
   }
 );
 
-// --- Auth Service ---
+// Auth API services
 export const authService = {
   register: async (userData) => {
-    const res = await api.post("/auth/register", userData);
-    return res.data;
+    const response = await api.post("/auth/register", userData);
+    return response.data;
   },
   login: async (credentials) => {
-    const res = await api.post("/auth/login", credentials);
-    if (res.data.token) {
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+    const response = await api.post("/auth/login", credentials);
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
     }
-    return res.data;
+    return response.data;
   },
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   },
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+  resetPassword: async (token, password) => {
+    const response = await api.post(`/auth/reset-password/${token}`, {
+      password,
+    });
+    return response.data;
+  },
   getCurrentUser: () => {
     const user = localStorage.getItem("user");
     return user ? JSON.parse(user) : null;
   },
-  forgotPassword: async (email) => {
-    const res = await api.post("/auth/forgot-password", { email });
-    return res.data;
-  },
-  resetPassword: async (data) => {
-    const res = await api.post("/auth/reset-password", data);
-    return res.data;
-  },
 };
 
-// --- User Service ---
+// User API services
 export const userService = {
-  getAll: async () => (await api.get("/users")).data,
-  getById: async (id) => (await api.get(`/users/${id}`)).data,
-  updateProfile: async (data) => (await api.put("/users/profile", data)).data,
-  updateRoleStatus: async (id, data) =>
-    (await api.put(`/users/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/users/${id}`)).data,
+  getAllUsers: async (page = 1, limit = 10) => {
+    const response = await api.get(`/users?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  getUserById: async (id) => {
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+  },
+  updateProfile: async (userData) => {
+    const response = await api.put("/users/profile", userData);
+    return response.data;
+  },
+  updateUserRoleStatus: async (id, updates) => {
+    const response = await api.put(`/users/${id}`, updates);
+    return response.data;
+  },
+  deleteUser: async (id) => {
+    const response = await api.delete(`/users/${id}`);
+    return response.data;
+  },
 };
 
-// --- Group Service ---
+// Group API services
 export const groupService = {
-  create: async (data) => (await api.post("/groups", data)).data,
-  getAll: async () => (await api.get("/groups")).data,
-  getById: async (id) => (await api.get(`/groups/${id}`)).data,
-  update: async (id, data) => (await api.put(`/groups/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/groups/${id}`)).data,
-  addMember: async (id, userId) =>
-    (await api.post(`/groups/${id}/members`, { userId })).data,
-  removeMember: async (id, userId) =>
-    (await api.delete(`/groups/${id}/members`, { data: { userId } })).data,
+  createGroup: async (groupData) => {
+    const response = await api.post("/groups", groupData);
+    return response.data;
+  },
+  getAllGroups: async (page = 1, limit = 10) => {
+    const response = await api.get(`/groups?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  getGroupById: async (id) => {
+    const response = await api.get(`/groups/${id}`);
+    return response.data;
+  },
+  updateGroup: async (id, groupData) => {
+    const response = await api.put(`/groups/${id}`, groupData);
+    return response.data;
+  },
+  deleteGroup: async (id) => {
+    const response = await api.delete(`/groups/${id}`);
+    return response.data;
+  },
+  addMember: async (groupId, memberId) => {
+    const response = await api.post(`/groups/${groupId}/members`, { memberId });
+    return response.data;
+  },
+  removeMember: async (groupId, memberId) => {
+    const response = await api.delete(`/groups/${groupId}/members/${memberId}`);
+    return response.data;
+  },
 };
 
-// --- Loan Service ---
+// Loan API services
 export const loanService = {
-  apply: async (data) => (await api.post("/loans", data)).data,
-  getAll: async () => (await api.get("/loans")).data,
-  getById: async (id) => (await api.get(`/loans/${id}`)).data,
-  update: async (id, data) => (await api.put(`/loans/${id}`, data)).data,
-  approve: async (id, data) =>
-    (await api.put(`/loans/${id}/approve`, data)).data,
-  delete: async (id) => (await api.delete(`/loans/${id}`)).data,
+  applyForLoan: async (loanData) => {
+    const response = await api.post("/loans", loanData);
+    return response.data;
+  },
+  getAllLoans: async (page = 1, limit = 10) => {
+    const response = await api.get(`/loans?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  getLoanById: async (id) => {
+    const response = await api.get(`/loans/${id}`);
+    return response.data;
+  },
+  approveLoan: async (id, approvalData) => {
+    const response = await api.put(`/loans/${id}/approve`, approvalData);
+    return response.data;
+  },
+  updateLoan: async (id, loanData) => {
+    const response = await api.put(`/loans/${id}`, loanData);
+    return response.data;
+  },
+  deleteLoan: async (id) => {
+    const response = await api.delete(`/loans/${id}`);
+    return response.data;
+  },
 };
 
-// --- Repayment Service ---
-export const repaymentService = {
-  record: async (data) => (await api.post("/repayments", data)).data,
-  getAll: async () => (await api.get("/repayments")).data,
-  getById: async (id) => (await api.get(`/repayments/${id}`)).data,
-  getByLoan: async (loanId) =>
-    (await api.get(`/repayments/loan/${loanId}`)).data,
-  delete: async (id) => (await api.delete(`/repayments/${id}`)).data,
-};
-
-// --- Meeting Service ---
+// Meeting API services
 export const meetingService = {
-  schedule: async (data) => (await api.post("/meetings", data)).data,
-  getAll: async () => (await api.get("/meetings")).data,
-  getById: async (id) => (await api.get(`/meetings/${id}`)).data,
-  update: async (id, data) => (await api.put(`/meetings/${id}`, data)).data,
-  markAttendance: async (id, userId) =>
-    (await api.post(`/meetings/${id}/attendance`, { userId })).data,
-  delete: async (id) => (await api.delete(`/meetings/${id}`)).data,
+  scheduleMeeting: async (meetingData) => {
+    const response = await api.post("/meetings", meetingData);
+    return response.data;
+  },
+  getAllMeetings: async (page = 1, limit = 10) => {
+    const response = await api.get(`/meetings?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  getMeetingById: async (id) => {
+    const response = await api.get(`/meetings/${id}`);
+    return response.data;
+  },
+  updateMeeting: async (id, meetingData) => {
+    const response = await api.put(`/meetings/${id}`, meetingData);
+    return response.data;
+  },
+  markAttendance: async (id, attendanceData) => {
+    const response = await api.post(
+      `/meetings/${id}/attendance`,
+      attendanceData
+    );
+    return response.data;
+  },
+  deleteMeeting: async (id) => {
+    const response = await api.delete(`/meetings/${id}`);
+    return response.data;
+  },
 };
 
-// --- Report Service ---
+// Report API services
 export const reportService = {
-  upcomingRepayments: async () =>
-    (await api.get("/reports/upcoming-repayments")).data,
-  totalLoansDisbursed: async () => (await api.get("/reports/total-loans")).data,
-  groupSavingsPerformance: async () =>
-    (await api.get("/reports/group-savings")).data,
-  activeLoanDefaulters: async () => (await api.get("/reports/defaulters")).data,
-  financialSummary: async (params) =>
-    (await api.get("/reports/financial-summary", { params })).data,
+  getUpcomingRepayments: async () => {
+    const response = await api.get("/reports/upcoming-repayments");
+    return response.data;
+  },
+  getTotalLoansDisbursed: async () => {
+    const response = await api.get("/reports/total-loans-disbursed");
+    return response.data;
+  },
+  getGroupSavingsPerformance: async () => {
+    const response = await api.get("/reports/group-savings-performance");
+    return response.data;
+  },
+  getActiveLoanDefaulters: async () => {
+    const response = await api.get("/reports/active-loan-defaulters");
+    return response.data;
+  },
+  getFinancialSummary: async () => {
+    const response = await api.get("/reports/financial-summary");
+    return response.data;
+  },
 };
 
-// --- Notification Service ---
-export const notificationService = {
-  create: async (data) => (await api.post("/notifications", data)).data,
-  getAll: async () => (await api.get("/notifications")).data,
-  getById: async (id) => (await api.get(`/notifications/${id}`)).data,
-  update: async (id, data) =>
-    (await api.put(`/notifications/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/notifications/${id}`)).data,
-};
-
-// --- Savings Service ---
+// Export other services (savings, transactions, accounts, etc.)
 export const savingsService = {
-  create: async (data) => (await api.post("/savings", data)).data,
-  getAll: async () => (await api.get("/savings")).data,
-  getById: async (id) => (await api.get(`/savings/${id}`)).data,
-  update: async (id, data) => (await api.put(`/savings/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/savings/${id}`)).data,
+  createSavings: async (savingsData) => {
+    const response = await api.post("/savings", savingsData);
+    return response.data;
+  },
+  getAllSavings: async (page = 1, limit = 10) => {
+    const response = await api.get(`/savings?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+  getSavingsById: async (id) => {
+    const response = await api.get(`/savings/${id}`);
+    return response.data;
+  },
 };
 
-// --- Transaction Service ---
 export const transactionService = {
-  create: async (data) => (await api.post("/transactions", data)).data,
-  getAll: async () => (await api.get("/transactions")).data,
-  getById: async (id) => (await api.get(`/transactions/${id}`)).data,
-  update: async (id, data) => (await api.put(`/transactions/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/transactions/${id}`)).data,
+  createTransaction: async (transactionData) => {
+    const response = await api.post("/transactions", transactionData);
+    return response.data;
+  },
+  getAllTransactions: async (page = 1, limit = 10) => {
+    const response = await api.get(`/transactions?page=${page}&limit=${limit}`);
+    return response.data;
+  },
 };
 
-// --- Account Service ---
 export const accountService = {
-  create: async (data) => (await api.post("/accounts", data)).data,
-  getAll: async () => (await api.get("/accounts")).data,
-  getById: async (id) => (await api.get(`/accounts/${id}`)).data,
-  update: async (id, data) => (await api.put(`/accounts/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/accounts/${id}`)).data,
-};
-
-// --- Account History Service ---
-export const accountHistoryService = {
-  create: async (data) => (await api.post("/account-history", data)).data,
-  getAll: async () => (await api.get("/account-history")).data,
-  getById: async (id) => (await api.get(`/account-history/${id}`)).data,
-  update: async (id, data) =>
-    (await api.put(`/account-history/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/account-history/${id}`)).data,
-};
-
-// --- Guarantor Service ---
-export const guarantorService = {
-  create: async (data) => (await api.post("/guarantors", data)).data,
-  getAll: async () => (await api.get("/guarantors")).data,
-  getById: async (id) => (await api.get(`/guarantors/${id}`)).data,
-  update: async (id, data) => (await api.put(`/guarantors/${id}`, data)).data,
-  delete: async (id) => (await api.delete(`/guarantors/${id}`)).data,
+  createAccount: async (accountData) => {
+    const response = await api.post("/accounts", accountData);
+    return response.data;
+  },
+  getAllAccounts: async (page = 1, limit = 10) => {
+    const response = await api.get(`/accounts?page=${page}&limit=${limit}`);
+    return response.data;
+  },
 };
 
 export default api;
