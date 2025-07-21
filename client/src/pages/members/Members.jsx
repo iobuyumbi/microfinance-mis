@@ -9,6 +9,7 @@ export default function Members() {
   const [modalOpen, setModalOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchMembers = () => {
     setLoading(true);
@@ -49,6 +50,19 @@ export default function Members() {
       throw new Error(err.response?.data?.message || "Failed to update member");
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this member?")) return;
+    setDeletingId(id);
+    try {
+      await memberService.remove(id);
+      fetchMembers();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete member");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -108,6 +122,15 @@ export default function Members() {
                       onClick={() => openEditModal(m)}
                     >
                       Edit
+                    </button>
+                    <button
+                      className="text-destructive underline"
+                      onClick={() => handleDelete(m.id || m._id)}
+                      disabled={deletingId === (m.id || m._id)}
+                    >
+                      {deletingId === (m.id || m._id)
+                        ? "Deleting..."
+                        : "Delete"}
                     </button>
                   </td>
                 </tr>
