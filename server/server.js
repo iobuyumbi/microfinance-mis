@@ -4,6 +4,7 @@ const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const errorHandler = require("./middleware/errorHandler");
 
 // Import microfinance MIS routes
 
@@ -35,6 +36,9 @@ if (process.env.NODE_ENV === "development") {
 app.get("/", (req, res) => {
   res.json({ message: "Microfinance MIS API is running." });
 });
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
