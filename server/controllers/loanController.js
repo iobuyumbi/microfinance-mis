@@ -3,7 +3,7 @@ const Group = require("../models/Group");
 const User = require("../models/User");
 
 // Apply for a loan
-export const applyForLoan = async (req, res, next) => {
+const applyForLoan = async (req, res, next) => {
   try {
     const { borrower, borrowerModel, amountRequested, interestRate, loanTerm } =
       req.body;
@@ -40,7 +40,7 @@ export const applyForLoan = async (req, res, next) => {
 };
 
 // Get all loans (admin/officer see all, others see theirs/groups)
-export const getAllLoans = async (req, res, next) => {
+const getAllLoans = async (req, res, next) => {
   try {
     let loans;
 
@@ -65,7 +65,7 @@ export const getAllLoans = async (req, res, next) => {
 };
 
 // Get a single loan by ID with access control
-export const getLoanById = async (req, res, next) => {
+const getLoanById = async (req, res, next) => {
   try {
     const loan = await Loan.findById(req.params.id);
     if (!loan)
@@ -96,7 +96,7 @@ export const getLoanById = async (req, res, next) => {
 };
 
 // Approve or update loan status/schedule (admin/officer only)
-export const approveLoan = async (req, res, next) => {
+const approveLoan = async (req, res, next) => {
   try {
     const loan = await Loan.findById(req.params.id);
     if (!loan)
@@ -122,7 +122,7 @@ export const approveLoan = async (req, res, next) => {
 };
 
 // Update loan request (only pending + access-controlled)
-export const updateLoan = async (req, res, next) => {
+const updateLoan = async (req, res, next) => {
   try {
     const loan = await Loan.findById(req.params.id);
     if (!loan)
@@ -168,7 +168,7 @@ export const updateLoan = async (req, res, next) => {
 };
 
 // Delete a loan (admin/officer only)
-export const deleteLoan = async (req, res, next) => {
+const deleteLoan = async (req, res, next) => {
   try {
     const loan = await Loan.findByIdAndDelete(req.params.id);
     if (!loan)
@@ -180,4 +180,13 @@ export const deleteLoan = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+module.exports = {
+  applyForLoan,
+  getAllLoans,
+  getLoanById,
+  approveLoan,
+  updateLoan,
+  deleteLoan,
 };
