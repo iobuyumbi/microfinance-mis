@@ -1,90 +1,81 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+import { useNavigate } from "react-router-dom";
+import { authService } from "../../services/authService";
 
 export default function Login() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
-      await login(formData.email, formData.password);
-    } catch (error) {
-      console.error("Login error:", error);
+      await authService.login(form);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="text-muted-foreground">
-          Enter your credentials to access your account
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-card p-8 rounded-lg shadow-md w-full max-w-sm space-y-6"
+      >
+        <h1 className="text-2xl font-bold text-center">Sign in</h1>
+        {error && (
+          <div className="text-red-500 text-sm text-center">{error}</div>
+        )}
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
+          <label htmlFor="email" className="block text-sm font-medium">
+            Email
+          </label>
+          <input
             id="email"
             name="email"
             type="email"
-            placeholder="name@example.com"
+            autoComplete="email"
             required
-            value={formData.email}
+            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+            value={form.email}
             onChange={handleChange}
+            disabled={loading}
           />
         </div>
-
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
+          <label htmlFor="password" className="block text-sm font-medium">
+            Password
+          </label>
+          <input
             id="password"
             name="password"
             type="password"
+            autoComplete="current-password"
             required
-            value={formData.password}
+            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring"
+            value={form.password}
             onChange={handleChange}
+            disabled={loading}
           />
         </div>
-
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
-        </Button>
-      </form>
-
-      <div className="text-center space-y-2">
-        <Link
-          to="/forgot-password"
-          className="text-sm text-muted-foreground hover:underline"
+        <button
+          type="submit"
+          className="w-full bg-primary text-primary-foreground py-2 rounded font-semibold hover:bg-primary/90 transition"
+          disabled={loading}
         >
-          Forgot your password?
-        </Link>
-
-        <div className="text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link to="/register" className="font-medium hover:underline">
-            Sign up
-          </Link>
-        </div>
-      </div>
+          {loading ? "Signing in..." : "Sign in"}
+        </button>
+      </form>
     </div>
   );
 }
