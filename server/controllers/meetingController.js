@@ -1,5 +1,5 @@
-const Meeting = require("../models/meetingModel");
-const Group = require("../models/groupModel");
+const Meeting = require("../models/Meeting");
+const Group = require("../models/Group");
 
 // Utility to check group access for non-admins/officers
 const checkGroupAccess = async (groupId, user) => {
@@ -24,7 +24,6 @@ exports.scheduleMeeting = async (req, res, next) => {
       agenda,
       attendance: [],
     });
-
     res.status(201).json({ success: true, data: meeting });
   } catch (error) {
     next(error);
@@ -44,7 +43,6 @@ exports.getAllMeetings = async (req, res, next) => {
       );
       meetings = await Meeting.find({ group: { $in: groupIds } });
     }
-
     res
       .status(200)
       .json({ success: true, count: meetings.length, data: meetings });
@@ -128,7 +126,6 @@ exports.markAttendance = async (req, res, next) => {
       meeting.attendance.push(userId);
       await meeting.save();
     }
-
     res.status(200).json({ success: true, data: meeting });
   } catch (error) {
     next(error);

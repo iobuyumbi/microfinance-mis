@@ -1,6 +1,6 @@
-import Loan from "../models/loanModel.js";
-import Group from "../models/groupModel.js";
-import User from "../models/userModel.js";
+const Loan = require("../models/Loan");
+const Group = require("../models/Group");
+const User = require("../models/User");
 
 // Apply for a loan
 export const applyForLoan = async (req, res, next) => {
@@ -25,7 +25,6 @@ export const applyForLoan = async (req, res, next) => {
           .json({ success: false, message: "Access denied" });
       }
     }
-
     const loan = await Loan.create({
       borrower,
       borrowerModel,
@@ -34,7 +33,6 @@ export const applyForLoan = async (req, res, next) => {
       loanTerm,
       status: "pending",
     });
-
     res.status(201).json({ success: true, data: loan });
   } catch (error) {
     next(error);
@@ -60,7 +58,6 @@ export const getAllLoans = async (req, res, next) => {
         ],
       });
     }
-
     res.status(200).json({ success: true, count: loans.length, data: loans });
   } catch (error) {
     next(error);
@@ -116,11 +113,8 @@ export const approveLoan = async (req, res, next) => {
     if (status) loan.status = status;
     if (amountApproved) loan.amountApproved = amountApproved;
     if (repaymentSchedule) loan.repaymentSchedule = repaymentSchedule;
-
     loan.approver = req.user._id;
-
     await loan.save();
-
     res.status(200).json({ success: true, data: loan });
   } catch (error) {
     next(error);

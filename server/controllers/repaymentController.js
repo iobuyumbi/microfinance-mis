@@ -1,6 +1,6 @@
-const Repayment = require("../models/repaymentModel");
-const Loan = require("../models/loanModel");
-const Group = require("../models/groupModel");
+const Repayment = require("../models/Repayment");
+const Loan = require("../models/Loan");
+const Group = require("../models/Group");
 
 // 🔒 Helper: Check if user can access a given loan
 const hasLoanAccess = async (loan, user) => {
@@ -56,7 +56,6 @@ exports.recordRepayment = async (req, res, next) => {
       penalty,
       remainingBalance,
     });
-
     res.status(201).json({ success: true, data: repayment });
   } catch (error) {
     next(error);
@@ -75,11 +74,9 @@ exports.getAllRepayments = async (req, res, next) => {
         borrower: req.user._id,
         borrowerModel: "User",
       }).distinct("_id");
-
       const groupIds = await Group.find({ members: req.user._id }).distinct(
         "_id"
       );
-
       const groupLoanIds = await Loan.find({
         borrower: { $in: groupIds },
         borrowerModel: "Group",
@@ -135,7 +132,6 @@ exports.getRepaymentById = async (req, res, next) => {
         .status(404)
         .json({ success: false, message: "Repayment not found" });
     }
-
     const loan = await Loan.findById(repayment.loan);
     if (!loan) {
       return res

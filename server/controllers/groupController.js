@@ -1,8 +1,8 @@
-import Group from "../models/Group.js";
-import User from "../models/User.js";
+const Group = require("../models/Group");
+const User = require("../models/User");
 
 // Create a new group
-export const createGroup = async (req, res, next) => {
+exports.createGroup = async (req, res, next) => {
   try {
     const { name, members } = req.body;
 
@@ -21,7 +21,7 @@ export const createGroup = async (req, res, next) => {
 };
 
 // Get all groups - Admin & Officer only
-export const getAllGroups = async (req, res, next) => {
+exports.getAllGroups = async (req, res, next) => {
   try {
     if (req.user.role !== "admin" && req.user.role !== "officer") {
       return res.status(403).json({ success: false, message: "Access denied" });
@@ -35,7 +35,7 @@ export const getAllGroups = async (req, res, next) => {
 };
 
 // Get a group by ID - accessible to members or admin/officer
-export const getGroupById = async (req, res, next) => {
+exports.getGroupById = async (req, res, next) => {
   try {
     const group = await Group.findById(req.params.id).populate(
       "members",
@@ -62,7 +62,7 @@ export const getGroupById = async (req, res, next) => {
 };
 
 // Update group details - only by admins, officers, or group members
-export const updateGroup = async (req, res, next) => {
+exports.updateGroup = async (req, res, next) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group) {
@@ -91,7 +91,7 @@ export const updateGroup = async (req, res, next) => {
 };
 
 // Delete a group - only creator, admin or officer
-export const deleteGroup = async (req, res, next) => {
+exports.deleteGroup = async (req, res, next) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group) {
@@ -119,7 +119,7 @@ export const deleteGroup = async (req, res, next) => {
 };
 
 // Add a member to a group
-export const addMember = async (req, res, next) => {
+exports.addMember = async (req, res, next) => {
   try {
     const group = await Group.findById(req.params.id);
 
@@ -157,7 +157,7 @@ export const addMember = async (req, res, next) => {
 };
 
 // Remove a member from a group
-export const removeMember = async (req, res, next) => {
+exports.removeMember = async (req, res, next) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group) {

@@ -1,6 +1,6 @@
-const Loan = require("../models/loanModel");
-const Repayment = require("../models/repaymentModel");
-const Group = require("../models/groupModel");
+const Loan = require("../models/Loan");
+const Repayment = require("../models/Repayment");
+const Group = require("../models/Group");
 
 // Get repayments due within the next 30 days
 exports.upcomingRepayments = async (req, res, next) => {
@@ -63,7 +63,6 @@ exports.groupSavingsPerformance = async (req, res, next) => {
 exports.activeLoanDefaulters = async (req, res, next) => {
   try {
     const now = new Date();
-
     const overdueLoans = await Loan.find({
       repaymentSchedule: {
         $elemMatch: { dueDate: { $lt: now }, status: "pending" },
