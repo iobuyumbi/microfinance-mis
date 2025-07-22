@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { meetingService } from "../services/meetingService";
-import MeetingForm from "../../components/custom/MeetingForm";
+import { meetingService } from "@/services/meetingService";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input, Label } from '@/components/ui';
+import MeetingForm from "@/components/custom/MeetingForm";
+import { toast } from 'sonner';
 
 export default function Meetings() {
   const [meetings, setMeetings] = useState([]);
@@ -16,9 +18,10 @@ export default function Meetings() {
     meetingService
       .getAll()
       .then((data) => setMeetings(data.meetings || data || []))
-      .catch((err) =>
-        setError(err.response?.data?.message || "Failed to load meetings")
-      )
+      .catch((err) => {
+        setError(err.message || "Failed to load meetings");
+        toast.error(err.message || "Failed to load meetings");
+      })
       .finally(() => setLoading(false));
   };
 
@@ -32,10 +35,9 @@ export default function Meetings() {
       await meetingService.create(form);
       setModalOpen(false);
       fetchMeetings();
+      toast.success("Meeting created successfully.");
     } catch (err) {
-      throw new Error(
-        err.response?.data?.message || "Failed to create meeting"
-      );
+      toast.error(err.message || "Failed to create meeting");
     } finally {
       setFormLoading(false);
     }
@@ -44,17 +46,13 @@ export default function Meetings() {
   const handleEdit = async (form) => {
     setFormLoading(true);
     try {
-      await meetingService.update(
-        editingMeeting.id || editingMeeting._id,
-        form
-      );
+      await meetingService.update(editingMeeting.id || editingMeeting._id, form);
       setModalOpen(false);
       setEditingMeeting(null);
       fetchMeetings();
+      toast.success("Meeting updated successfully.");
     } catch (err) {
-      throw new Error(
-        err.response?.data?.message || "Failed to update meeting"
-      );
+      toast.error(err.message || "Failed to update meeting");
     } finally {
       setFormLoading(false);
     }
@@ -67,8 +65,9 @@ export default function Meetings() {
     try {
       await meetingService.remove(id);
       fetchMeetings();
+      toast.success("Meeting deleted successfully.");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete meeting");
+      toast.error(err.message || "Failed to delete meeting");
     } finally {
       setDeletingId(null);
     }
@@ -91,95 +90,62 @@ export default function Meetings() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Meetings</h1>
-        <button
-          className="bg-primary text-primary-foreground px-4 py-2 rounded font-semibold hover:bg-primary/90 transition"
-          onClick={openCreateModal}
-        >
-          New Meeting
-        </button>
+        <Button onClick={openCreateModal}>New Meeting</Button>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full border text-sm">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 border-b text-left">Group</th>
-              <th className="px-4 py-2 border-b text-left">Date</th>
-              <th className="px-4 py-2 border-b text-left">Location</th>
-              <th className="px-4 py-2 border-b text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Group</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {meetings.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="text-center py-4 text-muted-foreground"
-                >
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
                   No meetings found.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               meetings.map((m) => (
-                <tr key={m.id || m._id} className="border-b">
-                  <td className="px-4 py-2">
-                    {m.group?.name || m.group || "-"}
-                  </td>
-                  <td className="px-4 py-2">
-                    {m.date ? new Date(m.date).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="px-4 py-2">{m.location}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      className="text-primary underline mr-2"
-                      onClick={() => openEditModal(m)}
-                    >
+                <TableRow key={m.id || m._id}>
+                  <TableCell>{m.group?.name || m.group || "-"}</TableCell>
+                  <TableCell>{m.date ? new Date(m.date).toLocaleDateString() : "-"}</TableCell>
+                  <TableCell>{m.location}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => openEditModal(m)}>
                       Edit
-                    </button>
-                    <button
-                      className="text-destructive underline"
-                      onClick={() => handleDelete(m.id || m._id)}
-                      disabled={deletingId === (m.id || m._id)}
-                    >
-                      {deletingId === (m.id || m._id)
-                        ? "Deleting..."
-                        : "Delete"}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(m.id || m._id)} disabled={deletingId === (m.id || m._id)}>
+                      {deletingId === (m.id || m._id) ? "Deleting..." : "Delete"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {/* Modal for New/Edit Meeting */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-card rounded shadow-lg p-6 w-full max-w-md relative">
-            <button
-              className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setModalOpen(false);
-                setEditingMeeting(null);
-              }}
-              aria-label="Close"
-            >
-              &times;
-            </button>
-            <h2 className="text-xl font-semibold mb-4">
-              {editingMeeting ? "Edit Meeting" : "New Meeting"}
-            </h2>
-            <MeetingForm
-              initialValues={editingMeeting || {}}
-              onSubmit={editingMeeting ? handleEdit : handleCreate}
-              onCancel={() => {
-                setModalOpen(false);
-                setEditingMeeting(null);
-              }}
-              loading={formLoading}
-            />
-          </div>
-        </div>
-      )}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingMeeting ? "Edit Meeting" : "New Meeting"}</DialogTitle>
+          </DialogHeader>
+          <MeetingForm
+            initialValues={editingMeeting || {}}
+            onSubmit={editingMeeting ? handleEdit : handleCreate}
+            onCancel={() => {
+              setModalOpen(false);
+              setEditingMeeting(null);
+            }}
+            loading={formLoading}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

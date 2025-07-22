@@ -1,7 +1,6 @@
 // src/pages/Transactions.jsx
-import React, { useState } from 'react';
-
-// Shadcn UI Imports
+import React, { useState, useEffect } from 'react';
+import { transactionService } from '@/services/transactionService';
 import {
   Button,
   Card,
@@ -28,16 +27,12 @@ import {
   Label,
   Textarea
 } from '../components/ui';
-
+import { toast } from 'sonner';
 
 export default function Transactions() {
-  const [transactions, setTransactions] = useState([
-    { id: 1, date: '2024-07-22', type: 'Loan Payment', member: 'John Doe', amount: 500, category: 'Repayment', status: 'Completed', reference: 'TXN001', description: 'Monthly loan payment' },
-    { id: 2, date: '2024-07-21', type: 'Savings Deposit', member: 'Jane Smith', amount: 1000, category: 'Deposit', status: 'Completed', reference: 'TXN002', description: 'Initial savings deposit' },
-    { id: 3, date: '2024-07-20', type: 'Loan Disbursement', member: 'Bob Johnson', amount: 5000, category: 'Disbursement', status: 'Pending', reference: 'TXN003', description: 'New personal loan' },
-    { id: 4, date: '2024-07-19', type: 'Fee Collection', member: 'Alice Brown', amount: 25, category: 'Fee', status: 'Completed', reference: 'TXN004', description: 'Late payment fee' },
-    { id: 5, date: '2024-07-18', type: 'Savings Withdrawal', member: 'Charlie Wilson', amount: 300, category: 'Withdrawal', status: 'Completed', reference: 'TXN005', description: 'Emergency withdrawal' }
-  ]);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [formData, setFormData] = useState({
@@ -53,34 +48,55 @@ export default function Transactions() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterCategory, setFilterCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingTransaction) {
-      setTransactions(transactions.map(t => t.id === editingTransaction.id ?
-        { ...formData, id: editingTransaction.id, amount: parseFloat(formData.amount) } : t
-      ));
-    } else {
-      const newTransaction = {
-        ...formData,
-        id: Date.now(),
-        amount: parseFloat(formData.amount),
-        reference: formData.reference || `TXN${String(Date.now()).slice(-4)}` // Changed slice to 4 for more variety
-      };
-      setTransactions([newTransaction, ...transactions]);
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await transactionService.getAll();
+      setTransactions(data || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load transactions');
+      toast.error(err.message || 'Failed to load transactions');
+    } finally {
+      setLoading(false);
     }
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      type: '',
-      member: '',
-      amount: '',
-      category: 'Deposit',
-      status: 'Pending',
-      reference: '',
-      description: ''
-    });
-    setShowForm(false);
-    setEditingTransaction(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      if (editingTransaction) {
+        await transactionService.update(editingTransaction._id || editingTransaction.id, formData);
+        toast.success('Transaction updated successfully.');
+      } else {
+        await transactionService.create(formData);
+        toast.success('Transaction created successfully.');
+      }
+      setShowForm(false);
+      setEditingTransaction(null);
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        type: '',
+        member: '',
+        amount: '',
+        category: 'Deposit',
+        status: 'Pending',
+        reference: '',
+        description: ''
+      });
+      fetchTransactions();
+    } catch (err) {
+      toast.error(err.message || 'Operation failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (transaction) => {
@@ -92,14 +108,26 @@ export default function Transactions() {
     setShowForm(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this transaction?')) {
-      setTransactions(transactions.filter(t => t.id !== id));
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+    try {
+      await transactionService.remove(id);
+      toast.success('Transaction deleted successfully.');
+      fetchTransactions();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete transaction.');
     }
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    setTransactions(transactions.map(t => t.id === id ? { ...t, status: newStatus } : t));
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const transaction = transactions.find(t => t.id === id || t._id === id);
+      await transactionService.update(id, { ...transaction, status: newStatus });
+      toast.success('Transaction status updated.');
+      fetchTransactions();
+    } catch (err) {
+      toast.error(err.message || 'Failed to update status.');
+    }
   };
 
   const filteredTransactions = transactions.filter(transaction => {
@@ -112,9 +140,12 @@ export default function Transactions() {
     return matchesStatus && matchesCategory && matchesSearch;
   });
 
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const completedAmount = filteredTransactions.filter(t => t.status === 'Completed').reduce((sum, t) => sum + t.amount, 0);
-  const pendingAmount = filteredTransactions.filter(t => t.status === 'Pending').reduce((sum, t) => sum + t.amount, 0);
+  const totalAmount = filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
+  const completedAmount = filteredTransactions.filter(t => t.status === 'Completed').reduce((sum, t) => sum + Number(t.amount), 0);
+  const pendingAmount = filteredTransactions.filter(t => t.status === 'Pending').reduce((sum, t) => sum + Number(t.amount), 0);
+
+  if (loading) return <div className="p-6">Loading transactions...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -124,10 +155,6 @@ export default function Transactions() {
           + New Transaction
         </Button>
       </div>
-
-      ---
-
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card>
           <CardHeader>
@@ -162,10 +189,6 @@ export default function Transactions() {
           </CardContent>
         </Card>
       </div>
-
-      ---
-
-      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -223,10 +246,6 @@ export default function Transactions() {
           </div>
         </CardContent>
       </Card>
-
-      ---
-
-      {/* Transactions Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -244,7 +263,7 @@ export default function Transactions() {
             </TableHeader>
             <TableBody>
               {filteredTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
+                <TableRow key={transaction.id || transaction._id}>
                   <TableCell className="text-sm text-gray-500">{transaction.date}</TableCell>
                   <TableCell className="font-medium">{transaction.reference}</TableCell>
                   <TableCell className="text-sm text-gray-500">{transaction.type}</TableCell>
@@ -260,11 +279,11 @@ export default function Transactions() {
                       {transaction.category}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">${transaction.amount?.toLocaleString()}</TableCell>
+                  <TableCell className="text-sm text-gray-500">${Number(transaction.amount)?.toLocaleString()}</TableCell>
                   <TableCell>
                     <Select
                       value={transaction.status}
-                      onValueChange={(value) => handleStatusChange(transaction.id, value)}
+                      onValueChange={(value) => handleStatusChange(transaction.id || transaction._id, value)}
                     >
                       <SelectTrigger className={`h-8 text-xs font-semibold rounded-full border-0 ${
                         transaction.status === 'Completed' ? 'bg-green-100 text-green-800' :
@@ -284,7 +303,7 @@ export default function Transactions() {
                     <Button variant="link" size="sm" onClick={() => handleEdit(transaction)} className="p-0 h-auto mr-2">
                       Edit
                     </Button>
-                    <Button variant="link" size="sm" onClick={() => handleDelete(transaction.id)} className="p-0 h-auto text-red-600 hover:text-red-800">
+                    <Button variant="link" size="sm" onClick={() => handleDelete(transaction.id || transaction._id)} className="p-0 h-auto text-red-600 hover:text-red-800">
                       Delete
                     </Button>
                   </TableCell>
@@ -294,10 +313,6 @@ export default function Transactions() {
           </Table>
         </CardContent>
       </Card>
-
-      ---
-
-      {/* Transaction Form Modal */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -422,7 +437,7 @@ export default function Transactions() {
               >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={submitting}>
                 {editingTransaction ? 'Update' : 'Create'} Transaction
               </Button>
             </DialogFooter>

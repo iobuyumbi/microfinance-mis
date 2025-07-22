@@ -1,7 +1,6 @@
 // src/components/Settings.jsx
-import React, { useState } from 'react';
-
-// Shadcn UI Imports
+import React, { useState, useEffect } from 'react';
+import { settingsService } from '@/services/settingsService';
 import {
   Button,
   Card,
@@ -21,50 +20,33 @@ import {
   Label,
   Switch,
 } from '../components/ui';
- // For toggles
+import { toast } from 'sonner';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('general');
-  const [settings, setSettings] = useState({
-    general: {
-      organizationName: 'Microfinance Solutions Ltd',
-      currency: 'USD',
-      timezone: 'UTC-5',
-      language: 'English',
-      dateFormat: 'MM/DD/YYYY'
-    },
-    loan: {
-      defaultInterestRate: 12.5,
-      maxLoanAmount: 50000,
-      minLoanAmount: 500,
-      defaultLoanTerm: 12,
-      gracePeriod: 7,
-      lateFee: 25
-    },
-    savings: {
-      defaultInterestRate: 3.5,
-      minBalance: 100,
-      withdrawalLimit: 5000,
-      maintenanceFee: 5,
-      compoundingFrequency: 'Monthly'
-    },
-    notifications: {
-      emailNotifications: true,
-      smsNotifications: false,
-      paymentReminders: true,
-      overdueAlerts: true,
-      systemUpdates: true, // Added for completeness, though not in original UI
-      reminderDays: 3
-    },
-    security: {
-      sessionTimeout: 30,
-      passwordExpiry: 90,
-      twoFactorAuth: false,
-      loginAttempts: 5,
-      auditLog: true
-    }
-  });
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await settingsService.get();
+      setSettings(data);
+    } catch (err) {
+      setError(err.message || 'Failed to load settings');
+      toast.error(err.message || 'Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSettingChange = (category, key, value) => {
     setSettings(prev => ({
@@ -76,56 +58,28 @@ export default function Settings() {
     }));
   };
 
-  const handleSave = () => {
-    // In a real app, this would save to backend
-    setShowSaveMessage(true);
-    setTimeout(() => setShowSaveMessage(false), 3000);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await settingsService.update(settings);
+      setShowSaveMessage(true);
+      toast.success('Settings saved successfully!');
+      setTimeout(() => setShowSaveMessage(false), 3000);
+    } catch (err) {
+      toast.error(err.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
-    if (confirm('Are you sure you want to reset all settings to default values?')) {
-      // Reset to default values
-      setSettings({
-        general: {
-          organizationName: 'Microfinance Solutions Ltd',
-          currency: 'USD',
-          timezone: 'UTC-5',
-          language: 'English',
-          dateFormat: 'MM/DD/YYYY'
-        },
-        loan: {
-          defaultInterestRate: 12.5,
-          maxLoanAmount: 50000,
-          minLoanAmount: 500,
-          defaultLoanTerm: 12,
-          gracePeriod: 7,
-          lateFee: 25
-        },
-        savings: {
-          defaultInterestRate: 3.5,
-          minBalance: 100,
-          withdrawalLimit: 5000,
-          maintenanceFee: 5,
-          compoundingFrequency: 'Monthly'
-        },
-        notifications: {
-          emailNotifications: true,
-          smsNotifications: false,
-          paymentReminders: true,
-          overdueAlerts: true,
-          systemUpdates: true,
-          reminderDays: 3
-        },
-        security: {
-          sessionTimeout: 30,
-          passwordExpiry: 90,
-          twoFactorAuth: false,
-          loginAttempts: 5,
-          auditLog: true
-        }
-      });
+    if (window.confirm('Are you sure you want to reset all settings to default values?')) {
+      fetchSettings();
     }
   };
+
+  if (loading) return <div className="p-6">Loading settings...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -135,19 +89,16 @@ export default function Settings() {
           <Button variant="outline" onClick={handleReset}>
             Reset to Defaults
           </Button>
-          <Button onClick={handleSave}>
-            Save Changes
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>
-
       {showSaveMessage && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
           Settings saved successfully!
         </div>
       )}
-
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="grid w-full grid-cols-5">
           {[
@@ -163,7 +114,7 @@ export default function Settings() {
             </TabsTrigger>
           ))}
         </TabsList>
-
+        {/* General Settings */}
         <TabsContent value="general" className="mt-6">
           <Card>
             <CardHeader>
@@ -250,7 +201,7 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        {/* Loan Settings */}
         <TabsContent value="loan" className="mt-6">
           <Card>
             <CardHeader>
@@ -315,7 +266,7 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        {/* Savings Settings */}
         <TabsContent value="savings" className="mt-6">
           <Card>
             <CardHeader>
@@ -380,7 +331,7 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        {/* Notifications Settings */}
         <TabsContent value="notifications" className="mt-6">
           <Card>
             <CardHeader>
@@ -451,7 +402,7 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        {/* Security Settings */}
         <TabsContent value="security" className="mt-6">
           <Card>
             <CardHeader>

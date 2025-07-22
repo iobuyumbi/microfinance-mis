@@ -1,7 +1,6 @@
 // src/components/Notifications.jsx
-import React, { useState } from 'react';
-
-// Shadcn UI Imports
+import React, { useState, useEffect } from 'react';
+import { notificationService } from '@/services/notificationService';
 import {
   Button,
   Card,
@@ -23,16 +22,12 @@ import {
   Label,
   Textarea,
 } from '../components/ui';
-
+import { toast } from 'sonner';
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: 'payment_due', title: 'Payment Due Reminder', message: 'John Doe has a loan payment due tomorrow ($500)', timestamp: '2024-07-22 10:30', read: false, priority: 'high' },
-    { id: 2, type: 'new_member', title: 'New Member Registration', message: 'Jane Smith has registered as a new member', timestamp: '2024-07-22 09:15', read: true, priority: 'medium' },
-    { id: 3, type: 'loan_approved', title: 'Loan Approved', message: 'Loan application for Bob Johnson ($7,500) has been approved', timestamp: '2024-07-21 16:45', read: false, priority: 'medium' },
-    { id: 4, type: 'system', title: 'System Maintenance', message: 'Scheduled maintenance will occur tonight from 2-4 AM', timestamp: '2024-07-21 14:20', read: true, priority: 'low' },
-    { id: 5, type: 'overdue', title: 'Overdue Payment Alert', message: 'Alice Brown has an overdue payment of $300', timestamp: '2024-07-21 11:00', read: false, priority: 'high' }
-  ]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [filterType, setFilterType] = useState('all');
   const [filterRead, setFilterRead] = useState('all');
@@ -44,64 +39,104 @@ export default function Notifications() {
     recipients: 'all'
   });
   const [activeTab, setActiveTab] = useState('inbox');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newNotification = {
-      ...formData,
-      id: Date.now(),
-      timestamp: new Date().toLocaleString(),
-      read: false
-    };
-    setNotifications([newNotification, ...notifications]);
-    setFormData({
-      type: 'general',
-      title: '',
-      message: '',
-      priority: 'medium',
-      recipients: 'all'
-    });
-    setShowForm(false);
-  };
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const markAsUnread = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: false } : n));
-  };
-
-  const deleteNotification = (id) => {
-    if (confirm('Are you sure you want to delete this notification?')) {
-      setNotifications(notifications.filter(n => n.id !== id));
+  const fetchNotifications = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await notificationService.getAll();
+      setNotifications(data || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load notifications');
+      toast.error(err.message || 'Failed to load notifications');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await notificationService.create(formData);
+      toast.success('Notification sent successfully.');
+      setShowForm(false);
+      setFormData({
+        type: 'general',
+        title: '',
+        message: '',
+        priority: 'medium',
+        recipients: 'all'
+      });
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err.message || 'Failed to send notification.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    try {
+      await notificationService.update(id, { isRead: true });
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err.message || 'Failed to mark as read.');
+    }
+  };
+
+  const markAsUnread = async (id) => {
+    try {
+      await notificationService.update(id, { isRead: false });
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err.message || 'Failed to mark as unread.');
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this notification?')) return;
+    try {
+      await notificationService.remove(id);
+      toast.success('Notification deleted.');
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete notification.');
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await Promise.all(
+        notifications.filter(n => !n.isRead).map(n => notificationService.update(n._id || n.id, { isRead: true }))
+      );
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err.message || 'Failed to mark all as read.');
+    }
   };
 
   const filteredNotifications = notifications.filter(notification => {
     const matchesType = filterType === 'all' || notification.type === filterType;
     const matchesRead = filterRead === 'all' ||
-                        (filterRead === 'read' && notification.read) ||
-                        (filterRead === 'unread' && !notification.read);
-    
-    // Apply tab-specific filters
+                        (filterRead === 'read' && notification.isRead) ||
+                        (filterRead === 'unread' && !notification.isRead);
     let matchesTab = true;
     if (activeTab === 'unread') {
-      matchesTab = !notification.read;
+      matchesTab = !notification.isRead;
     } else if (activeTab === 'high_priority') {
-      matchesTab = notification.priority === 'high' && !notification.read; // Show only unread high priority
+      matchesTab = notification.priority === 'high' && !notification.isRead;
     }
-
     return matchesType && matchesRead && matchesTab;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const highPriorityUnreadCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
-
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const highPriorityUnreadCount = notifications.filter(n => n.priority === 'high' && !n.isRead).length;
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -122,6 +157,9 @@ export default function Notifications() {
       default: return 'text-gray-800 bg-gray-100';
     }
   };
+
+  if (loading) return <div className="p-6">Loading notifications...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -146,19 +184,15 @@ export default function Notifications() {
           </Button>
         </div>
       </div>
-
-      ---
-
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => {
         setActiveTab(value);
         if (value === 'unread') {
           setFilterRead('unread');
           setFilterType('all');
         } else if (value === 'high_priority') {
-          setFilterType('all'); // Reset type filter for high priority tab
-          setFilterRead('unread'); // Only show unread high priority in this tab
-        } else { // inbox tab
+          setFilterType('all');
+          setFilterRead('unread');
+        } else {
           setFilterRead('all');
           setFilterType('all');
         }
@@ -174,18 +208,7 @@ export default function Notifications() {
             High Priority ({highPriorityUnreadCount})
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="inbox" className="mt-4">
-          {/* Filters remain the same, but the initial state will be reset by TabsTrigger logic */}
-        </TabsContent>
-        <TabsContent value="unread" className="mt-4">
-          {/* Filters remain the same, but the initial state will be reset by TabsTrigger logic */}
-        </TabsContent>
-        <TabsContent value="high_priority" className="mt-4">
-          {/* Filters remain the same, but the initial state will be reset by TabsTrigger logic */}
-        </TabsContent>
       </Tabs>
-
-      {/* Filters */}
       <Card className="p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -225,7 +248,7 @@ export default function Notifications() {
               onClick={() => {
                 setFilterType('all');
                 setFilterRead('all');
-                setActiveTab('inbox'); // Reset tab when clearing filters
+                setActiveTab('inbox');
               }}
             >
               Clear Filters
@@ -233,8 +256,6 @@ export default function Notifications() {
           </div>
         </div>
       </Card>
-
-      {/* Notifications List */}
       <div className="space-y-3">
         {filteredNotifications.length === 0 ? (
           <Card className="p-8 text-center">
@@ -243,9 +264,9 @@ export default function Notifications() {
         ) : (
           filteredNotifications.map((notification) => (
             <Card
-              key={notification.id}
+              key={notification._id || notification.id}
               className={`p-4 border-l-4 flex items-start justify-between ${
-                !notification.read ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                !notification.isRead ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
               } ${
                 notification.priority === 'high' ? 'ring-2 ring-red-200' : ''
               }`}
@@ -255,7 +276,7 @@ export default function Notifications() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <h3 className={`font-semibold ${
-                      !notification.read ? 'text-gray-900' : 'text-gray-700'
+                      !notification.isRead ? 'text-gray-900' : 'text-gray-700'
                     }`}>
                       {notification.title}
                     </h3>
@@ -264,12 +285,12 @@ export default function Notifications() {
                     }`}>
                       {notification.priority}
                     </span>
-                    {!notification.read && (
+                    {!notification.isRead && (
                       <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
                     )}
                   </div>
                   <p className={`text-sm ${
-                    !notification.read ? 'text-gray-800' : 'text-gray-600'
+                    !notification.isRead ? 'text-gray-800' : 'text-gray-600'
                   }`}>
                     {notification.message}
                   </p>
@@ -277,16 +298,16 @@ export default function Notifications() {
                 </div>
               </div>
               <div className="flex items-center space-x-2 ml-4">
-                {!notification.read ? (
-                  <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}>
+                {!notification.isRead ? (
+                  <Button variant="ghost" size="sm" onClick={() => markAsRead(notification._id || notification.id)}>
                     Mark Read
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="sm" onClick={() => markAsUnread(notification.id)}>
+                  <Button variant="ghost" size="sm" onClick={() => markAsUnread(notification._id || notification.id)}>
                     Mark Unread
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-800" onClick={() => deleteNotification(notification.id)}>
+                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-800" onClick={() => deleteNotification(notification._id || notification.id)}>
                   Delete
                 </Button>
               </div>
@@ -294,10 +315,6 @@ export default function Notifications() {
           ))
         )}
       </div>
-
-      ---
-
-      {/* New Notification Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -406,7 +423,7 @@ export default function Notifications() {
               >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={submitting}>
                 Send Notification
               </Button>
             </DialogFooter>

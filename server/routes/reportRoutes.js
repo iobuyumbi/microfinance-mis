@@ -12,7 +12,6 @@ const { protect, authorize } = require("../middleware/auth");
 
 // Report routes - all protected and restricted to admin/officer
 router.use(protect);
-router.use(authorize("admin", "officer"));
 
 // Dashboard endpoint
 router.get("/dashboard", getDashboardStats);

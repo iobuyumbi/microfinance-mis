@@ -56,6 +56,7 @@ const routeList = [
   ["/api/accounts", routes.accountRoutes],
   ["/api/account-history", routes.accountHistoryRoutes],
   ["/api/guarantors", routes.guarantorRoutes],
+  ["/api/settings", routes.settingsRoutes],
 ];
 
 // Mount all routes

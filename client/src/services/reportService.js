@@ -1,47 +1,18 @@
-import api from "../lib/axios";
+import api from "./api";
 
 export const reportService = {
-  // Dashboard specific methods
-  getDashboardStats: () => api.get("/reports/dashboard"),
-  
-  // Financial reports
-  getFinancialSummary: (params) =>
-    api.get("/reports/financial-summary", { params }),
-  getUpcomingRepayments: (params) =>
-    api.get("/reports/upcoming-repayments", { params }),
-  getDefaulters: (params) =>
-    api.get("/reports/defaulters", { params }),
-  getTotalLoans: (params) =>
-    api.get("/reports/total-loans", { params }),
-  getGroupSavings: (params) =>
-    api.get("/reports/group-savings", { params }),
-  
-  // Loan reports
-  getLoanReports: (params) =>
-    api.get("/reports/loans", { params }),
-  getLoanPortfolioHealth: () =>
-    api.get("/reports/loan-portfolio-health"),
-  
-  // Member reports
-  getMemberReports: (params) =>
-    api.get("/reports/members", { params }),
-  getMemberStats: () =>
-    api.get("/reports/member-stats"),
-  
-  // Savings reports
-  getSavingsReports: (params) =>
-    api.get("/reports/savings", { params }),
-  getSavingsStats: () =>
-    api.get("/reports/savings-stats"),
-  
-  // Transaction reports
-  getTransactionReports: (params) =>
-    api.get("/reports/transactions", { params }),
-  
-  // Export functions
-  exportReport: (type, format, params) =>
-    api.get(`/reports/export/${type}/${format}`, { 
-      params,
-      responseType: 'blob'
-    }),
+  getDashboardStats: () => api.get("/reports/dashboard").then(res => res.data.data),
+  getFinancialSummary: (params) => api.get("/reports/financial-summary", { params }).then(res => res.data.data),
+  getUpcomingRepayments: (params) => api.get("/reports/upcoming-repayments", { params }).then(res => res.data.data),
+  getDefaulters: (params) => api.get("/reports/defaulters", { params }).then(res => res.data.data),
+  getTotalLoans: (params) => api.get("/reports/total-loans", { params }).then(res => res.data.data),
+  getGroupSavings: (params) => api.get("/reports/group-savings", { params }).then(res => res.data.data),
+  getLoanReports: (params) => api.get("/loans", { params }).then(res => res.data.data),
+  getLoanPortfolioHealth: () => api.get("/reports/loan-portfolio-health").then(res => res.data.data),
+  getMemberReports: (params) => api.get("/reports/members", { params }).then(res => res.data.data),
+  getMemberStats: () => api.get("/reports/member-stats").then(res => res.data.data),
+  getSavingsReports: (params) => api.get("/savings", { params }).then(res => res.data.data),
+  getSavingsStats: () => api.get("/reports/savings-stats").then(res => res.data.data),
+  getTransactionReports: (params) => api.get("/transactions", { params }).then(res => res.data.data),
+  exportReport: (type, format, params) => api.get(`/reports/export/${type}/${format}`, { params, responseType: 'blob' }),
 };

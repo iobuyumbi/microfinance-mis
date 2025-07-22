@@ -1,4 +1,4 @@
-import api from "../lib/axios";
+import api from "./api";
 
 export const loanService = {
   getAll: (params) => api.get("/loans", { params }).then((res) => res.data),

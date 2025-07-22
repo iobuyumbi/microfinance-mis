@@ -13,6 +13,7 @@ const transactionRoutes = require("./transactionRoutes");
 const accountRoutes = require("./accountRoutes");
 const accountHistoryRoutes = require("./accountHistoryRoutes");
 const guarantorRoutes = require("./guarantorRoutes");
+const settingsRoutes = require("./settingsRoutes");
 
 module.exports = {
   authRoutes,
@@ -28,4 +29,5 @@ module.exports = {
   accountRoutes,
   accountHistoryRoutes,
   guarantorRoutes,
+  settingsRoutes,
 };

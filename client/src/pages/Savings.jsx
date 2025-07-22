@@ -1,21 +1,17 @@
 // Import necessary React hooks
 import * as React from 'react';
+import { savingsService } from '@/services/savingsService';
 
 // Import Shadcn UI components
 import { Button, Input, Label, Textarea, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui';
+import { toast } from 'sonner';
 
 
 export default function Savings() {
-  const [accounts, setAccounts] = React.useState([
-    { id: 1, accountHolder: 'John Doe', accountNumber: 'SAV001', balance: 2500, interestRate: 3.5, accountType: 'Regular', status: 'Active', openDate: '2024-01-15' },
-    { id: 2, accountHolder: 'Jane Smith', accountNumber: 'SAV002', balance: 5000, interestRate: 4.0, accountType: 'Premium', status: 'Active', openDate: '2024-02-20' },
-    { id: 3, accountHolder: 'Bob Johnson', accountNumber: 'SAV003', balance: 1200, interestRate: 3.0, accountType: 'Basic', status: 'Inactive', openDate: '2024-03-10' }
-  ]);
-  const [transactions, setTransactions] = React.useState([
-    { id: 1, accountId: 1, type: 'Deposit', amount: 500, date: '2024-07-20', description: 'Monthly savings' },
-    { id: 2, accountId: 1, type: 'Withdrawal', amount: 200, date: '2024-07-18', description: 'Emergency withdrawal' },
-    { id: 3, accountId: 2, type: 'Deposit', amount: 1000, date: '2024-07-19', description: 'Salary deposit' }
-  ]);
+  const [accounts, setAccounts] = React.useState([]);
+  const [transactions, setTransactions] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
   const [showAccountForm, setShowAccountForm] = React.useState(false);
   const [showTransactionForm, setShowTransactionForm] = React.useState(false);
   const [editingAccount, setEditingAccount] = React.useState(null);
@@ -25,56 +21,47 @@ export default function Savings() {
   const [transactionFormData, setTransactionFormData] = React.useState({
     accountId: '', type: 'Deposit', amount: '', description: '', date: new Date().toISOString().split('T')[0]
   });
+  const [submitting, setSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('accounts');
 
-  const handleAccountSubmit = (e) => {
-    e.preventDefault();
-    if (editingAccount) {
-      setAccounts(accounts.map(acc => acc.id === editingAccount.id ? { ...accountFormData, id: editingAccount.id, balance: parseFloat(accountFormData.balance), interestRate: parseFloat(accountFormData.interestRate) } : acc));
-    } else {
-      const newAccount = {
-        ...accountFormData,
-        id: Date.now(),
-        balance: parseFloat(accountFormData.balance),
-        interestRate: parseFloat(accountFormData.interestRate),
-        accountNumber: accountFormData.accountNumber || `SAV${String(Date.now()).slice(-3)}`
-      };
-      setAccounts([...accounts, newAccount]);
+  React.useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const fetchAccounts = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await savingsService.getAll();
+      setAccounts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to load accounts');
+      toast.error(err.message || 'Failed to load accounts');
+    } finally {
+      setLoading(false);
     }
-    setAccountFormData({ accountHolder: '', accountNumber: '', balance: '', interestRate: '', accountType: 'Regular', status: 'Active', openDate: '' });
-    setShowAccountForm(false);
-    setEditingAccount(null);
   };
 
-  const handleTransactionSubmit = (e) => {
+  const handleAccountSubmit = async (e) => {
     e.preventDefault();
-    const amount = parseFloat(transactionFormData.amount);
-    const accountId = parseInt(transactionFormData.accountId);
-
-    // Update account balance
-    setAccounts(accounts.map(acc => {
-      if (acc.id === accountId) {
-        const newBalance = transactionFormData.type === 'Deposit'
-          ? acc.balance + amount
-          : acc.balance - amount;
-        return { ...acc, balance: Math.max(0, newBalance) };
+    setSubmitting(true);
+    try {
+      if (editingAccount) {
+        await savingsService.update(editingAccount._id || editingAccount.id, accountFormData);
+        toast.success('Account updated successfully.');
+      } else {
+        await savingsService.create(accountFormData);
+        toast.success('Account created successfully.');
       }
-      return acc;
-    }));
-
-    // Add transaction record
-    const newTransaction = {
-      ...transactionFormData,
-      id: Date.now(),
-      accountId,
-      amount
-    };
-    setTransactions([newTransaction, ...transactions]);
-
-    setTransactionFormData({
-      accountId: '', type: 'Deposit', amount: '', description: '', date: new Date().toISOString().split('T')[0]
-    });
-    setShowTransactionForm(false);
+      setShowAccountForm(false);
+      setEditingAccount(null);
+      setAccountFormData({ accountHolder: '', accountNumber: '', balance: '', interestRate: '', accountType: 'Regular', status: 'Active', openDate: '' });
+      fetchAccounts();
+    } catch (err) {
+      toast.error(err.message || 'Operation failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEditAccount = (account) => {
@@ -87,16 +74,25 @@ export default function Savings() {
     setShowAccountForm(true);
   };
 
-  const handleDeleteAccount = (id) => {
-    if (confirm('Are you sure you want to delete this savings account?')) {
-      setAccounts(accounts.filter(acc => acc.id !== id));
-      setTransactions(transactions.filter(t => t.accountId !== id));
+  const handleDeleteAccount = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this savings account?')) return;
+    try {
+      await savingsService.remove(id);
+      toast.success('Account deleted successfully.');
+      fetchAccounts();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete account.');
     }
   };
 
   const getAccountByNumber = (accountId) => {
-    return accounts.find(acc => acc.id === accountId);
+    return accounts.find(acc => acc.id === accountId || acc._id === accountId);
   };
+
+  // Transaction logic remains local for now, but can be refactored to use backend if needed
+
+  if (loading) return <div className="p-6">Loading accounts...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6">
@@ -111,13 +107,11 @@ export default function Savings() {
           </Button>
         </div>
       </div>
-
       <Tabs defaultValue="accounts" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="accounts">Savings Accounts</TabsTrigger>
           <TabsTrigger value="transactions">Recent Transactions</TabsTrigger>
         </TabsList>
-
         <TabsContent value="accounts" className="mt-4">
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <Table>
@@ -134,7 +128,7 @@ export default function Savings() {
               </TableHeader>
               <TableBody>
                 {accounts.map((account) => (
-                  <TableRow key={account.id}>
+                  <TableRow key={account.id || account._id}>
                     <TableCell className="font-medium">{account.accountHolder}</TableCell>
                     <TableCell>{account.accountNumber}</TableCell>
                     <TableCell>${account.balance?.toLocaleString()}</TableCell>
@@ -151,7 +145,7 @@ export default function Savings() {
                       <Button variant="link" onClick={() => handleEditAccount(account)} className="p-0 h-auto mr-2">
                         Edit
                       </Button>
-                      <Button variant="link" onClick={() => handleDeleteAccount(account.id)} className="p-0 h-auto text-red-600">
+                      <Button variant="link" onClick={() => handleDeleteAccount(account.id || account._id)} className="p-0 h-auto text-red-600">
                         Delete
                       </Button>
                     </TableCell>
@@ -161,7 +155,6 @@ export default function Savings() {
             </Table>
           </div>
         </TabsContent>
-
         <TabsContent value="transactions" className="mt-4">
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <Table>
@@ -204,8 +197,6 @@ export default function Savings() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Account Form Modal */}
       <Dialog open={showAccountForm} onOpenChange={setShowAccountForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -326,21 +317,19 @@ export default function Savings() {
               >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={submitting}>
                 {editingAccount ? 'Update' : 'Create'} Account
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Transaction Form Modal */}
       <Dialog open={showTransactionForm} onOpenChange={setShowTransactionForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>New Transaction</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleTransactionSubmit} className="grid gap-4 py-4">
+          <form onSubmit={e => { e.preventDefault(); setShowTransactionForm(false); }} className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="transactionAccount" className="text-right">
                 Account
@@ -356,7 +345,7 @@ export default function Savings() {
                 <SelectContent>
                   <SelectItem value="">Select Account</SelectItem>
                   {accounts.filter(acc => acc.status === 'Active').map(account => (
-                    <SelectItem key={account.id} value={account.id.toString()}>
+                    <SelectItem key={account.id || account._id} value={(account.id || account._id).toString()}>
                       {account.accountHolder} ({account.accountNumber}) - ${account.balance.toLocaleString()}
                     </SelectItem>
                   ))}

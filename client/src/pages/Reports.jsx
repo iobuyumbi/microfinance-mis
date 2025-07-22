@@ -1,7 +1,6 @@
 // src/pages/Reports.jsx
-import React, { useState } from 'react';
-
-// Shadcn UI Imports
+import React, { useState, useEffect } from 'react';
+import { reportService } from '@/services/reportService';
 import {
   Button,
   Card,
@@ -29,74 +28,82 @@ import {
   DialogTitle,
   DialogFooter
 } from '../components/ui';
-
+import { toast } from 'sonner';
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState('30');
   const [selectedReport, setSelectedReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [overviewData, setOverviewData] = useState(null);
+  const [loanReports, setLoanReports] = useState([]);
+  const [savingsReports, setSavingsReports] = useState([]);
+  const [transactionReports, setTransactionReports] = useState([]);
 
-  // Sample data for reports
-  const overviewData = {
-    totalMembers: 156,
-    activeLoans: 45,
-    totalSavings: 125000,
-    monthlyGrowth: 12.5,
-    defaultRate: 2.3,
-    portfolioAtRisk: 5.8
+  useEffect(() => {
+    fetchAllReports();
+  }, [dateRange]);
+
+  const fetchAllReports = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [overview, loans, savings, transactions] = await Promise.all([
+        reportService.getFinancialSummary({ range: dateRange }),
+        reportService.getLoanReports({ range: dateRange }),
+        reportService.getSavingsReports({ range: dateRange }),
+        reportService.getTransactionReports({ range: dateRange }),
+      ]);
+      setOverviewData(overview);
+      setLoanReports(Array.isArray(loans) ? loans : []);
+      setSavingsReports(Array.isArray(savings) ? savings : []);
+      setTransactionReports(Array.isArray(transactions) ? transactions : []);
+    } catch (err) {
+      setError(err.message || 'Failed to load reports');
+      toast.error(err.message || 'Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loanReports = [
-    { id: 1, borrower: 'John Doe', amount: 5000, status: 'Active', dueDate: '2024-12-31', remainingBalance: 3500 },
-    { id: 2, borrower: 'Jane Smith', amount: 3000, status: 'Overdue', dueDate: '2024-07-15', remainingBalance: 2800 },
-    { id: 3, borrower: 'Bob Johnson', amount: 7500, status: 'Active', dueDate: '2025-06-30', remainingBalance: 7200 }
-  ];
-
-  const savingsReports = [
-    { id: 1, accountHolder: 'Alice Brown', balance: 2500, interestEarned: 87.5, accountType: 'Regular' },
-    { id: 2, accountHolder: 'Charlie Wilson', balance: 5000, interestEarned: 200, accountType: 'Premium' },
-    { id: 3, accountHolder: 'Diana Davis', balance: 1200, interestEarned: 36, accountType: 'Basic' }
-  ];
-
-  const transactionReports = [
-    { month: 'Jan', deposits: 15000, withdrawals: 8000, loans: 25000 },
-    { month: 'Feb', deposits: 18000, withdrawals: 9500, loans: 30000 },
-    { month: 'Mar', deposits: 22000, withdrawals: 11000, loans: 35000 },
-    { month: 'Apr', deposits: 20000, withdrawals: 10500, loans: 28000 },
-    { month: 'May', deposits: 25000, withdrawals: 12000, loans: 40000 },
-    { month: 'Jun', deposits: 28000, withdrawals: 13500, loans: 45000 }
-  ];
-
   const generateReport = (type) => {
-    const reportData = {
-      overview: {
+    let reportData;
+    if (type === 'overview') {
+      reportData = {
         title: 'Financial Overview Report',
         data: overviewData,
         generatedAt: new Date().toLocaleString()
-      },
-      loans: {
+      };
+    } else if (type === 'loans') {
+      reportData = {
         title: 'Loan Portfolio Report',
         data: loanReports,
         generatedAt: new Date().toLocaleString()
-      },
-      savings: {
+      };
+    } else if (type === 'savings') {
+      reportData = {
         title: 'Savings Account Report',
         data: savingsReports,
         generatedAt: new Date().toLocaleString()
-      },
-      transactions: {
+      };
+    } else if (type === 'transactions') {
+      reportData = {
         title: 'Transaction Analysis Report',
         data: transactionReports,
         generatedAt: new Date().toLocaleString()
-      }
-    };
-    setSelectedReport(reportData[type]);
+      };
+    }
+    setSelectedReport(reportData);
   };
 
   const exportReport = (format) => {
-    alert(`Exporting report as ${format.toUpperCase()}...`);
+    toast.info(`Exporting report as ${format.toUpperCase()}...`);
     // In a real application, you'd trigger actual export logic here
   };
+
+  if (loading) return <div className="p-6">Loading reports...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -119,10 +126,6 @@ export default function Reports() {
           </Button>
         </div>
       </div>
-
-      ---
-
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -130,80 +133,43 @@ export default function Reports() {
           <TabsTrigger value="savings">Savings Analysis</TabsTrigger>
           <TabsTrigger value="transactions">Transaction Trends</TabsTrigger>
         </TabsList>
-
         <TabsContent value="overview">
           <div className="space-y-6 mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900">Total Members</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-blue-600">{overviewData.totalMembers}</p>
-                  <p className="text-sm text-green-600 mt-1">+{overviewData.monthlyGrowth}% this month</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900">Active Loans</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-green-600">{overviewData.activeLoans}</p>
-                  <p className="text-sm text-gray-500 mt-1">Portfolio health: Good</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900">Total Savings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-purple-600">${overviewData.totalSavings.toLocaleString()}</p>
-                  <p className="text-sm text-gray-500 mt-1">Across all accounts</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900">Risk Metrics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Default Rate</span>
-                    <span className={`font-semibold ${
-                      overviewData.defaultRate < 5 ? 'text-green-600' : 'text-red-600'
-                    }`}>{overviewData.defaultRate}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Portfolio at Risk</span>
-                    <span className={`font-semibold ${
-                      overviewData.portfolioAtRisk < 10 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>{overviewData.portfolioAtRisk}%</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="ghost" className="w-full justify-start">
-                    View Overdue Loans
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start">
-                    Generate Monthly Report
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start">
-                    Export Financial Summary
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+            {/* Overview Cards */}
+            {overviewData && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-gray-900">Total Members</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold text-blue-600">{overviewData.totalMembers}</p>
+                    <p className="text-sm text-green-600 mt-1">+{overviewData.monthlyGrowth}% this month</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-gray-900">Active Loans</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold text-green-600">{overviewData.activeLoans}</p>
+                    <p className="text-sm text-gray-500 mt-1">Portfolio health: Good</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold text-gray-900">Total Savings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold text-purple-600">${overviewData.totalSavings?.toLocaleString()}</p>
+                    <p className="text-sm text-gray-500 mt-1">Across all accounts</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            {/* Risk Metrics and Quick Actions can be added here if available in overviewData */}
           </div>
         </TabsContent>
-
         <TabsContent value="loans">
           <Card>
             <CardHeader>
@@ -225,10 +191,10 @@ export default function Reports() {
                   {loanReports.map((loan) => {
                     const progress = ((loan.amount - loan.remainingBalance) / loan.amount) * 100;
                     return (
-                      <TableRow key={loan.id}>
+                      <TableRow key={loan.id || loan._id}>
                         <TableCell className="font-medium">{loan.borrower}</TableCell>
-                        <TableCell>${loan.amount.toLocaleString()}</TableCell>
-                        <TableCell>${loan.remainingBalance.toLocaleString()}</TableCell>
+                        <TableCell>${loan.amount?.toLocaleString()}</TableCell>
+                        <TableCell>${loan.remainingBalance?.toLocaleString()}</TableCell>
                         <TableCell>{loan.dueDate}</TableCell>
                         <TableCell>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -254,7 +220,6 @@ export default function Reports() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="savings">
           <Card>
             <CardHeader>
@@ -275,9 +240,9 @@ export default function Reports() {
                   {savingsReports.map((account) => {
                     const interestRate = (account.interestEarned / account.balance) * 100;
                     return (
-                      <TableRow key={account.id}>
+                      <TableRow key={account.id || account._id}>
                         <TableCell className="font-medium">{account.accountHolder}</TableCell>
-                        <TableCell>${account.balance.toLocaleString()}</TableCell>
+                        <TableCell>${account.balance?.toLocaleString()}</TableCell>
                         <TableCell className="text-green-600">+${account.interestEarned}</TableCell>
                         <TableCell>{account.accountType}</TableCell>
                         <TableCell>
@@ -295,14 +260,12 @@ export default function Reports() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="transactions">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900">Monthly Transaction Trends</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-gray-500 mb-4">Note: Install 'recharts' package to see interactive charts</div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -320,9 +283,9 @@ export default function Reports() {
                       return (
                         <TableRow key={month.month}>
                           <TableCell className="font-medium">{month.month}</TableCell>
-                          <TableCell className="text-green-600">+${month.deposits.toLocaleString()}</TableCell>
-                          <TableCell className="text-red-600">-${month.withdrawals.toLocaleString()}</TableCell>
-                          <TableCell className="text-blue-600">${month.loans.toLocaleString()}</TableCell>
+                          <TableCell className="text-green-600">+${month.deposits?.toLocaleString()}</TableCell>
+                          <TableCell className="text-red-600">-${month.withdrawals?.toLocaleString()}</TableCell>
+                          <TableCell className="text-blue-600">${month.loans?.toLocaleString()}</TableCell>
                           <TableCell className="font-semibold">
                             <span className={netFlow > 0 ? 'text-green-600' : 'text-red-600'}>
                               {netFlow > 0 ? '+' : ''}${netFlow.toLocaleString()}
@@ -338,10 +301,6 @@ export default function Reports() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      ---
-
-      {/* Generated Report Dialog */}
       <Dialog open={selectedReport !== null} onOpenChange={() => setSelectedReport(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

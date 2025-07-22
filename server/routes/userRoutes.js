@@ -16,7 +16,7 @@ const {
 // User routes - all protected
 router.use(protect);
 
-router.route("/").get(authorize("admin", "officer"), getAllUsers);
+router.route("/").get(getAllUsers);
 
 router
   .route("/profile")

@@ -1,53 +1,103 @@
 // Import necessary React hooks
 import * as React from 'react';
+import { loanService } from '@/services/loanService';
 
 // Import Shadcn UI components
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui';
-
+import { toast } from 'sonner';
 
 export default function Loans() {
-  const [loans, setLoans] = React.useState([
-    { id: 1, borrower: 'John Doe', amount: 5000, interestRate: 10, term: 12, purpose: 'Business expansion', status: 'Active', dueDate: '2024-12-31' },
-    { id: 2, borrower: 'Jane Smith', amount: 3000, interestRate: 8, term: 6, purpose: 'Equipment purchase', status: 'Pending', dueDate: '2024-08-15' },
-    { id: 3, borrower: 'Bob Johnson', amount: 7500, interestRate: 12, term: 18, purpose: 'Inventory', status: 'Approved', dueDate: '2025-06-30' }
-  ]);
+  const [loans, setLoans] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
   const [showForm, setShowForm] = React.useState(false);
   const [editingLoan, setEditingLoan] = React.useState(null);
   const [formData, setFormData] = React.useState({
     borrower: '', amount: '', interestRate: '', term: '', purpose: '', status: 'Pending', dueDate: ''
   });
+  const [submitting, setSubmitting] = React.useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingLoan) {
-      setLoans(loans.map(l => l.id === editingLoan.id ? { ...formData, id: editingLoan.id } : l));
-    } else {
-      setLoans([...loans, { ...formData, id: Date.now() }]);
+  React.useEffect(() => {
+    fetchLoans();
+  }, []);
+
+  const fetchLoans = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await loanService.getAll();
+      setLoans(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to load loans');
+      toast.error(err.message || 'Failed to load loans');
+    } finally {
+      setLoading(false);
     }
-    setFormData({ borrower: '', amount: '', interestRate: '', term: '', purpose: '', status: 'Pending', dueDate: '' });
-    setShowForm(false);
-    setEditingLoan(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      if (editingLoan) {
+        await loanService.update(editingLoan._id || editingLoan.id, formData);
+        toast.success('Loan updated successfully.');
+      } else {
+        await loanService.create(formData);
+        toast.success('Loan created successfully.');
+      }
+      setShowForm(false);
+      setEditingLoan(null);
+      setFormData({ borrower: '', amount: '', interestRate: '', term: '', purpose: '', status: 'Pending', dueDate: '' });
+      fetchLoans();
+    } catch (err) {
+      toast.error(err.message || 'Operation failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (loan) => {
     setEditingLoan(loan);
-    setFormData(loan); // Pre-fill the form with existing loan data
+    setFormData(loan);
     setShowForm(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this loan?')) {
-      setLoans(loans.filter(l => l.id !== id));
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this loan?')) return;
+    try {
+      await loanService.remove(id);
+      toast.success('Loan deleted successfully.');
+      fetchLoans();
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete loan.');
     }
   };
 
-  const handleApprove = (id) => {
-    setLoans(loans.map(l => l.id === id ? { ...l, status: 'Approved' } : l));
+  const handleApprove = async (id) => {
+    try {
+      const loan = loans.find(l => l.id === id || l._id === id);
+      await loanService.update(id, { ...loan, status: 'Approved' });
+      toast.success('Loan approved.');
+      fetchLoans();
+    } catch (err) {
+      toast.error(err.message || 'Failed to approve loan.');
+    }
   };
 
-  const handleReject = (id) => {
-    setLoans(loans.map(l => l.id === id ? { ...l, status: 'Rejected' } : l));
+  const handleReject = async (id) => {
+    try {
+      const loan = loans.find(l => l.id === id || l._id === id);
+      await loanService.update(id, { ...loan, status: 'Rejected' });
+      toast.success('Loan rejected.');
+      fetchLoans();
+    } catch (err) {
+      toast.error(err.message || 'Failed to reject loan.');
+    }
   };
+
+  if (loading) return <div className="p-6">Loading loans...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
     <div className="p-6">
@@ -56,15 +106,13 @@ export default function Loans() {
         <Button
           onClick={() => {
             setShowForm(true);
-            setEditingLoan(null); // Ensure new form is clean
+            setEditingLoan(null);
             setFormData({ borrower: '', amount: '', interestRate: '', term: '', purpose: '', status: 'Pending', dueDate: '' });
           }}
         >
           + New Loan Application
         </Button>
       </div>
-
-      {/* Loans Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <Table>
           <TableHeader>
@@ -80,7 +128,7 @@ export default function Loans() {
           </TableHeader>
           <TableBody>
             {loans.map((loan) => (
-              <TableRow key={loan.id}>
+              <TableRow key={loan.id || loan._id}>
                 <TableCell className="font-medium">{loan.borrower}</TableCell>
                 <TableCell>${loan.amount?.toLocaleString()}</TableCell>
                 <TableCell>{loan.interestRate}%</TableCell>
@@ -99,10 +147,10 @@ export default function Loans() {
                 <TableCell>
                   {loan.status === 'Pending' && (
                     <>
-                      <Button variant="link" onClick={() => handleApprove(loan.id)} className="p-0 h-auto mr-2 text-green-600">
+                      <Button variant="link" onClick={() => handleApprove(loan.id || loan._id)} className="p-0 h-auto mr-2 text-green-600">
                         Approve
                       </Button>
-                      <Button variant="link" onClick={() => handleReject(loan.id)} className="p-0 h-auto mr-2 text-red-600">
+                      <Button variant="link" onClick={() => handleReject(loan.id || loan._id)} className="p-0 h-auto mr-2 text-red-600">
                         Reject
                       </Button>
                     </>
@@ -110,7 +158,7 @@ export default function Loans() {
                   <Button variant="link" onClick={() => handleEdit(loan)} className="p-0 h-auto mr-2">
                     Edit
                   </Button>
-                  <Button variant="link" onClick={() => handleDelete(loan.id)} className="p-0 h-auto text-red-600">
+                  <Button variant="link" onClick={() => handleDelete(loan.id || loan._id)} className="p-0 h-auto text-red-600">
                     Delete
                   </Button>
                 </TableCell>
@@ -119,8 +167,6 @@ export default function Loans() {
           </TableBody>
         </Table>
       </div>
-
-      {/* Add/Edit Form Modal */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -236,7 +282,7 @@ export default function Loans() {
               >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={submitting}>
                 {editingLoan ? 'Update' : 'Submit'} Application
               </Button>
             </DialogFooter>

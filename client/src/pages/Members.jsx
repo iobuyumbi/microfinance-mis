@@ -64,12 +64,10 @@ import { LoadingPage } from '@/components/custom/LoadingSpinner'; // You need to
 import { ErrorMessage } from '@/components/custom/ErrorBoundary'; // You need to provide this component
 import { UserAvatar } from '@/components/custom/UserAvatar'; // You need to provide this component
 import { StatsCard, StatsGrid } from '@/components/custom/StatsCard'; // You need to provide these components
+import MemberForm from '@/components/custom/MemberForm';
 
-
-import { MemberForm } from '@/components/custom/MemberForm';
 // Services and Utilities (assuming these paths are correct)
-
-import { memberService } from '@/services/memberService';
+import { userService } from '@/services/userService';
 import { formatDate, formatCurrency, cn } from '@/lib/utils'; // cn is for Tailwind class merging
 
 // Zod schema (re-defined here for clarity, but ideally imported from MemberForm or a shared schema file)
@@ -114,11 +112,11 @@ export default function Members() {
     try {
       setLoading(true);
       setError(null);
-      const response = await memberService.getMembers(); // Ensure your service returns { data: [...] } or just [...]
-      setMembers(response.data || response || []); // Handle both response structures
+      const response = await userService.getAll();
+      setMembers(Array.isArray(response) ? response : []);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load members");
-      toast.error(err.response?.data?.message || "Failed to load members");
+      setError(err.message || "Failed to load members");
+      toast.error(err.message || "Failed to load members");
     } finally {
       setLoading(false);
     }
@@ -128,19 +126,19 @@ export default function Members() {
     setSubmitting(true);
     try {
       if (editingMember) {
-        await memberService.updateMember(editingMember._id || editingMember.id, data);
+        await userService.update(editingMember._id || editingMember.id, data);
         toast.success("Member updated successfully.");
       } else {
-        await memberService.createMember(data);
+        await userService.create(data);
         toast.success("Member created successfully.");
       }
-      setDialogOpen(false); // Close the dialog
-      setEditingMember(null); // Clear editing state
-      form.reset(); // Reset form fields
-      fetchMembers(); // Re-fetch members to update the list
+      setDialogOpen(false);
+      setEditingMember(null);
+      form.reset();
+      fetchMembers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Operation failed.");
-      throw err; // Re-throw to allow MemberForm to catch and display its own error if needed
+      toast.error(err.message || "Operation failed.");
+      throw err;
     } finally {
       setSubmitting(false);
     }
@@ -165,15 +163,14 @@ export default function Members() {
   };
 
   const confirmDelete = async () => {
-    setShowConfirmDelete(false); // Close confirmation dialog immediately
+    setShowConfirmDelete(false);
     if (!memberToDelete) return;
-
     try {
-      await memberService.deleteMember(memberToDelete);
+      await userService.remove(memberToDelete);
       toast.success("Member deleted successfully.");
-      fetchMembers(); // Re-fetch members to update the list
+      fetchMembers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete member.");
+      toast.error(err.message || "Failed to delete member.");
     } finally {
       setMemberToDelete(null);
     }

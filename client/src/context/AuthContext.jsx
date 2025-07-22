@@ -13,12 +13,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
     if (token) {
       authService
         .getMe()
-        .then((data) => setUser(data.user || null))
+        .then((data) => {
+          setUser(data.data || null);
+          if (data.data) localStorage.setItem("user", JSON.stringify(data.data));
+        })
         .catch(() => setUser(null))
         .finally(() => setLoading(false));
+    } else if (storedUser) {
+      setUser(JSON.parse(storedUser));
+      setLoading(false);
     } else {
       setLoading(false);
     }
@@ -27,6 +34,7 @@ export function AuthProvider({ children }) {
   const login = async (credentials) => {
     const data = await authService.login(credentials);
     localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
     return data;
   };
@@ -34,12 +42,14 @@ export function AuthProvider({ children }) {
   const register = async (info) => {
     const data = await authService.register(info);
     localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
     return data;
   };
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 
