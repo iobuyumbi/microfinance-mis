@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 // Shadcn UI Imports
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, DialogFooter } from '../../components/ui';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, DialogFooter } from '../ui';
 ; // Used for button placement within Dialog
 
 // Zod schema for validation

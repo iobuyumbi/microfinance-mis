@@ -65,7 +65,10 @@ import { ErrorMessage } from '@/components/custom/ErrorBoundary'; // You need to
 import { UserAvatar } from '@/components/custom/UserAvatar'; // You need to provide this component
 import { StatsCard, StatsGrid } from '@/components/custom/StatsCard'; // You need to provide these components
 
+
+import { MemberForm } from '@/components/custom/MemberForm';
 // Services and Utilities (assuming these paths are correct)
+
 import { memberService } from '@/services/memberService';
 import { formatDate, formatCurrency, cn } from '@/lib/utils'; // cn is for Tailwind class merging
 
