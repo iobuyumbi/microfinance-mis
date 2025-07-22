@@ -28,7 +28,14 @@ exports.createTransaction = async (req, res, next) => {
 // Get all transactions
 exports.getTransactions = async (req, res, next) => {
   try {
-    const transactions = await Transaction.find().lean();
+    let transactions;
+    if (["admin", "officer"].includes(req.user.role)) {
+      transactions = await Transaction.find().lean();
+    } else {
+      const Group = require("../models/Group");
+      const userGroups = await Group.find({ members: req.user._id }).distinct("_id");
+      transactions = await Transaction.find({ group: { $in: userGroups } }).lean();
+    }
     res.json(transactions);
   } catch (err) {
     next(err);

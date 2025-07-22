@@ -11,7 +11,14 @@ exports.createAccountHistory = async (req, res, next) => {
 
 exports.getAccountHistories = async (req, res, next) => {
   try {
-    const histories = await AccountHistory.find();
+    let histories;
+    if (["admin", "officer"].includes(req.user.role)) {
+      histories = await AccountHistory.find();
+    } else {
+      const Group = require("../models/Group");
+      const userGroups = await Group.find({ members: req.user._id }).distinct("_id");
+      histories = await AccountHistory.find({ owner: { $in: userGroups }, ownerModel: "Group" });
+    }
     res.json(histories);
   } catch (err) {
     next(err);

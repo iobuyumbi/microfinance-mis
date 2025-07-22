@@ -20,6 +20,9 @@ import Transactions from "./pages/Transactions";
 import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import Groups from "./pages/Groups";
+import Meetings from "./pages/Meetings";
+import Chat from "./pages/Chat";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -44,6 +47,9 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/groups" element={<Groups />} />
+              <Route path="/meetings" element={<Meetings />} />
+              <Route path="/chat" element={<Chat />} />
               <Route path="/members" element={<Members />} />
               <Route path="/loans" element={<Loans />} />
               <Route path="/savings" element={<Savings />} />

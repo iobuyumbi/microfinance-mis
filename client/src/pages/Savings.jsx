@@ -1,13 +1,18 @@
 // Import necessary React hooks
 import * as React from 'react';
 import { savingsService } from '@/services/savingsService';
+import { useAuth } from '@/context/AuthContext';
 
 // Import Shadcn UI components
-import { Button, Input, Label, Textarea, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui';
+import { Button, Input, Label, Textarea, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsList, TabsTrigger, TabsContent, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
+import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
 import { toast } from 'sonner';
-
+import { useState } from 'react';
 
 export default function Savings() {
+  const { user, groups } = useAuth();
+  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [accounts, setAccounts] = React.useState([]);
   const [transactions, setTransactions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -26,13 +31,25 @@ export default function Savings() {
 
   React.useEffect(() => {
     fetchAccounts();
-  }, []);
+  }, [selectedGroup]); // Add selectedGroup to dependency array
+
+  React.useEffect(() => {
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0]._id || groups[0].id);
+    }
+  }, [groups, selectedGroup]);
 
   const fetchAccounts = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await savingsService.getAll();
+      let params = {};
+      if (!isStaff && groups.length > 0) {
+        params.group = groups.map(g => g._id || g.id);
+      } else if (isStaff && selectedGroup) {
+        params.group = selectedGroup;
+      }
+      const data = await savingsService.getAll(params);
       setAccounts(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message || 'Failed to load accounts');
@@ -91,13 +108,19 @@ export default function Savings() {
 
   // Transaction logic remains local for now, but can be refactored to use backend if needed
 
+  // Calculate savings statistics
+  const totalAccounts = accounts.length;
+  const activeAccounts = accounts.filter(a => a.status === 'Active').length;
+  const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0);
+  const avgInterestRate = accounts.length > 0 ? accounts.reduce((sum, a) => sum + Number(a.interestRate || 0), 0) / accounts.length : 0;
+
   if (loading) return <div className="p-6">Loading accounts...</div>;
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Savings Management</h1>
+    <PageLayout
+      title="Savings Management"
+      action={
         <div className="flex space-x-3">
           <Button onClick={() => setShowAccountForm(true)}>
             + New Account
@@ -106,14 +129,72 @@ export default function Savings() {
             + New Transaction
           </Button>
         </div>
-      </div>
-      <Tabs defaultValue="accounts" className="w-full" onValueChange={setActiveTab}>
+      }
+      headerContent={
+        isStaff && (
+          <div className="w-64">
+            <Label htmlFor="group">Group</Label>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup} id="group">
+              <SelectTrigger>
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g._id || g.id} value={g._id || g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )
+      }
+    >
+      {/* Statistics Section */}
+      <PageSection title="Overview">
+        <StatsGrid cols={4}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Total Accounts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-gray-900">{totalAccounts}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Active Accounts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-green-600">{activeAccounts}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Total Balance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-blue-600">${totalBalance.toLocaleString()}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Avg Interest Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-purple-600">{avgInterestRate.toFixed(2)}%</p>
+            </CardContent>
+          </Card>
+        </StatsGrid>
+      </PageSection>
+
+      {/* Tabbed Content Section */}
+      <PageSection title="Account Management">
+        <Tabs defaultValue="accounts" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="accounts">Savings Accounts</TabsTrigger>
           <TabsTrigger value="transactions">Recent Transactions</TabsTrigger>
         </TabsList>
         <TabsContent value="accounts" className="mt-4">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-hidden w-full">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -156,7 +237,7 @@ export default function Savings() {
           </div>
         </TabsContent>
         <TabsContent value="transactions" className="mt-4">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow overflow-hidden w-full">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -197,6 +278,8 @@ export default function Savings() {
           </div>
         </TabsContent>
       </Tabs>
+      </PageSection>
+
       <Dialog open={showAccountForm} onOpenChange={setShowAccountForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -428,6 +511,6 @@ export default function Savings() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

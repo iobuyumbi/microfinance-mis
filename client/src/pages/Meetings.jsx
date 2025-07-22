@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { meetingService } from "@/services/meetingService";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input, Label } from '@/components/ui';
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input, Label, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui';
 import MeetingForm from "@/components/custom/MeetingForm";
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Meetings() {
+  const { user, groups } = useAuth();
+  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -13,21 +17,35 @@ export default function Meetings() {
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  const fetchMeetings = () => {
+  const fetchMeetings = async () => {
     setLoading(true);
-    meetingService
-      .getAll()
-      .then((data) => setMeetings(data.meetings || data || []))
-      .catch((err) => {
-        setError(err.message || "Failed to load meetings");
-        toast.error(err.message || "Failed to load meetings");
-      })
-      .finally(() => setLoading(false));
+    setError('');
+    try {
+      let params = {};
+      if (!isStaff && groups.length > 0) {
+        params.group = groups.map(g => g._id || g.id);
+      } else if (isStaff && selectedGroup) {
+        params.group = selectedGroup;
+      }
+      const data = await meetingService.getAll(params);
+      setMeetings(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to load meetings');
+      toast.error(err.message || 'Failed to load meetings');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchMeetings();
   }, []);
+
+  useEffect(() => {
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0]._id || groups[0].id);
+    }
+  }, [groups, selectedGroup]);
 
   const handleCreate = async (form) => {
     setFormLoading(true);
@@ -87,7 +105,22 @@ export default function Meetings() {
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div>
+    <div className="p-6">
+      {isStaff && (
+        <div className="mb-4">
+          <Label htmlFor="group">Group</Label>
+          <Select value={selectedGroup} onValueChange={setSelectedGroup} id="group">
+            <SelectTrigger>
+              <SelectValue placeholder="Select group" />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem key={g._id || g.id} value={g._id || g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Meetings</h1>
         <Button onClick={openCreateModal}>New Meeting</Button>

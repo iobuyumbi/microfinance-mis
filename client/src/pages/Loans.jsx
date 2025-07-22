@@ -1,12 +1,18 @@
 // Import necessary React hooks
 import * as React from 'react';
 import { loanService } from '@/services/loanService';
+import { useAuth } from '@/context/AuthContext';
+import { useState } from 'react';
 
 // Import Shadcn UI components
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui';
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
+import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
 import { toast } from 'sonner';
 
 export default function Loans() {
+  const { user, groups } = useAuth();
+  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [loans, setLoans] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
@@ -21,11 +27,23 @@ export default function Loans() {
     fetchLoans();
   }, []);
 
+  React.useEffect(() => {
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0]._id || groups[0].id);
+    }
+  }, [groups, selectedGroup]);
+
   const fetchLoans = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await loanService.getAll();
+      let params = {};
+      if (!isStaff && groups.length > 0) {
+        params.group = groups.map(g => g._id || g.id);
+      } else if (isStaff && selectedGroup) {
+        params.group = selectedGroup;
+      }
+      const data = await loanService.getAll(params);
       setLoans(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message || 'Failed to load loans');
@@ -96,13 +114,19 @@ export default function Loans() {
     }
   };
 
+  // Calculate loan statistics
+  const totalLoans = loans.length;
+  const activeLoans = loans.filter(l => l.status === 'Active').length;
+  const pendingLoans = loans.filter(l => l.status === 'Pending').length;
+  const totalAmount = loans.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+
   if (loading) return <div className="p-6">Loading loans...</div>;
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Loans Management</h1>
+    <PageLayout
+      title="Loans Management"
+      action={
         <Button
           onClick={() => {
             setShowForm(true);
@@ -112,8 +136,66 @@ export default function Loans() {
         >
           + New Loan Application
         </Button>
-      </div>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      }
+      headerContent={
+        isStaff && (
+          <div className="w-64">
+            <Label htmlFor="group">Group</Label>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup} id="group">
+              <SelectTrigger>
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g._id || g.id} value={g._id || g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )
+      }
+    >
+      {/* Statistics Section */}
+      <PageSection title="Overview">
+        <StatsGrid cols={4}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Total Loans</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-gray-900">{totalLoans}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Active Loans</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-green-600">{activeLoans}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Pending Approval</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-yellow-600">{pendingLoans}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-gray-500">Total Amount</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-blue-600">${totalAmount.toLocaleString()}</p>
+            </CardContent>
+          </Card>
+        </StatsGrid>
+      </PageSection>
+
+      {/* Loans Table Section */}
+      <PageSection title="Loan Applications">
+        <ContentCard>
         <Table>
           <TableHeader>
             <TableRow>
@@ -166,7 +248,9 @@ export default function Loans() {
             ))}
           </TableBody>
         </Table>
-      </div>
+        </ContentCard>
+      </PageSection>
+
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -289,6 +373,6 @@ export default function Loans() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

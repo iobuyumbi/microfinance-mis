@@ -27,9 +27,14 @@ import {
   Label,
   Textarea
 } from '../components/ui';
+import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Transactions() {
+  const { user, groups } = useAuth();
+  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,6 +56,12 @@ export default function Transactions() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0]._id || groups[0].id);
+    }
+  }, [groups, selectedGroup]);
+
+  useEffect(() => {
     fetchTransactions();
   }, []);
 
@@ -58,8 +69,14 @@ export default function Transactions() {
     setLoading(true);
     setError('');
     try {
-      const data = await transactionService.getAll();
-      setTransactions(data || []);
+      let params = {};
+      if (!isStaff && groups.length > 0) {
+        params.group = groups.map(g => g._id || g.id);
+      } else if (isStaff && selectedGroup) {
+        params.group = selectedGroup;
+      }
+      const data = await transactionService.getAll(params);
+      setTransactions(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message || 'Failed to load transactions');
       toast.error(err.message || 'Failed to load transactions');
@@ -148,14 +165,34 @@ export default function Transactions() {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Transaction Management</h1>
+    <PageLayout
+      title="Transaction Management"
+      action={
         <Button onClick={() => setShowForm(true)}>
           + New Transaction
         </Button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      }
+      headerContent={
+        isStaff && (
+          <div className="w-64">
+            <Label htmlFor="group">Group</Label>
+            <Select value={selectedGroup} onValueChange={setSelectedGroup} id="group">
+              <SelectTrigger>
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g._id || g.id} value={g._id || g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )
+      }
+    >
+      {/* Statistics Section */}
+      <PageSection title="Overview">
+        <StatsGrid cols={4}>
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-500">Total Transactions</CardTitle>
@@ -188,9 +225,12 @@ export default function Transactions() {
             <p className="text-2xl font-bold text-yellow-600">${pendingAmount.toLocaleString()}</p>
           </CardContent>
         </Card>
-      </div>
-      <Card className="mb-6">
-        <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        </StatsGrid>
+      </PageSection>
+
+      {/* Filters Section */}
+      <PageSection title="Filters">
+        <FiltersSection>
           <div>
             <Label htmlFor="search-term" className="mb-2">Search</Label>
             <Input
@@ -244,10 +284,12 @@ export default function Transactions() {
               Clear Filters
             </Button>
           </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-0">
+        </FiltersSection>
+      </PageSection>
+
+      {/* Transactions Table Section */}
+      <PageSection title="Transactions">
+        <ContentCard>
           <Table>
             <TableHeader>
               <TableRow>
@@ -311,8 +353,9 @@ export default function Transactions() {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </ContentCard>
+      </PageSection>
+
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -444,6 +487,6 @@ export default function Transactions() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

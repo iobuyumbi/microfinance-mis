@@ -14,6 +14,7 @@ const {
   validateObjectId,
   validateRequiredFields,
 } = require("../middleware/validate");
+const chatController = require("../controllers/chatController");
 
 // Group routes - all protected
 router.use(protect);
@@ -33,5 +34,10 @@ router
   .route("/:id/members")
   .post(validateObjectId, validateRequiredFields(["userId"]), addMember)
   .delete(validateObjectId, validateRequiredFields(["userId"]), removeMember);
+
+// Group chat routes
+router.route("/:groupId/chats")
+  .get(chatController.getGroupChats)
+  .post(chatController.postGroupChat);
 
 module.exports = router;

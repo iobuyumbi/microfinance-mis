@@ -1,34 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSocket } from '@/context/SocketContext';
-import { Button, Card, CardHeader, CardTitle, CardContent, Input, Label } from '../components/ui';
+import { useAuth } from '@/context/AuthContext';
+import { Button, Card, CardHeader, CardTitle, CardContent, Input, Label, Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from '../components/ui';
+import api from '@/services/api';
 
 export default function Chat() {
-  const { socket, onlineUsers, joinRoom, leaveRoom, sendUpdate } = useSocket();
-  const [room, setRoom] = useState('global');
+  const { user, groups } = useAuth();
+  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    joinRoom(room);
-    socket.on('chat_message', handleReceiveMessage);
-    return () => {
-      leaveRoom(room);
-      socket.off('chat_message', handleReceiveMessage);
-    };
-    // eslint-disable-next-line
-  }, [room]);
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0]._id || groups[0].id);
+    }
+  }, [groups, selectedGroup]);
 
-  const handleReceiveMessage = (msg) => {
-    setMessages((prev) => [...prev, msg]);
-  };
+  useEffect(() => {
+    if (!selectedGroup) return;
+    setLoading(true);
+    api.get(`/groups/${selectedGroup}/chats`)
+      .then(res => setMessages(res.data.data || []))
+      .catch(() => setMessages([]))
+      .finally(() => setLoading(false));
+  }, [selectedGroup]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
-    sendUpdate('chat_message', { room, message });
-    setMessages((prev) => [...prev, { sender: 'You', message }]);
-    setMessage('');
+    if (!message.trim() || !selectedGroup) return;
+    try {
+      setLoading(true);
+      const res = await api.post(`/groups/${selectedGroup}/chats`, { message });
+      setMessages((prev) => [...prev, res.data.data]);
+      setMessage('');
+    } catch {
+      // handle error
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -39,26 +50,45 @@ export default function Chat() {
     <div className="p-6 max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Chat Room: {room}</CardTitle>
+          <CardTitle>Group Chat</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <Label htmlFor="room">Room</Label>
-            <Input id="room" value={room} onChange={e => setRoom(e.target.value)} className="mb-2" />
-            <div className="text-xs text-gray-500 mb-2">Online users: {onlineUsers.length}</div>
+            <Label htmlFor="group">Group</Label>
+            <Select
+              value={selectedGroup}
+              onValueChange={setSelectedGroup}
+              id="group"
+              className="mb-2"
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g._id || g.id} value={g._id || g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="h-64 overflow-y-auto bg-gray-50 rounded p-2 mb-4">
-            {messages.map((msg, idx) => (
-              <div key={idx} className="mb-2">
-                <span className="font-semibold mr-2">{msg.sender || 'User'}:</span>
-                <span>{msg.message}</span>
-              </div>
-            ))}
+            {loading ? (
+              <div>Loading...</div>
+            ) : (
+              messages.map((msg, idx) => (
+                <div key={msg._id || idx} className="mb-2">
+                  <span className="font-semibold mr-2">{msg.sender?.name || 'User'}:</span>
+                  <span>{msg.message}</span>
+                </div>
+              ))
+            )}
             <div ref={messagesEndRef} />
           </div>
           <form onSubmit={handleSend} className="flex space-x-2">
-            <Input value={message} onChange={e => setMessage(e.target.value)} placeholder="Type a message..." />
-            <Button type="submit">Send</Button>
+            <Input value={message} onChange={e => setMessage(e.target.value)} placeholder="Type a message..." disabled={!selectedGroup || loading} />
+            <Button type="submit" disabled={!selectedGroup || loading || !message.trim()}>Send</Button>
           </form>
         </CardContent>
       </Card>

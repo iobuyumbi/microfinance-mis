@@ -1,3 +1,4 @@
+
 // src/components/MainLayout.jsx
 import React, { useState } from 'react'; // React is implicitly imported by JSX, but good practice to include for clarity with hooks
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -25,6 +26,9 @@ import {
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/groups", label: "Groups" },
+  { to: "/meetings", label: "Meetings" },
+  { to: "/chat", label: "Chat" },
   { to: "/members", label: "Members" },
   { to: "/loans", label: "Loans" },
   { to: "/savings", label: "Savings" },
@@ -91,7 +95,7 @@ export default function MainLayout() {
           </SidebarFooter>
         </Sidebar>
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col w-full">
           {/* Header */}
           <header className="h-16 border-b flex items-center px-6 justify-between bg-background">
             <div className="font-semibold text-lg">
@@ -153,11 +157,14 @@ export default function MainLayout() {
               )}
             </div>
           </header>
-          <main className="flex-1 p-6 overflow-y-auto">
-            <Outlet />
+          <main className="flex-1 w-full overflow-y-auto">
+            <div className="container mx-auto p-8 space-y-8 min-h-full">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>
     </SidebarProvider>
+    
   );
 }

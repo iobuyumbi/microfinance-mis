@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
 import {
   Dialog,
   DialogContent,
@@ -282,7 +283,7 @@ export default function Members() {
   ];
 
   return (
-    <div className="space-y-6 p-6"> {/* Added p-6 for consistent padding */}
+    <div>
       <PageHeader
         title="Member Management"
         description="Manage your microfinance group members and track their activities"

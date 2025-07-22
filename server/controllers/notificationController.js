@@ -19,9 +19,17 @@ exports.createNotification = async (req, res, next) => {
 };
 
 // Get all notifications
-exports.getNotifications = async (_req, res, next) => {
+exports.getNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.find();
+    let notifications;
+    if (["admin", "officer"].includes(req.user.role)) {
+      notifications = await Notification.find();
+    } else {
+      // If Notification has a group field, filter by user's groups
+      const Group = require("../models/Group");
+      const userGroups = await Group.find({ members: req.user._id }).distinct("_id");
+      notifications = await Notification.find({ group: { $in: userGroups } });
+    }
     res.json(notifications);
   } catch (error) {
     next(error);

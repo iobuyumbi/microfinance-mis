@@ -14,7 +14,15 @@ exports.createSavings = async (req, res, next) => {
 // Get all savings records
 exports.getSavings = async (req, res, next) => {
   try {
-    const savings = await Savings.find();
+    let savings;
+    if (["admin", "officer"].includes(req.user.role)) {
+      savings = await Savings.find();
+    } else {
+      // Find group IDs where user is a member
+      const Group = require("../models/Group");
+      const userGroups = await Group.find({ members: req.user._id }).distinct("_id");
+      savings = await Savings.find({ group: { $in: userGroups } });
+    }
     res.status(200).json({ success: true, data: savings });
   } catch (error) {
     next(error);
