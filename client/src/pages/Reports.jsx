@@ -28,6 +28,7 @@ import {
   DialogTitle,
   DialogFooter
 } from '../components/ui';
+import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '../components/layouts/PageLayout';
 import { toast } from 'sonner';
 
 export default function Reports() {
@@ -106,9 +107,9 @@ export default function Reports() {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+    <PageLayout 
+      title="Reports & Analytics" 
+      action={
         <div className="flex space-x-3">
           <Select value={dateRange} onValueChange={setDateRange}>
             <SelectTrigger className="w-[180px]">
@@ -125,101 +126,83 @@ export default function Reports() {
             Generate Report
           </Button>
         </div>
-      </div>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="loans">Loan Portfolio</TabsTrigger>
-          <TabsTrigger value="savings">Savings Analysis</TabsTrigger>
-          <TabsTrigger value="transactions">Transaction Trends</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview">
-          <div className="space-y-6 mt-6">
-            {/* Overview Cards */}
-            {overviewData && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-gray-900">Total Members</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+      }
+    >
+      <PageSection>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="loans">Loan Portfolio</TabsTrigger>
+            <TabsTrigger value="savings">Savings Analysis</TabsTrigger>
+            <TabsTrigger value="transactions">Transaction Trends</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview">
+            <PageSection>
+              {overviewData && (
+                <StatsGrid>
+                  <ContentCard title="Total Members">
                     <p className="text-3xl font-bold text-blue-600">{overviewData.totalMembers}</p>
                     <p className="text-sm text-green-600 mt-1">+{overviewData.monthlyGrowth}% this month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-gray-900">Active Loans</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                  </ContentCard>
+                  <ContentCard title="Active Loans">
                     <p className="text-3xl font-bold text-green-600">{overviewData.activeLoans}</p>
                     <p className="text-sm text-gray-500 mt-1">Portfolio health: Good</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold text-gray-900">Total Savings</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                  </ContentCard>
+                  <ContentCard title="Total Savings">
                     <p className="text-3xl font-bold text-purple-600">${overviewData.totalSavings?.toLocaleString()}</p>
                     <p className="text-sm text-gray-500 mt-1">Across all accounts</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-            {/* Risk Metrics and Quick Actions can be added here if available in overviewData */}
-          </div>
-        </TabsContent>
-        <TabsContent value="loans">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-gray-900">Loan Portfolio Analysis</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Borrower</TableHead>
-                    <TableHead>Loan Amount</TableHead>
-                    <TableHead>Remaining</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loanReports.map((loan) => {
-                    const progress = ((loan.amount - loan.remainingBalance) / loan.amount) * 100;
-                    return (
-                      <TableRow key={loan.id || loan._id}>
-                        <TableCell className="font-medium">{loan.borrower}</TableCell>
-                        <TableCell>${loan.amount?.toLocaleString()}</TableCell>
-                        <TableCell>${loan.remainingBalance?.toLocaleString()}</TableCell>
-                        <TableCell>{loan.dueDate}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            loan.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {loan.status}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: `${progress}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-xs text-gray-500">{progress.toFixed(1)}% paid</span>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </ContentCard>
+                </StatsGrid>
+              )}
+            </PageSection>
+          </TabsContent>
+          <TabsContent value="loans">
+            <PageSection>
+              <ContentCard title="Loan Portfolio Analysis">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Borrower</TableHead>
+                      <TableHead>Loan Amount</TableHead>
+                      <TableHead>Remaining</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Progress</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loanReports.map((loan) => {
+                      const progress = ((loan.amount - loan.remainingBalance) / loan.amount) * 100;
+                      return (
+                        <TableRow key={loan.id || loan._id}>
+                          <TableCell className="font-medium">{loan.borrower}</TableCell>
+                          <TableCell>${loan.amount?.toLocaleString()}</TableCell>
+                          <TableCell>${loan.remainingBalance?.toLocaleString()}</TableCell>
+                          <TableCell>{loan.dueDate}</TableCell>
+                          <TableCell>
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              loan.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {loan.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${progress}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-500">{progress.toFixed(1)}% paid</span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ContentCard>
+            </PageSection>
+          </TabsContent>
         <TabsContent value="savings">
           <Card>
             <CardHeader>
@@ -327,6 +310,7 @@ export default function Reports() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </PageSection>
+    </PageLayout>
   );
 }
