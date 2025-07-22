@@ -13,6 +13,15 @@ import { ProfileForm } from '@/components/custom/ProfileForm';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { userService } from '@/services/userService';
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+} from '@/components/ui/sidebar';
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
@@ -52,101 +61,103 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 bg-muted border-r flex flex-col">
-        <div className="h-16 flex items-center justify-center font-bold text-lg border-b">
-          Microfinance MIS
-        </div>
-        <nav className="flex-1 py-4">
-          <ul className="space-y-1">
-            {navItems.map((item) => (
-              <li key={item.to}>
-                {/* Using Shadcn Button as a Link */}
-                <Button
-                  asChild // This prop tells Button to render as its child component (Link)
-                  variant={location.pathname.startsWith(item.to) ? "secondary" : "ghost"} // Highlight active tab
-                  className="w-full justify-start px-6" // Tailwind for full width and left alignment
-                >
-                  <Link to={item.to}>
-                    {item.label}
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <div className="p-4 text-xs text-muted-foreground text-center border-t">
-          &copy; {new Date().getFullYear()} Microfinance MIS
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <header className="h-16 border-b flex items-center px-6 justify-between bg-background">
-          <div className="font-semibold text-lg">
-            {navItems.find((i) => location.pathname.startsWith(i.to))?.label ||
-              "Dashboard"}
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Theme toggle next to avatar */}
-            <div className="flex items-center gap-2">
-              <Button variant={theme === 'light' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('light')} aria-label="Light theme">
-                <Sun className="h-5 w-5" />
-              </Button>
-              <Button variant={theme === 'dark' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('dark')} aria-label="Dark theme">
-                <Moon className="h-5 w-5" />
-              </Button>
-              <Button variant={theme === 'system' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('system')} aria-label="System theme">
-                <Monitor className="h-5 w-5" />
-              </Button>
+    <SidebarProvider>
+      <div className="min-h-screen flex bg-background">
+        {/* Sidebar */}
+        <Sidebar>
+          <SidebarContent>
+            <div className="h-16 flex items-center justify-center font-bold text-lg border-b">
+              Microfinance MIS
             </div>
-            {user && (
-              <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <span className="cursor-pointer">
-                      <UserAvatar user={user} size="sm" />
-                    </span>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel className="flex flex-col items-center">
-                      <UserAvatar user={user} size="lg" />
-                      <span className="mt-2 font-semibold">{user.name}</span>
-                      <span className="text-xs text-muted-foreground">{user.email}</span>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setProfileDialogOpen(true)}>
-                      <UserIcon className="mr-2 h-4 w-4" /> Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} variant="destructive">
-                      <LogOut className="mr-2 h-4 w-4" /> Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
-                    </DialogHeader>
-                    <ProfileForm
-                      initialValues={user}
-                      onSubmit={handleProfileSave}
-                      onCancel={() => setProfileDialogOpen(false)}
-                      loading={profileLoading}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </>
-            )}
-          </div>
-        </header>
-        <main className="flex-1 p-6 overflow-y-auto">
-          <Outlet />
-        </main>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname.startsWith(item.to)}
+                  >
+                    <Link to={item.to} className="w-full">
+                      {item.label}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="text-xs text-muted-foreground text-center border-t pt-2">
+              &copy; {new Date().getFullYear()} Microfinance MIS
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="h-16 border-b flex items-center px-6 justify-between bg-background">
+            <div className="font-semibold text-lg">
+              {navItems.find((i) => location.pathname.startsWith(i.to))?.label ||
+                "Dashboard"}
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Theme toggle next to avatar */}
+              <div className="flex items-center gap-2">
+                <Button variant={theme === 'light' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('light')} aria-label="Light theme">
+                  <Sun className="h-5 w-5" />
+                </Button>
+                <Button variant={theme === 'dark' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('dark')} aria-label="Dark theme">
+                  <Moon className="h-5 w-5" />
+                </Button>
+                <Button variant={theme === 'system' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('system')} aria-label="System theme">
+                  <Monitor className="h-5 w-5" />
+                </Button>
+              </div>
+              {user && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <span className="cursor-pointer">
+                        <UserAvatar user={user} size="sm" />
+                      </span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel className="flex flex-col items-center">
+                        <UserAvatar user={user} size="lg" />
+                        <span className="mt-2 font-semibold">{user.name}</span>
+                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setProfileDialogOpen(true)}>
+                        <UserIcon className="mr-2 h-4 w-4" /> Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout} variant="destructive">
+                        <LogOut className="mr-2 h-4 w-4" /> Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit Profile</DialogTitle>
+                      </DialogHeader>
+                      <ProfileForm
+                        initialValues={user}
+                        onSubmit={handleProfileSave}
+                        onCancel={() => setProfileDialogOpen(false)}
+                        loading={profileLoading}
+                        isAdmin={user.role === 'admin'}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
+            </div>
+          </header>
+          <main className="flex-1 p-6 overflow-y-auto">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
