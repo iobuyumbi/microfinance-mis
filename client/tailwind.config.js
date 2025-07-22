@@ -4,5 +4,5 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [animate], // 👈 enable the plugin
 };

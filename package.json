@@ -1,0 +1,71 @@
+{
+  "name": "microfinance-mis",
+  "version": "1.0.0",
+  "description": "A comprehensive Microfinance Management Information System built with the MERN stack",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "start": "concurrently \"npm run server:start\" \"npm run client:start\"",
+    "build": "npm run client:build && npm run server:build",
+    "test": "concurrently \"npm run server:test\" \"npm run client:test\"",
+    "test:coverage": "concurrently \"npm run server:test:coverage\" \"npm run client:test:coverage\"",
+    "lint": "concurrently \"npm run server:lint\" \"npm run client:lint\"",
+    "lint:fix": "concurrently \"npm run server:lint:fix\" \"npm run client:lint:fix\"",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "server:dev": "cd server && npm run dev",
+    "server:start": "cd server && npm start",
+    "server:build": "cd server && npm run build",
+    "server:test": "cd server && npm test",
+    "server:test:coverage": "cd server && npm run test:coverage",
+    "server:lint": "cd server && npm run lint",
+    "server:lint:fix": "cd server && npm run lint:fix",
+    "client:dev": "cd client && npm run dev",
+    "client:start": "cd client && npm run preview",
+    "client:build": "cd client && npm run build",
+    "client:test": "cd client && npm test",
+    "client:test:coverage": "cd client && npm run test:coverage",
+    "client:lint": "cd client && npm run lint",
+    "client:lint:fix": "cd client && npm run lint:fix",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "setup": "npm run setup:server && npm run setup:client",
+    "setup:server": "cd server && npm install",
+    "setup:client": "cd client && npm install",
+    "clean": "npm run clean:server && npm run clean:client",
+    "clean:server": "cd server && rm -rf node_modules package-lock.json",
+    "clean:client": "cd client && rm -rf node_modules package-lock.json",
+    "postinstall": "npm run setup"
+  },
+  "keywords": [
+    "microfinance",
+    "mern",
+    "mongodb",
+    "express",
+    "react",
+    "nodejs",
+    "management-system",
+    "financial-services",
+    "loan-management",
+    "savings-management"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/microfinance-mis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/microfinance-mis/issues"
+  },
+  "homepage": "https://github.com/yourusername/microfinance-mis#readme",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "prettier": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

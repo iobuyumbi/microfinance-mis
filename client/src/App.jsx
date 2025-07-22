@@ -1,3 +1,4 @@
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,25 +7,26 @@ import {
 } from "react-router-dom";
 import MainLayout from "./components/layouts/MainLayout";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Import modular pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import Dashboard from "./pages/Dashboard";
+import Members from "./pages/Members";
+import Loans from "./pages/Loans";
+import Savings from "./pages/Savings";
+import Transactions from "./pages/Transactions";
+import Reports from "./pages/Reports";
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 
-function Placeholder({ label }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-      <h1 className="text-3xl font-bold mb-2">{label}</h1>
-      <p className="text-lg">This page is under construction.</p>
-    </div>
-  );
-}
-
+// Protected Route Component
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
+  const { user } = useAuth();
+  return user ? children : <Navigate to="/login" replace />;
 }
 
+// Main App Component - Only handles routing and layout
 export default function App() {
   return (
     <AuthProvider>
@@ -39,26 +41,14 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route
-              path="/dashboard"
-              element={<Placeholder label="Dashboard" />}
-            />
-            <Route path="/members" element={<Placeholder label="Members" />} />
-            <Route path="/loans" element={<Placeholder label="Loans" />} />
-            <Route path="/savings" element={<Placeholder label="Savings" />} />
-            <Route
-              path="/transactions"
-              element={<Placeholder label="Transactions" />}
-            />
-            <Route path="/reports" element={<Placeholder label="Reports" />} />
-            <Route
-              path="/notifications"
-              element={<Placeholder label="Notifications" />}
-            />
-            <Route
-              path="/settings"
-              element={<Placeholder label="Settings" />}
-            />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="/loans" element={<Loans />} />
+            <Route path="/savings" element={<Savings />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,6 +1,7 @@
 const Loan = require("../models/Loan");
 const Repayment = require("../models/Repayment");
 const Group = require("../models/Group");
+const User = require("../models/User");
 
 // Get repayments due within the next 30 days
 exports.upcomingRepayments = async (req, res, next) => {
@@ -117,6 +118,101 @@ exports.financialSummary = async (req, res, next) => {
       totalPenalty: summary?.totalPenalty || 0,
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// Get dashboard statistics
+exports.getDashboardStats = async (req, res, next) => {
+  try {
+    // Get current date for filtering
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    // Get basic counts
+    const [totalMembers, totalLoans, activeLoans, pendingLoans, overdueLoans] = await Promise.all([
+      User.countDocuments({ role: 'member' }),
+      Loan.countDocuments(),
+      Loan.countDocuments({ status: 'active' }),
+      Loan.countDocuments({ status: 'pending' }),
+      Loan.countDocuments({ status: 'overdue' })
+    ]);
+
+    // Get total savings (sum of all approved loan amounts as a proxy)
+    const savingsResult = await Loan.aggregate([
+      { $match: { status: 'approved' } },
+      { $group: { _id: null, total: { $sum: '$amountApproved' } } }
+    ]);
+    const totalSavings = savingsResult[0]?.total || 0;
+
+    // Get recent activity (recent loans and repayments)
+    const recentLoans = await Loan.find({
+      createdAt: { $gte: startOfMonth }
+    })
+    .populate('borrower', 'name')
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+    const recentRepayments = await Repayment.find({
+      createdAt: { $gte: startOfMonth }
+    })
+    .populate('loan')
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+    // Format recent activity
+    const recentActivity = [
+      ...recentLoans.map(loan => ({
+        description: `New loan application from ${loan.borrower?.name || 'Unknown'}`,
+        timestamp: loan.createdAt,
+        type: 'loan',
+        amount: loan.amountRequested
+      })),
+      ...recentRepayments.map(repayment => ({
+        description: `Payment received for loan`,
+        timestamp: repayment.createdAt,
+        type: 'payment',
+        amount: repayment.amountPaid
+      }))
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 10);
+
+    // Get upcoming payments (due in next 30 days)
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+    
+    const upcomingPayments = await Repayment.find({
+      paymentDate: { $gte: now, $lte: thirtyDaysFromNow },
+      status: 'pending'
+    })
+    .populate('loan')
+    .populate('loan.borrower', 'name')
+    .sort({ paymentDate: 1 })
+    .limit(10);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        stats: {
+          totalMembers,
+          totalLoans,
+          totalSavings,
+          activeLoans,
+          pendingApplications: pendingLoans,
+          overduePayments: overdueLoans
+        },
+        recentActivity,
+        upcomingPayments: upcomingPayments.map(payment => ({
+          memberName: payment.loan?.borrower?.name || 'Unknown',
+          amount: payment.amountDue,
+          dueDate: payment.paymentDate,
+          status: payment.status,
+          loanId: payment.loan?._id
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
     next(error);
   }
 };

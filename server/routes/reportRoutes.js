@@ -6,6 +6,7 @@ const {
   groupSavingsPerformance,
   activeLoanDefaulters,
   financialSummary,
+  getDashboardStats,
 } = require("../controllers/reportController");
 const { protect, authorize } = require("../middleware/auth");
 
@@ -13,6 +14,10 @@ const { protect, authorize } = require("../middleware/auth");
 router.use(protect);
 router.use(authorize("admin", "officer"));
 
+// Dashboard endpoint
+router.get("/dashboard", getDashboardStats);
+
+// Other report endpoints
 router.get("/upcoming-repayments", upcomingRepayments);
 router.get("/total-loans", totalLoansDisbursed);
 router.get("/group-savings", groupSavingsPerformance);

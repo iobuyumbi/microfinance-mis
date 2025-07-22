@@ -4,6 +4,8 @@ require("dotenv").config(); // Load env vars first
 
 const express = require("express");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
 const connectDB = require("./config/db");
 
 // Import all middleware from middleware/index.js
@@ -15,7 +17,16 @@ const routes = require("./routes");
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
 
 // Core middleware
 app.use(cors());
@@ -68,11 +79,82 @@ app.use(notFound);
 // Centralized error handler
 app.use(errorHandler);
 
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log(`👤 User connected: ${socket.id}`);
+
+  // Handle user authentication
+  socket.on('authenticate', (token) => {
+    // You can add JWT verification here if needed
+    console.log(`🔐 User authenticated: ${socket.id}`);
+    socket.authenticated = true;
+  });
+
+  // Join user to their personal room
+  socket.on('join_room', (data) => {
+    socket.join(data.room);
+    console.log(`🏠 User ${socket.id} joined room: ${data.room}`);
+  });
+
+  // Leave room
+  socket.on('leave_room', (data) => {
+    socket.leave(data.room);
+    console.log(`🚪 User ${socket.id} left room: ${data.room}`);
+  });
+
+  // Handle real-time notifications
+  socket.on('send_notification', (data) => {
+    io.emit('notification', {
+      id: Date.now(),
+      message: data.message,
+      type: data.type || 'info',
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Handle typing indicators
+  socket.on('typing_start', (data) => {
+    socket.to(data.room).emit('user_typing', { userId: socket.id, typing: true });
+  });
+
+  socket.on('typing_stop', (data) => {
+    socket.to(data.room).emit('user_typing', { userId: socket.id, typing: false });
+  });
+
+  // Handle user status updates
+  socket.on('status_update', (data) => {
+    socket.broadcast.emit('user_status_change', {
+      userId: socket.id,
+      status: data.status
+    });
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    console.log(`👋 User disconnected: ${socket.id}`);
+    socket.broadcast.emit('user_offline', { userId: socket.id });
+  });
+});
+
+// Make io available to routes
+app.set('io', io);
+
+// Add health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+  console.log(`⚡ Socket.io enabled`);
 });
 
 module.exports = app;

@@ -1,5 +1,10 @@
+// src/components/MainLayout.jsx
+import React from 'react'; // React is implicitly imported by JSX, but good practice to include for clarity with hooks
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/AuthContext"; // Assuming this path is correct
+
+// Shadcn UI Imports
+import { Button } from '../../components/ui/button'; // Path assumes you've run `shadcn-ui add button`
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
@@ -15,7 +20,7 @@ const navItems = [
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth(); // Destructuring user and logout from AuthContext
 
   const handleLogout = () => {
     logout();
@@ -33,16 +38,16 @@ export default function MainLayout() {
           <ul className="space-y-1">
             {navItems.map((item) => (
               <li key={item.to}>
-                <Link
-                  to={item.to}
-                  className={`block px-6 py-2 rounded transition-colors hover:bg-accent hover:text-accent-foreground font-medium ${
-                    location.pathname.startsWith(item.to)
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground"
-                  }`}
+                {/* Using Shadcn Button as a Link */}
+                <Button
+                  asChild // This prop tells Button to render as its child component (Link)
+                  variant={location.pathname.startsWith(item.to) ? "secondary" : "ghost"} // Highlight active tab
+                  className="w-full justify-start px-6" // Tailwind for full width and left alignment
                 >
-                  {item.label}
-                </Link>
+                  <Link to={item.to}>
+                    {item.label}
+                  </Link>
+                </Button>
               </li>
             ))}
           </ul>
@@ -51,6 +56,7 @@ export default function MainLayout() {
           &copy; {new Date().getFullYear()} Microfinance MIS
         </div>
       </aside>
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
@@ -62,15 +68,17 @@ export default function MainLayout() {
           <div className="flex items-center gap-4">
             {user && (
               <span className="text-sm text-muted-foreground">
-                {user.name || user.email}
+                {user.name || user.email} {/* Display user name or email */}
               </span>
             )}
-            <button
+            {/* Using Shadcn Button for Logout */}
+            <Button
+              variant="destructive" // Applies destructive styling
               onClick={handleLogout}
-              className="bg-destructive text-destructive-foreground px-3 py-1 rounded font-semibold hover:bg-destructive/90 transition text-sm"
+              size="sm" // Smaller size for header button
             >
               Logout
-            </button>
+            </Button>
           </div>
         </header>
         <main className="flex-1 p-6 overflow-y-auto">

@@ -1,39 +1,39 @@
 import { useEffect, useState } from "react";
-import { groupService } from "../../services/groupService";
-import GroupForm from "../../components/custom/GroupForm";
+import { userService } from "../services/userService";
+import UserForm from "../../components/custom/UserForm";
 
-export default function Groups() {
-  const [groups, setGroups] = useState([]);
+export default function Users() {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const [editingGroup, setEditingGroup] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  const fetchGroups = () => {
+  const fetchUsers = () => {
     setLoading(true);
-    groupService
+    userService
       .getAll()
-      .then((data) => setGroups(data.groups || data || []))
+      .then((data) => setUsers(data.users || data || []))
       .catch((err) =>
-        setError(err.response?.data?.message || "Failed to load groups")
+        setError(err.response?.data?.message || "Failed to load users")
       )
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    fetchGroups();
+    fetchUsers();
   }, []);
 
   const handleCreate = async (form) => {
     setFormLoading(true);
     try {
-      await groupService.create(form);
+      await userService.create(form);
       setModalOpen(false);
-      fetchGroups();
+      fetchUsers();
     } catch (err) {
-      throw new Error(err.response?.data?.message || "Failed to create group");
+      throw new Error(err.response?.data?.message || "Failed to create user");
     } finally {
       setFormLoading(false);
     }
@@ -42,52 +42,52 @@ export default function Groups() {
   const handleEdit = async (form) => {
     setFormLoading(true);
     try {
-      await groupService.update(editingGroup.id || editingGroup._id, form);
+      await userService.update(editingUser.id || editingUser._id, form);
       setModalOpen(false);
-      setEditingGroup(null);
-      fetchGroups();
+      setEditingUser(null);
+      fetchUsers();
     } catch (err) {
-      throw new Error(err.response?.data?.message || "Failed to update group");
+      throw new Error(err.response?.data?.message || "Failed to update user");
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this group?")) return;
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
     setDeletingId(id);
     try {
-      await groupService.remove(id);
-      fetchGroups();
+      await userService.remove(id);
+      fetchUsers();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete group");
+      alert(err.response?.data?.message || "Failed to delete user");
     } finally {
       setDeletingId(null);
     }
   };
 
   const openCreateModal = () => {
-    setEditingGroup(null);
+    setEditingUser(null);
     setModalOpen(true);
   };
 
-  const openEditModal = (group) => {
-    setEditingGroup(group);
+  const openEditModal = (user) => {
+    setEditingUser(user);
     setModalOpen(true);
   };
 
-  if (loading) return <div>Loading groups...</div>;
+  if (loading) return <div>Loading users...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Groups</h1>
+        <h1 className="text-2xl font-bold">Users</h1>
         <button
           className="bg-primary text-primary-foreground px-4 py-2 rounded font-semibold hover:bg-primary/90 transition"
           onClick={openCreateModal}
         >
-          New Group
+          New User
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -95,38 +95,40 @@ export default function Groups() {
           <thead>
             <tr>
               <th className="px-4 py-2 border-b text-left">Name</th>
-              <th className="px-4 py-2 border-b text-left">Description</th>
+              <th className="px-4 py-2 border-b text-left">Email</th>
+              <th className="px-4 py-2 border-b text-left">Role</th>
               <th className="px-4 py-2 border-b text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {groups.length === 0 ? (
+            {users.length === 0 ? (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={4}
                   className="text-center py-4 text-muted-foreground"
                 >
-                  No groups found.
+                  No users found.
                 </td>
               </tr>
             ) : (
-              groups.map((g) => (
-                <tr key={g.id || g._id} className="border-b">
-                  <td className="px-4 py-2">{g.name || "-"}</td>
-                  <td className="px-4 py-2">{g.description || "-"}</td>
+              users.map((u) => (
+                <tr key={u.id || u._id} className="border-b">
+                  <td className="px-4 py-2">{u.name || "-"}</td>
+                  <td className="px-4 py-2">{u.email || "-"}</td>
+                  <td className="px-4 py-2">{u.role || "-"}</td>
                   <td className="px-4 py-2">
                     <button
                       className="text-primary underline mr-2"
-                      onClick={() => openEditModal(g)}
+                      onClick={() => openEditModal(u)}
                     >
                       Edit
                     </button>
                     <button
                       className="text-destructive underline"
-                      onClick={() => handleDelete(g.id || g._id)}
-                      disabled={deletingId === (g.id || g._id)}
+                      onClick={() => handleDelete(u.id || u._id)}
+                      disabled={deletingId === (u.id || u._id)}
                     >
-                      {deletingId === (g.id || g._id)
+                      {deletingId === (u.id || u._id)
                         ? "Deleting..."
                         : "Delete"}
                     </button>
@@ -137,7 +139,7 @@ export default function Groups() {
           </tbody>
         </table>
       </div>
-      {/* Modal for New/Edit Group */}
+      {/* Modal for New/Edit User */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-card rounded shadow-lg p-6 w-full max-w-md relative">
@@ -145,21 +147,21 @@ export default function Groups() {
               className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setModalOpen(false);
-                setEditingGroup(null);
+                setEditingUser(null);
               }}
               aria-label="Close"
             >
               &times;
             </button>
             <h2 className="text-xl font-semibold mb-4">
-              {editingGroup ? "Edit Group" : "New Group"}
+              {editingUser ? "Edit User" : "New User"}
             </h2>
-            <GroupForm
-              initialValues={editingGroup || {}}
-              onSubmit={editingGroup ? handleEdit : handleCreate}
+            <UserForm
+              initialValues={editingUser || {}}
+              onSubmit={editingUser ? handleEdit : handleCreate}
               onCancel={() => {
                 setModalOpen(false);
-                setEditingGroup(null);
+                setEditingUser(null);
               }}
               loading={formLoading}
             />
