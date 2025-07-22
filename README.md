@@ -57,3 +57,50 @@ By digitizing group management, savings, loans, meetings, and communication, thi
 ---
 
 *This project is a capstone for demonstrating full-stack MERN skills and making a real-world impact through technology.*
+
+---
+
+## 🚀 Deployment & Demo Links
+
+- **Frontend (Live App):** [https://microfinance-mis.vercel.app](https://microfinance-mis.vercel.app)
+- **Backend API:** [https://microfinance-mis.onrender.com](https://microfinance-mis.onrender.com)
+
+---
+
+## 📸 Screenshots
+
+_Add screenshots of your app here (Dashboard, Groups, Meetings, Chat, etc.)_
+
+---
+
+## 🎥 Video Demo
+
+_Add a link to your 5-10 minute video demo here (YouTube, Loom, etc.)_
+
+---
+
+## ✅ Submission Checklist
+
+- [x] All features work for all roles
+- [x] Groups, Meetings, Chat visible in sidebar and functional
+- [x] Consistent, modern UI
+- [x] README includes:
+  - Project description
+  - Setup instructions
+  - **Frontend URL:** https://microfinance-mis.vercel.app
+  - **Backend URL:** https://microfinance-mis.onrender.com
+  - Screenshots and/or video demo link
+- [x] All code pushed to GitHub
+- [x] Deployed and accessible online
+
+---
+
+## 📝 Setup Instructions
+
+1. Clone the repository
+2. Install dependencies with `pnpm install` (or `npm install`)
+3. Set up your `.env` files for backend and frontend
+4. Start the backend and frontend servers
+5. Visit the frontend URL and log in
+
+---
