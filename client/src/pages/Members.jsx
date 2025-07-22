@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
+import { PageLayout, PageSection, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
 import {
   Dialog,
   DialogContent,
@@ -64,7 +64,7 @@ import { DataTable } from '@/components/custom/DataTable'; // You need to provid
 import { LoadingPage } from '@/components/custom/LoadingSpinner'; // You need to provide this component
 import { ErrorMessage } from '@/components/custom/ErrorBoundary'; // You need to provide this component
 import { UserAvatar } from '@/components/custom/UserAvatar'; // You need to provide this component
-import { StatsCard, StatsGrid } from '@/components/custom/StatsCard'; // You need to provide these components
+import { StatsCard } from '@/components/custom/StatsCard';
 import MemberForm from '@/components/custom/MemberForm';
 
 // Services and Utilities (assuming these paths are correct)
