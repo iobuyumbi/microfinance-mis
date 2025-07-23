@@ -1,0 +1,120 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+        - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'pnpm'
+        cache-dependency-path: client/pnpm-lock.yaml
+    
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+    
+    - name: Install dependencies
+      run: |
+        cd client
+        pnpm install --frozen-lockfile
+
+    - name: Run linting
+      run: |
+        cd client
+        pnpm run lint
+
+    - name: Run tests
+      run: |
+        cd client
+        pnpm test -- --coverage --watchAll=false
+      env:
+        CI: true
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: client/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'pnpm'
+        cache-dependency-path: client/pnpm-lock.yaml
+    
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+    
+    - name: Install dependencies
+      run: |
+        cd client
+        pnpm install --frozen-lockfile
+    
+    - name: Build application
+      run: |
+        cd client
+        pnpm run build
+      env:
+        VITE_API_URL: https://microfinance-mis.onrender.com
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files
+        path: client/dist/
+        retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./client
+        vercel-args: '--prod'
+    
+    - name: Notify deployment status
+      if: always()
+      run: |
+        echo "Frontend deployment completed for commit ${{ github.sha }}"
+        echo "View deployment at: https://microfinance-mis.vercel.app" 

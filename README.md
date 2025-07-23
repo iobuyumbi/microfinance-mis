@@ -1,399 +1,312 @@
-# Microfinance Management Information System (MIS)
+# 🏦 Microfinance Management Information System (MIS)
 
-## 🌍 What is Microfinance?
+A comprehensive full-stack MERN application for managing microfinance operations, including member management, loan processing, savings tracking, and real-time notifications.
 
-**Microfinance** is the provision of small-scale financial services—such as loans, savings, and insurance—to individuals or small businesses who lack access to traditional banking. Its mission is to empower low-income people, especially in developing regions, to start or grow businesses, manage risk, and improve their lives. Microfinance institutions (MFIs) often work with community groups (sometimes called SACCOs, self-help groups, or microfinance groups) to deliver these services.
+## 🚀 Live Demo
 
-**Key features of microfinance:**
-- Small loan amounts (microloans)
-- Group-based lending and savings (peer accountability)
-- Focus on financial inclusion for the unbanked/underbanked
-- Support for entrepreneurship, education, health, and resilience
+- **Frontend**: [https://microfinance-mis.vercel.app](https://microfinance-mis.vercel.app)
+- **Backend API**: [https://microfinance-mis.onrender.com](https://microfinance-mis.onrender.com)
+- **API Documentation**: [https://microfinance-mis.onrender.com/api-docs](https://microfinance-mis.onrender.com/api-docs)
 
-## 🎯 Project Mission Statement
+## 📋 Table of Contents
 
-> **To empower microfinance groups and their members with a modern, digital platform that streamlines group management, savings, loans, meetings, and communication—enabling financial inclusion, transparency, and community-driven development.**
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Development](#-development)
+- [Testing](#-testing)
+- [Deployment](#-deployment)
+- [API Documentation](#-api-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-## 🛠️ What Does This Project Do?
+## ✨ Features
 
-This Microfinance MIS is a full-stack MERN application that helps microfinance organizations and groups manage their operations efficiently and transparently. It provides:
+### 🔐 Authentication & Authorization
+- JWT-based authentication
+- Role-based access control (Admin, Officer, Leader)
+- Secure password hashing with bcrypt
+- Password reset functionality
 
-- **Group Management:** Organize users into groups (SACCOs or microfinance groups), each with its own members, meetings, savings, and loans.
-- **Member/User Management:** Track individual members, their roles (admin, officer, leader), and their participation in groups. Role-based access ensures data security.
-- **Savings and Accounts:** Members can save money in group accounts. The system tracks balances, interest rates, and account status, encouraging a savings culture.
-- **Loans:** Members or groups can apply for loans. Loans are tracked with status, amount, interest, and repayment terms. Admins/officers can approve or reject loans.
-- **Meetings:** Schedule and track group meetings, attendance, and agendas—supporting accountability and transparency.
-- **Transactions:** Record all financial transactions (deposits, withdrawals, repayments) for transparency and accurate record-keeping.
-- **Notifications:** Keep members informed about meetings, loans, repayments, and more.
-- **Reports and Dashboard:** View summary statistics (total members, loans, savings, etc.) to monitor group and overall performance.
-- **Chat/Communication:** Group chat allows members to communicate, ask questions, and support each other—fostering community and peer support.
-- **Security and Access Control:** Only authorized users can access or modify sensitive data, protecting member privacy and financial information.
+### 👥 Member Management
+- Complete member registration and profiles
+- Group-based member organization
+- Member status tracking (Active, Inactive, Suspended)
+- Bulk member operations
 
-## 🤝 How Does This Project Support Microfinance?
+### 💰 Loan Management
+- Loan application and approval workflow
+- Multiple loan types and terms
+- Repayment scheduling and tracking
+- Interest calculation and late fee management
+- Guarantor system
 
-- **Empowers groups and members** to manage their finances, meetings, and communication digitally.
-- **Increases transparency and accountability** through clear records and role-based access.
-- **Encourages savings and responsible borrowing** by tracking accounts, loans, and repayments.
-- **Fosters community and peer support** with group chat and meeting management.
-- **Supports financial inclusion** by making microfinance operations accessible and efficient for all members.
+### 💳 Savings & Transactions
+- Individual and group savings accounts
+- Transaction history and reporting
+- Interest calculation on savings
+- Withdrawal and deposit management
 
-## 🚀 Why This Matters
+### 📊 Reporting & Analytics
+- Real-time dashboard with key metrics
+- Comprehensive financial reports
+- Export functionality (PDF, Excel)
+- Data visualization with charts
 
-By digitizing group management, savings, loans, meetings, and communication, this project helps microfinance organizations:
-- Reach more people
-- Operate more efficiently
-- Have a greater impact on financial inclusion and poverty reduction
+### 🔔 Real-time Features
+- Live notifications using Socket.io
+- Real-time chat system
+- Live updates for transactions and status changes
 
-## 📦 Features At a Glance
-- Group and member management
-- Savings and loan tracking
-- Meeting scheduling and attendance
-- Transaction history
-- Real-time group chat
-- Role-based access control
-- Dashboard and reports
-- Modern, responsive UI
+### 📱 Responsive Design
+- Mobile-first responsive design
+- Progressive Web App (PWA) features
+- Cross-browser compatibility
 
----
+## 🛠️ Tech Stack
 
-*This project is a capstone for demonstrating full-stack MERN skills and making a real-world impact through technology.*
+### Frontend
+- **React 19** - UI library
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling framework
+- **Radix UI** - Accessible component primitives
+- **React Router** - Client-side routing
+- **React Hook Form** - Form management
+- **Zod** - Schema validation
+- **Axios** - HTTP client
+- **Socket.io Client** - Real-time communication
+- **Recharts** - Data visualization
+- **Vitest** - Testing framework
 
----
+### Backend
+- **Node.js** - Runtime environment
+- **Express.js** - Web framework
+- **MongoDB** - NoSQL database
+- **Mongoose** - ODM for MongoDB
+- **JWT** - Authentication
+- **bcryptjs** - Password hashing
+- **Socket.io** - Real-time communication
+- **Nodemailer** - Email functionality
+- **Jest** - Testing framework
+- **Supertest** - API testing
 
-## 🚀 Deployment & Demo Links
+### DevOps & Tools
+- **GitHub Actions** - CI/CD pipelines
+- **Vercel** - Frontend deployment
+- **Render** - Backend deployment
+- **MongoDB Atlas** - Cloud database
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
+- **Husky** - Git hooks
+- **Playwright** - E2E testing
 
-- **Frontend (Live App):** [https://microfinance-mis.vercel.app](https://microfinance-mis.vercel.app)
-- **Backend API:** [https://microfinance-mis.onrender.com](https://microfinance-mis.onrender.com)
+## 🏗️ Architecture
 
----
-
-## 📸 Screenshots
-
-_Add screenshots of your app here (Dashboard, Groups, Meetings, Chat, etc.)_
-
----
-
-## 🎥 Video Demo
-
-_Add a link to your 5-10 minute video demo here (YouTube, Loom, etc.)_
-
----
-
-## ✅ Submission Checklist
-
-- [x] All features work for all roles
-- [x] Groups, Meetings, Chat visible in sidebar and functional
-- [x] Consistent, modern UI
-- [x] README includes:
-  - Project description
-  - Setup instructions
-  - **Frontend URL:** https://microfinance-mis.vercel.app
-  - **Backend URL:** https://microfinance-mis.onrender.com
-  - Screenshots and/or video demo link
-- [x] All code pushed to GitHub
-- [x] Deployed and accessible online
-
----
-
-## 📝 Setup Instructions
-
-### Prerequisites
-- Node.js (v16 or higher)
-- MongoDB (local installation or MongoDB Atlas)
-- Git
-- npm or yarn
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/microfinance-mis.git
-cd microfinance-mis
+```
+microfinance-mis/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── services/      # API service layer
+│   │   ├── context/       # React context providers
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── lib/           # Utility functions
+│   │   └── tests/         # Frontend tests
+│   └── public/            # Static assets
+├── server/                # Node.js backend
+│   ├── controllers/       # Route controllers
+│   ├── models/           # Mongoose models
+│   ├── routes/           # API routes
+│   ├── middleware/       # Custom middleware
+│   ├── utils/            # Utility functions
+│   └── tests/            # Backend tests
+└── .github/              # GitHub Actions workflows
 ```
 
-### 2. Backend Setup
+## 🚀 Quick Start
 
-1. **Navigate to server directory:**
+### Prerequisites
+- Node.js 18+ 
+- MongoDB (local or Atlas)
+- Git
+
+### Installation
+
+1. **Clone the repository**
    ```bash
+   git clone https://github.com/yourusername/microfinance-mis.git
+   cd microfinance-mis
+   ```
+
+2. **Install dependencies**
+   ```bash
+   # Install backend dependencies
    cd server
+   pnpm install
+   
+   # Install frontend dependencies
+   cd ../client
+   pnpm install
    ```
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Create environment file:**
-   ```bash
-   cp .env.example .env
-   ```
-
-4. **Configure environment variables:**
+3. **Environment Setup**
+   
+   Create `.env` file in the server directory:
    ```env
-   # Server Configuration
-   PORT=5000
    NODE_ENV=development
-   
-   # MongoDB Configuration
-   MONGO_URI=mongodb://localhost:27017/microfinance-mis
-   
-   # JWT Configuration
-   JWT_SECRET=your-super-secret-jwt-key-here
+   PORT=5000
+   MONGODB_URI=mongodb://localhost:27017/microfinance-mis
+   JWT_SECRET=your-super-secret-jwt-key
    JWT_EXPIRE=30d
-   
-   # Email Configuration
    EMAIL_HOST=smtp.gmail.com
    EMAIL_PORT=587
    EMAIL_USER=your-email@gmail.com
-   EMAIL_PASSWORD=your-app-password
-   FROM_NAME=Microfinance MIS
-   FROM_EMAIL=noreply@microfinance-mis.com
-   FRONTEND_URL=http://localhost:3000
+   EMAIL_PASS=your-app-password
+   CLIENT_URL=http://localhost:5173
    ```
 
-5. **Start the backend server:**
-   ```bash
-   npm run dev
-   ```
-   Server will run on `http://localhost:5000`
-
-### 3. Frontend Setup
-
-1. **Navigate to client directory:**
-   ```bash
-   cd ../client
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Create environment file:**
-   ```bash
-   cp .env.example .env.local
-   ```
-
-4. **Configure environment variables:**
+   Create `.env` file in the client directory:
    ```env
-   VITE_API_BASE_URL=http://localhost:5000/api
-   VITE_APP_NAME=Microfinance MIS
+   VITE_API_URL=http://localhost:5000
    ```
 
-5. **Start the frontend development server:**
+4. **Start the development servers**
    ```bash
-   npm run dev
-   ```
-   Frontend will run on `http://localhost:3000`
-
-### 4. Database Setup
-
-1. **Ensure MongoDB is running** (if using local installation)
-2. **The application will automatically create the database and collections**
-3. **Seed data** (optional):
-   ```bash
-   cd server
-   npm run seed
+   # Start backend (from server directory)
+   pnpm run dev
+   
+   # Start frontend (from client directory)
+   pnpm run dev
    ```
 
-### 5. Access the Application
-
-1. **Open your browser** and navigate to `http://localhost:3000`
-2. **Register a new account** or use default credentials:
-   - Email: `admin@microfinance.com`
-   - Password: `admin123`
-
-## 🏗️ Project Architecture
-
-### Backend (Node.js + Express + MongoDB)
-```
-server/
-├── controllers/          # Route handlers
-├── models/              # MongoDB schemas
-├── routes/              # API endpoints
-├── middleware/          # Custom middleware
-├── utils/               # Utility functions
-├── config/              # Configuration files
-└── server.js            # Entry point
-```
-
-### Frontend (React + Vite)
-```
-client/
-├── src/
-│   ├── components/      # Reusable components
-│   ├── pages/          # Page components
-│   ├── contexts/       # React contexts
-│   ├── services/       # API services
-│   └── utils/          # Utility functions
-└── public/             # Static assets
-```
-
-## 🔧 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
-- `POST /api/auth/forgot-password` - Forgot password
-- `PUT /api/auth/reset-password` - Reset password
-
-### Core Modules
-- `GET/POST/PUT/DELETE /api/users` - User management
-- `GET/POST/PUT/DELETE /api/groups` - Group management
-- `GET/POST/PUT/DELETE /api/loans` - Loan management
-- `GET/POST/PUT/DELETE /api/savings` - Savings management
-- `GET/POST/PUT/DELETE /api/transactions` - Transaction management
-- `GET/POST/PUT/DELETE /api/meetings` - Meeting management
-- `GET/POST/PUT/DELETE /api/repayments` - Repayment management
-- `GET/POST/PUT/DELETE /api/notifications` - Notification management
-- `GET /api/reports/*` - Various reports
-
-## 👥 User Roles
-
-1. **Admin**
-   - Full system access
-   - User and group management
-   - System configuration
-   - All reports and analytics
-
-2. **Officer**
-   - Group management
-   - Loan approval/rejection
-   - Member management
-   - Financial reports
-
-3. **Member**
-   - Personal dashboard
-   - Loan applications
-   - Savings management
-   - Group participation
+5. **Access the application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:5000
 
 ## 🧪 Testing
 
 ### Backend Testing
 ```bash
 cd server
-npm test
-npm run test:watch
-npm run test:coverage
+pnpm test              # Run all tests
+pnpm run test:watch    # Run tests in watch mode
+pnpm run test:ci       # Run tests for CI
 ```
 
 ### Frontend Testing
 ```bash
 cd client
-npm test
-npm run test:ui
-npm run test:e2e
+pnpm test              # Run all tests
+pnpm run test:watch    # Run tests in watch mode
+pnpm run test:ui       # Run tests with UI
 ```
 
-## 🚀 Production Deployment
+### E2E Testing
+```bash
+npm run test:e2e      # Run Playwright E2E tests
+```
 
-### Backend (Railway/Heroku)
-1. Create account on Railway or Heroku
-2. Connect your GitHub repository
-3. Configure environment variables
-4. Deploy from main branch
+## 🚀 Deployment
 
-### Frontend (Vercel/Netlify)
-1. Create account on Vercel or Netlify
-2. Connect your GitHub repository
-3. Set build command: `npm run build`
-4. Set publish directory: `dist`
-5. Configure environment variables
+### Frontend (Vercel)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Backend (Render)
+1. Connect your GitHub repository to Render
+2. Set environment variables in Render dashboard
+3. Configure build command: `npm install && npm run build`
+4. Configure start command: `npm start`
 
 ### Environment Variables for Production
-```env
-# Backend
-NODE_ENV=production
-MONGO_URI=mongodb+srv://...
-JWT_SECRET=production-secret
-FRONTEND_URL=https://your-frontend-domain.com
 
-# Frontend
-VITE_API_BASE_URL=https://your-backend-domain.com/api
+**Backend (Render)**
+```env
+NODE_ENV=production
+MONGODB_URI=your-mongodb-atlas-uri
+JWT_SECRET=your-production-jwt-secret
+JWT_EXPIRE=30d
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+CLIENT_URL=https://microfinance-mis.vercel.app
 ```
 
-## 🛠️ Tech Stack
+**Frontend (Vercel)**
+```env
+VITE_API_URL=https://microfinance-mis.onrender.com
+```
 
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - ODM for MongoDB
-- **JWT** - Authentication
-- **Bcrypt** - Password hashing
-- **Nodemailer** - Email service
-- **Socket.io** - Real-time communication (planned)
+## 📚 API Documentation
 
-### Frontend
-- **React 18** - UI library
-- **Vite** - Build tool
-- **React Router** - Client-side routing
-- **Tailwind CSS** - Styling
-- **Radix UI** - Accessible components
-- **Shadcn/ui** - Component library
-- **Axios** - HTTP client
-- **Sonner** - Toast notifications
+### Authentication Endpoints
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/forgot-password` - Forgot password
+- `POST /api/auth/reset-password` - Reset password
 
-## 🔒 Security Features
+### User Management
+- `GET /api/users` - Get all users
+- `GET /api/users/:id` - Get user by ID
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
 
-- JWT-based authentication
-- Role-based access control
-- Password hashing with bcrypt
-- Input validation and sanitization
-- CORS protection
-- Rate limiting
-- Secure headers
+### Member Management
+- `GET /api/members` - Get all members
+- `POST /api/members` - Create member
+- `PUT /api/members/:id` - Update member
+- `DELETE /api/members/:id` - Delete member
 
-## 📊 Key Features
+### Loan Management
+- `GET /api/loans` - Get all loans
+- `POST /api/loans` - Create loan
+- `PUT /api/loans/:id` - Update loan
+- `DELETE /api/loans/:id` - Delete loan
 
-### Financial Management
-- Loan application and tracking
-- Savings account management
-- Transaction recording and history
-- Repayment tracking
-- Interest calculations
+### Savings & Transactions
+- `GET /api/savings` - Get savings accounts
+- `POST /api/savings` - Create savings account
+- `GET /api/transactions` - Get transactions
+- `POST /api/transactions` - Create transaction
 
-### Group Operations
-- Member management
-- Group formation and administration
-- Meeting scheduling and attendance
-- Role-based permissions
-
-### Reporting & Analytics
-- Financial summaries
-- Loan portfolio analysis
-- Savings performance
-- Transaction trends
-- Custom date range reports
-
-### Communication
-- Notification system
-- Group chat (planned)
-- Email notifications
-- Meeting reminders
+For complete API documentation, visit: [https://microfinance-mis.onrender.com/api-docs](https://microfinance-mis.onrender.com/api-docs)
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Development Guidelines
+- Follow the existing code style
+- Write tests for new features
+- Update documentation as needed
+- Use conventional commit messages
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
-
-**Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- Email: your.email@example.com
-
 ## 🙏 Acknowledgments
 
-- Thanks to the microfinance community for inspiration
-- Built as a capstone project for MERN stack learning
-- Special thanks to instructors and mentors
+- [React](https://reactjs.org/) - UI library
+- [Express.js](https://expressjs.com/) - Web framework
+- [MongoDB](https://www.mongodb.com/) - Database
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Vercel](https://vercel.com/) - Frontend hosting
+- [Render](https://render.com/) - Backend hosting
+
+## 📞 Support
+
+For support, email support@microfinance-mis.com or create an issue in the GitHub repository.
 
 ---
+
+**Built with ❤️ for the microfinance community**

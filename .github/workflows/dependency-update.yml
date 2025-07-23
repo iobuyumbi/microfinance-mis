@@ -1,0 +1,70 @@
+name: Dependency Update
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at midnight
+  workflow_dispatch:
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+    
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+    
+    - name: Update backend dependencies
+      run: |
+        cd server
+        pnpm update
+        pnpm audit fix
+        if [ -f pnpm-lock.yaml ]; then
+          git add pnpm-lock.yaml
+        fi
+        git add package.json
+    
+    - name: Update frontend dependencies
+      run: |
+        cd client
+        pnpm update
+        pnpm audit fix
+        if [ -f pnpm-lock.yaml ]; then
+          git add pnpm-lock.yaml
+        fi
+        git add package.json
+    
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: 'chore: update dependencies'
+        title: '🤖 Automated dependency updates'
+        body: |
+          This PR contains automated dependency updates for both frontend and backend.
+          
+          ## Changes
+          - Updated npm dependencies to latest compatible versions
+          - Applied security fixes where available
+          
+          ## Testing
+          - [ ] Backend tests pass
+          - [ ] Frontend tests pass
+          - [ ] Build succeeds
+          - [ ] No breaking changes
+        branch: dependency-updates
+        delete-branch: true
+        labels: |
+          dependencies
+          automated 
