@@ -1,4 +1,4 @@
- import { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,7 +61,6 @@ export default function Register() {
   });
 
   const onSubmit = async (data) => {
-    console.log('Register form submitted', data); // Debug log
     setError("");
     setLoading(true);
 

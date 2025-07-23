@@ -6,6 +6,5 @@ export const groupService = {
   create: (data) => api.post('/groups', data).then(res => res.data),
   update: (id, data) => api.put(`/groups/${id}`, data).then(res => res.data),
   remove: (id) => api.delete(`/groups/${id}`).then(res => res.data),
-  // Add a method to get groups for a specific user (if backend supports it)
   getUserGroups: (userId) => api.get(`/users/${userId}/groups`).then(res => res.data),
 }; 

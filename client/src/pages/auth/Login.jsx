@@ -48,7 +48,6 @@ export default function Login() {
   });
 
   const onSubmit = async (data) => {
-    console.log('Login form submitted', data); // Debug log
     setError("");
     setLoading(true);
 
