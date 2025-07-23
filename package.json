@@ -36,7 +36,8 @@
     "clean": "npm run clean:server && npm run clean:client",
     "clean:server": "cd server && rm -rf node_modules package-lock.json",
     "clean:client": "cd client && rm -rf node_modules package-lock.json",
-    "postinstall": "npm run setup"
+    "postinstall": "npm run setup",
+    "build:prod": "cd client && npm install && npm run build && cd ../server && npm install"
   },
   "keywords": [
     "microfinance",

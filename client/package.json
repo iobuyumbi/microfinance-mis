@@ -18,7 +18,8 @@
     "type-check": "tsc --noEmit",
     "audit": "npm audit --audit-level moderate",
     "audit:fix": "npm audit fix",
-    "prepare": "husky install"
+    "prepare": "test -d .git && husky install || echo 'Skipping husky install: no .git directory'"
+
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
