@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarTrigger, // <-- Add this import
 } from '@/components/ui/sidebar';
 
 const navItems = [
@@ -98,9 +99,15 @@ export default function MainLayout() {
         <div className="flex-1 flex flex-col w-full">
           {/* Header */}
           <header className="h-16 border-b flex items-center px-6 justify-between bg-background">
-            <div className="font-semibold text-lg">
-              {navItems.find((i) => location.pathname.startsWith(i.to))?.label ||
-                "Dashboard"}
+            <div className="flex items-center gap-2">
+              {/* Hamburger icon for mobile */}
+              <span className="md:hidden">
+                <SidebarTrigger />
+              </span>
+              <span className="font-semibold text-lg">
+                {navItems.find((i) => location.pathname.startsWith(i.to))?.label ||
+                  "Dashboard"}
+              </span>
             </div>
             <div className="flex items-center gap-4">
               {/* Theme toggle next to avatar */}

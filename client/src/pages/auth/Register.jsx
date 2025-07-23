@@ -61,6 +61,7 @@ export default function Register() {
   });
 
   const onSubmit = async (data) => {
+    console.log('Register form submitted', data); // Debug log
     setError("");
     setLoading(true);
 
