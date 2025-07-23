@@ -97,10 +97,303 @@ _Add a link to your 5-10 minute video demo here (YouTube, Loom, etc.)_
 
 ## 📝 Setup Instructions
 
-1. Clone the repository
-2. Install dependencies with `pnpm install` (or `npm install`)
-3. Set up your `.env` files for backend and frontend
-4. Start the backend and frontend servers
-5. Visit the frontend URL and log in
+### Prerequisites
+- Node.js (v16 or higher)
+- MongoDB (local installation or MongoDB Atlas)
+- Git
+- npm or yarn
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/microfinance-mis.git
+cd microfinance-mis
+```
+
+### 2. Backend Setup
+
+1. **Navigate to server directory:**
+   ```bash
+   cd server
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Create environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Configure environment variables:**
+   ```env
+   # Server Configuration
+   PORT=5000
+   NODE_ENV=development
+   
+   # MongoDB Configuration
+   MONGO_URI=mongodb://localhost:27017/microfinance-mis
+   
+   # JWT Configuration
+   JWT_SECRET=your-super-secret-jwt-key-here
+   JWT_EXPIRE=30d
+   
+   # Email Configuration
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASSWORD=your-app-password
+   FROM_NAME=Microfinance MIS
+   FROM_EMAIL=noreply@microfinance-mis.com
+   FRONTEND_URL=http://localhost:3000
+   ```
+
+5. **Start the backend server:**
+   ```bash
+   npm run dev
+   ```
+   Server will run on `http://localhost:5000`
+
+### 3. Frontend Setup
+
+1. **Navigate to client directory:**
+   ```bash
+   cd ../client
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Create environment file:**
+   ```bash
+   cp .env.example .env.local
+   ```
+
+4. **Configure environment variables:**
+   ```env
+   VITE_API_BASE_URL=http://localhost:5000/api
+   VITE_APP_NAME=Microfinance MIS
+   ```
+
+5. **Start the frontend development server:**
+   ```bash
+   npm run dev
+   ```
+   Frontend will run on `http://localhost:3000`
+
+### 4. Database Setup
+
+1. **Ensure MongoDB is running** (if using local installation)
+2. **The application will automatically create the database and collections**
+3. **Seed data** (optional):
+   ```bash
+   cd server
+   npm run seed
+   ```
+
+### 5. Access the Application
+
+1. **Open your browser** and navigate to `http://localhost:3000`
+2. **Register a new account** or use default credentials:
+   - Email: `admin@microfinance.com`
+   - Password: `admin123`
+
+## 🏗️ Project Architecture
+
+### Backend (Node.js + Express + MongoDB)
+```
+server/
+├── controllers/          # Route handlers
+├── models/              # MongoDB schemas
+├── routes/              # API endpoints
+├── middleware/          # Custom middleware
+├── utils/               # Utility functions
+├── config/              # Configuration files
+└── server.js            # Entry point
+```
+
+### Frontend (React + Vite)
+```
+client/
+├── src/
+│   ├── components/      # Reusable components
+│   ├── pages/          # Page components
+│   ├── contexts/       # React contexts
+│   ├── services/       # API services
+│   └── utils/          # Utility functions
+└── public/             # Static assets
+```
+
+## 🔧 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user
+- `POST /api/auth/forgot-password` - Forgot password
+- `PUT /api/auth/reset-password` - Reset password
+
+### Core Modules
+- `GET/POST/PUT/DELETE /api/users` - User management
+- `GET/POST/PUT/DELETE /api/groups` - Group management
+- `GET/POST/PUT/DELETE /api/loans` - Loan management
+- `GET/POST/PUT/DELETE /api/savings` - Savings management
+- `GET/POST/PUT/DELETE /api/transactions` - Transaction management
+- `GET/POST/PUT/DELETE /api/meetings` - Meeting management
+- `GET/POST/PUT/DELETE /api/repayments` - Repayment management
+- `GET/POST/PUT/DELETE /api/notifications` - Notification management
+- `GET /api/reports/*` - Various reports
+
+## 👥 User Roles
+
+1. **Admin**
+   - Full system access
+   - User and group management
+   - System configuration
+   - All reports and analytics
+
+2. **Officer**
+   - Group management
+   - Loan approval/rejection
+   - Member management
+   - Financial reports
+
+3. **Member**
+   - Personal dashboard
+   - Loan applications
+   - Savings management
+   - Group participation
+
+## 🧪 Testing
+
+### Backend Testing
+```bash
+cd server
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+### Frontend Testing
+```bash
+cd client
+npm test
+npm run test:ui
+npm run test:e2e
+```
+
+## 🚀 Production Deployment
+
+### Backend (Railway/Heroku)
+1. Create account on Railway or Heroku
+2. Connect your GitHub repository
+3. Configure environment variables
+4. Deploy from main branch
+
+### Frontend (Vercel/Netlify)
+1. Create account on Vercel or Netlify
+2. Connect your GitHub repository
+3. Set build command: `npm run build`
+4. Set publish directory: `dist`
+5. Configure environment variables
+
+### Environment Variables for Production
+```env
+# Backend
+NODE_ENV=production
+MONGO_URI=mongodb+srv://...
+JWT_SECRET=production-secret
+FRONTEND_URL=https://your-frontend-domain.com
+
+# Frontend
+VITE_API_BASE_URL=https://your-backend-domain.com/api
+```
+
+## 🛠️ Tech Stack
+
+### Backend
+- **Node.js** - JavaScript runtime
+- **Express.js** - Web framework
+- **MongoDB** - NoSQL database
+- **Mongoose** - ODM for MongoDB
+- **JWT** - Authentication
+- **Bcrypt** - Password hashing
+- **Nodemailer** - Email service
+- **Socket.io** - Real-time communication (planned)
+
+### Frontend
+- **React 18** - UI library
+- **Vite** - Build tool
+- **React Router** - Client-side routing
+- **Tailwind CSS** - Styling
+- **Radix UI** - Accessible components
+- **Shadcn/ui** - Component library
+- **Axios** - HTTP client
+- **Sonner** - Toast notifications
+
+## 🔒 Security Features
+
+- JWT-based authentication
+- Role-based access control
+- Password hashing with bcrypt
+- Input validation and sanitization
+- CORS protection
+- Rate limiting
+- Secure headers
+
+## 📊 Key Features
+
+### Financial Management
+- Loan application and tracking
+- Savings account management
+- Transaction recording and history
+- Repayment tracking
+- Interest calculations
+
+### Group Operations
+- Member management
+- Group formation and administration
+- Meeting scheduling and attendance
+- Role-based permissions
+
+### Reporting & Analytics
+- Financial summaries
+- Loan portfolio analysis
+- Savings performance
+- Transaction trends
+- Custom date range reports
+
+### Communication
+- Notification system
+- Group chat (planned)
+- Email notifications
+- Meeting reminders
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👨‍💻 Author
+
+**Your Name**
+- GitHub: [@your-username](https://github.com/your-username)
+- Email: your.email@example.com
+
+## 🙏 Acknowledgments
+
+- Thanks to the microfinance community for inspiration
+- Built as a capstone project for MERN stack learning
+- Special thanks to instructors and mentors
 
 ---
