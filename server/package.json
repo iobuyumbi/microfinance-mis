@@ -18,7 +18,7 @@
     "audit": "npm audit --audit-level moderate",
     "audit:fix": "npm audit fix",
     "build": "echo 'No build step required for Node.js server'",
-    "prepare": "husky install"
+    "prepare": "test -d .git && husky install || echo 'Skipping husky install: no .git directory'"
   },
   "keywords": ["microfinance", "mis", "api", "express", "mongodb"],
   "author": "Your Name",
