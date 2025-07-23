@@ -38,7 +38,7 @@ const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["member", "leader", "officer"], {
+  role: z.enum(["leader", "officer"], {
     required_error: "Please select a role",
   }),
 });
@@ -56,7 +56,7 @@ export default function Register() {
       email: "",
       phone: "",
       password: "",
-      role: "member",
+      role: "leader",
     },
   });
 
@@ -231,7 +231,6 @@ export default function Register() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="member">Member</SelectItem>
                           <SelectItem value="leader">Group Leader</SelectItem>
                           <SelectItem value="officer">Loan Officer</SelectItem>
                         </SelectContent>
