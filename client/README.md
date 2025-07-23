@@ -193,3 +193,25 @@ VITE_ENABLE_NOTIFICATIONS=true
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Radix UI](https://www.radix-ui.com/)
 - [Shadcn/ui](https://ui.shadcn.com/)
+
+## Creating Accounts and Loans
+
+### 1. Money Account (General Account)
+- Navigate to the **Accounts** page (usually `/accounts`).
+- Click the **"+ New Account"** button at the top right.
+- Fill in the form fields (Account Holder, Account Number, Balance, Type, Status).
+- Click **"Create Account"** to save.
+
+### 2. Loan Account
+- Navigate to the **Loans** page (usually `/loans`).
+- Click the **"+ New Loan"** button.
+- Fill in the form fields (Borrower, Amount, Interest Rate, Term, Purpose, Status, Due Date).
+- Click **"Create Loan"** to save.
+
+### 3. Savings Account
+- Navigate to the **Savings** page (usually `/savings`).
+- Click the **"+ New Account"** button.
+- Fill in the form fields (Account Holder, Account Number, Balance, Interest Rate, Account Type, Status, Open Date).
+- Click **"Create Account"** to save.
+
+If you need to add or customize fields in these forms, please contact the development team or refer to the code in the respective page components.
