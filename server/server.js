@@ -80,8 +80,7 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Catch-all: send index.html for any other route (except API)
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
 });
 
