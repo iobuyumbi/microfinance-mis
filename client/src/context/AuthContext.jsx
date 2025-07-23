@@ -30,24 +30,58 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-    if (token) {
+    
+    if (token && storedUser) {
+      // If we have both token and stored user, set user first then validate
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      fetchUserGroups(parsedUser._id || parsedUser.id);
+      
+      // Try to refresh user data from server
       authService
         .getMe()
         .then((data) => {
-          setUser(data.data || null);
           if (data.data) {
+            setUser(data.data);
             localStorage.setItem("user", JSON.stringify(data.data));
             fetchUserGroups(data.data._id || data.data.id);
           }
         })
-        .catch(() => setUser(null))
+        .catch((error) => {
+          console.warn('Failed to refresh user data:', error.message);
+          // Don't clear user on API failure - keep using stored data
+          // Only clear if it's a 401 (handled by axios interceptor)
+        })
+        .finally(() => setLoading(false));
+    } else if (token) {
+      // If we have token but no stored user, try to get user from server
+      authService
+        .getMe()
+        .then((data) => {
+          if (data.data) {
+            setUser(data.data);
+            localStorage.setItem("user", JSON.stringify(data.data));
+            fetchUserGroups(data.data._id || data.data.id);
+          } else {
+            // Invalid response, clear token
+            localStorage.removeItem("token");
+            setUser(null);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to get user data:', error.message);
+          // Clear token on failure since we have no fallback user data
+          localStorage.removeItem("token");
+          setUser(null);
+        })
         .finally(() => setLoading(false));
     } else if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      fetchUserGroups(parsedUser._id || parsedUser.id);
+      // If we have stored user but no token, clear everything
+      localStorage.removeItem("user");
+      setUser(null);
       setLoading(false);
     } else {
+      // No token and no stored user
       setLoading(false);
     }
   }, []);

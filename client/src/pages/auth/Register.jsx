@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { authService } from "../../services/authService";
+import { useAuth } from "../../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,6 +48,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const form = useForm({
     resolver: zodResolver(registerSchema),
@@ -65,10 +66,9 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await authService.register(data);
-      navigate("/login", {
-        state: { message: "Account created successfully! Please sign in." },
-      });
+      await register(data);
+      // User is now automatically logged in, redirect to dashboard
+      navigate("/dashboard");
     } catch (err) {
       setError(
         err.response?.data?.message ||
