@@ -34,13 +34,8 @@ const io = new Server(server, {
 });
 
 // Core middleware
-const allowedOrigins = [
-  'https://microfinance-mis.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:5173'
-];
 app.use(cors({
-  origin: allowedOrigins,
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
