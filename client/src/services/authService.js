@@ -1,11 +1,40 @@
-import api from "./api";
+import api from './api';
+import { handleRequest } from './handleRequest';
 
 export const authService = {
-  login: (data) => api.post("/auth/login", data).then((res) => res.data),
-  register: (data) => api.post("/auth/register", data).then((res) => res.data),
-  getMe: () => api.get("/auth/me").then((res) => res.data),
+  register: (data) =>
+    handleRequest(() => api.post('/auth/register', data), 'Failed to register'),
+
+  login: async (credentials) => {
+    const data = await handleRequest(
+      () => api.post('/auth/login', credentials),
+      'Failed to login'
+    );
+
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
+
+    return data;
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  },
+
+  getCurrentUser: () => {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  },
+
+  getMe: () =>
+    handleRequest(() => api.get('/auth/me'), 'Failed to fetch authenticated user'),
+
   forgotPassword: (data) =>
-    api.post("/auth/forgot-password", data).then((res) => res.data),
+    handleRequest(() => api.post('/auth/forgot-password', data), 'Failed to send reset email'),
+
   resetPassword: (token, data) =>
-    api.post(`/auth/reset-password/${token}`, data).then((res) => res.data),
+    handleRequest(() => api.post(`/auth/reset-password/${token}`, data), 'Failed to reset password'),
 };

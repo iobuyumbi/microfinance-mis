@@ -1,5 +1,8 @@
 import api from './api';
+import { handleRequest } from './handleRequest';
 
 export const dashboardService = {
-  getStats: () => api.get('/reports/dashboard').then(res => res.data.data),
-}; 
+ 
+  getStats: () =>
+    handleRequest(() => api.get('/reports/dashboard'), 'Unable to load dashboard statistics'),
+};

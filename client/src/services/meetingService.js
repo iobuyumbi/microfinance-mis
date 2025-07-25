@@ -1,9 +1,20 @@
+// src/services/meetingService.js
 import api from "./api";
+import { handleRequest } from "./handleRequest";
 
 export const meetingService = {
-  getAll: (params) => api.get("/meetings", { params }).then((res) => res.data),
-  getById: (id) => api.get(`/meetings/${id}`).then((res) => res.data),
-  create: (data) => api.post("/meetings", data).then((res) => res.data),
-  update: (id, data) => api.put(`/meetings/${id}`, data).then((res) => res.data),
-  remove: (id) => api.delete(`/meetings/${id}`).then((res) => res.data),
+  getAll: (params) =>
+    handleRequest(() => api.get("/meetings", { params }), "Failed to fetch meetings"),
+
+  getById: (id) =>
+    handleRequest(() => api.get(`/meetings/${id}`), `Meeting with ID ${id} not found`),
+
+  create: (data) =>
+    handleRequest(() => api.post("/meetings", data), "Failed to create meeting"),
+
+  update: (id, data) =>
+    handleRequest(() => api.put(`/meetings/${id}`, data), `Failed to update meeting ${id}`),
+
+  remove: (id) =>
+    handleRequest(() => api.delete(`/meetings/${id}`), `Failed to delete meeting ${id}`),
 };

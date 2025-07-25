@@ -1,18 +1,50 @@
+// src/services/reportService.js
 import api from "./api";
+import { handleRequest } from "./handleRequest";
 
 export const reportService = {
-  getDashboardStats: () => api.get("/reports/dashboard").then(res => res.data.data),
-  getFinancialSummary: (params) => api.get("/reports/financial-summary", { params }).then(res => res.data.data),
-  getUpcomingRepayments: (params) => api.get("/reports/upcoming-repayments", { params }).then(res => res.data.data),
-  getDefaulters: (params) => api.get("/reports/defaulters", { params }).then(res => res.data.data),
-  getTotalLoans: (params) => api.get("/reports/total-loans", { params }).then(res => res.data.data),
-  getGroupSavings: (params) => api.get("/reports/group-savings", { params }).then(res => res.data.data),
-  getLoanReports: (params) => api.get("/loans", { params }).then(res => res.data.data),
-  getLoanPortfolioHealth: () => api.get("/reports/loan-portfolio-health").then(res => res.data.data),
-  getMemberReports: (params) => api.get("/reports/members", { params }).then(res => res.data.data),
-  getMemberStats: () => api.get("/reports/member-stats").then(res => res.data.data),
-  getSavingsReports: (params) => api.get("/savings", { params }).then(res => res.data.data),
-  getSavingsStats: () => api.get("/reports/savings-stats").then(res => res.data.data),
-  getTransactionReports: (params) => api.get("/transactions", { params }).then(res => res.data.data),
-  exportReport: (type, format, params) => api.get(`/reports/export/${type}/${format}`, { params, responseType: 'blob' }),
+  getDashboardStats: () =>
+    handleRequest(api.get("/reports/dashboard"), "Failed to fetch dashboard statistics"),
+
+  getFinancialSummary: (params) =>
+    handleRequest(api.get("/reports/financial-summary", { params }), "Failed to fetch financial summary"),
+
+  getUpcomingRepayments: (params) =>
+    handleRequest(api.get("/reports/upcoming-repayments", { params }), "Failed to fetch upcoming repayments"),
+
+  getDefaulters: (params) =>
+    handleRequest(api.get("/reports/defaulters", { params }), "Failed to fetch defaulters report"),
+
+  getTotalLoans: (params) =>
+    handleRequest(api.get("/reports/total-loans", { params }), "Failed to fetch total loan data"),
+
+  getGroupSavings: (params) =>
+    handleRequest(api.get("/reports/group-savings", { params }), "Failed to fetch group savings"),
+
+  getLoanReports: (params) =>
+    handleRequest(api.get("/loans", { params }), "Failed to fetch loan reports"),
+
+  getLoanPortfolioHealth: () =>
+    handleRequest(api.get("/reports/loan-portfolio-health"), "Failed to fetch loan portfolio health"),
+
+  getMemberReports: (params) =>
+    handleRequest(api.get("/reports/members", { params }), "Failed to fetch member reports"),
+
+  getMemberStats: () =>
+    handleRequest(api.get("/reports/member-stats"), "Failed to fetch member statistics"),
+
+  getSavingsReports: (params) =>
+    handleRequest(api.get("/savings", { params }), "Failed to fetch savings reports"),
+
+  getSavingsStats: () =>
+    handleRequest(api.get("/reports/savings-stats"), "Failed to fetch savings statistics"),
+
+  getTransactionReports: (params) =>
+    handleRequest(api.get("/transactions", { params }), "Failed to fetch transaction reports"),
+
+  exportReport: (type, format, params) =>
+    api.get(`/reports/export/${type}/${format}`, {
+      params,
+      responseType: "blob", // binary file download – no handleRequest
+    }),
 };

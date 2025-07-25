@@ -1,9 +1,20 @@
+// src/services/notificationService.js
 import api from "./api";
+import { handleRequest } from "./handleRequest";
 
 export const notificationService = {
-  getAll: (params) => api.get("/notifications", { params }).then((res) => res.data),
-  getById: (id) => api.get(`/notifications/${id}`).then((res) => res.data),
-  create: (data) => api.post("/notifications", data).then((res) => res.data),
-  update: (id, data) => api.put(`/notifications/${id}`, data).then((res) => res.data),
-  remove: (id) => api.delete(`/notifications/${id}`).then((res) => res.data),
+  getAll: (params) =>
+    handleRequest(() => api.get("/notifications", { params }), "Failed to fetch notifications"),
+
+  getById: (id) =>
+    handleRequest(() => api.get(`/notifications/${id}`), `Notification with ID ${id} not found`),
+
+  create: (data) =>
+    handleRequest(() => api.post("/notifications", data), "Failed to create notification"),
+
+  update: (id, data) =>
+    handleRequest(() => api.put(`/notifications/${id}`, data), `Failed to update notification ${id}`),
+
+  remove: (id) =>
+    handleRequest(() => api.delete(`/notifications/${id}`), `Failed to delete notification ${id}`),
 };

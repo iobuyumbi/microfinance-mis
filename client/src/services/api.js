@@ -1,52 +1,45 @@
 import axios from 'axios';
 
-// Create axios instance with base configuration
+// src/services/api.js
+import axios from 'axios';
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 seconds timeout
+  timeout: 10000,
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
+    console.error('Request error:', error);
     return Promise.reject(error);
   }
 );
 
-// Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    console.error('API Error:', error);
-    
-    // Handle authentication errors
+    console.error('API error:', error);
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
-      return Promise.reject(new Error('Authentication failed'));
+      return Promise.reject(new Error('Session expired. Please login again.'));
     }
-    
-    // Handle network errors
+
     if (!error.response) {
-      return Promise.reject(new Error('Network error - please check your connection'));
+      return Promise.reject(new Error('Network error – please check your internet connection.'));
     }
-    
-    // Handle other HTTP errors
-    const message = error.response?.data?.message || error.message || 'An error occurred';
+
+    const message = error.response.data?.message || 'An unexpected error occurred';
     return Promise.reject(new Error(message));
   }
 );

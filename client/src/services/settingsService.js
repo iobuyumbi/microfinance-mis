@@ -1,6 +1,10 @@
 import api from './api';
+import { handleRequest } from './handleRequest';
 
 export const settingsService = {
-  get: () => api.get('/settings').then(res => res.data.data),
-  update: (data) => api.put('/settings', data).then(res => res.data.data),
-}; 
+  get: () =>
+    handleRequest(() => api.get('/settings'), 'Failed to load settings'),
+
+  update: (data) =>
+    handleRequest(() => api.put('/settings', data), 'Failed to update settings'),
+};

@@ -1,9 +1,19 @@
 import api from "./api";
+import { handleRequest } from "./handleRequest";
 
 export const loanService = {
-  getAll: (params) => api.get("/loans", { params }).then((res) => res.data),
-  getById: (id) => api.get(`/loans/${id}`).then((res) => res.data),
-  create: (data) => api.post("/loans", data).then((res) => res.data),
-  update: (id, data) => api.put(`/loans/${id}`, data).then((res) => res.data),
-  remove: (id) => api.delete(`/loans/${id}`).then((res) => res.data),
+  getAll: (params) =>
+    handleRequest(() => api.get("/loans", { params }), "Failed to fetch loans"),
+
+  getById: (id) =>
+    handleRequest(() => api.get(`/loans/${id}`), `Loan with ID ${id} not found`),
+
+  create: (data) =>
+    handleRequest(() => api.post("/loans", data), "Failed to create loan"),
+
+  update: (id, data) =>
+    handleRequest(() => api.put(`/loans/${id}`, data), `Failed to update loan ${id}`),
+
+  remove: (id) =>
+    handleRequest(() => api.delete(`/loans/${id}`), `Failed to delete loan ${id}`),
 };

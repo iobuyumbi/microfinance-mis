@@ -1,11 +1,20 @@
+// src/services/repaymentService.js
 import api from "./api";
+import { handleRequest } from "./handleRequest";
 
 export const repaymentService = {
   getAll: (params) =>
-    api.get("/repayments", { params }).then((res) => res.data),
-  getById: (id) => api.get(`/repayments/${id}`).then((res) => res.data),
-  create: (data) => api.post("/repayments", data).then((res) => res.data),
+    handleRequest(() => api.get("/repayments", { params }), "Failed to fetch repayments"),
+
+  getById: (id) =>
+    handleRequest(() => api.get(`/repayments/${id}`), `Repayment with ID ${id} not found`),
+
+  create: (data) =>
+    handleRequest(() => api.post("/repayments", data), "Failed to create repayment"),
+
   update: (id, data) =>
-    api.put(`/repayments/${id}`, data).then((res) => res.data),
-  remove: (id) => api.delete(`/repayments/${id}`).then((res) => res.data),
+    handleRequest(() => api.put(`/repayments/${id}`, data), `Failed to update repayment ${id}`),
+
+  remove: (id) =>
+    handleRequest(() => api.delete(`/repayments/${id}`), `Failed to delete repayment ${id}`),
 };

@@ -1,9 +1,19 @@
-import api from "./api";
+import api from './api';
+import { handleRequest } from './handleRequest';
 
 export const transactionService = {
-  getAll: (params) => api.get("/transactions", { params }).then((res) => res.data),
-  getById: (id) => api.get(`/transactions/${id}`).then((res) => res.data),
-  create: (data) => api.post("/transactions", data).then((res) => res.data),
-  update: (id, data) => api.put(`/transactions/${id}`, data).then((res) => res.data),
-  remove: (id) => api.delete(`/transactions/${id}`).then((res) => res.data),
+  getAll: (params) =>
+    handleRequest(() => api.get('/transactions', { params }), 'Unable to load transactions'),
+
+  getById: (id) =>
+    handleRequest(() => api.get(`/transactions/${id}`), 'Transaction not found'),
+
+  create: (data) =>
+    handleRequest(() => api.post('/transactions', data), 'Failed to create transaction'),
+
+  update: (id, data) =>
+    handleRequest(() => api.put(`/transactions/${id}`, data), 'Failed to update transaction'),
+
+  remove: (id) =>
+    handleRequest(() => api.delete(`/transactions/${id}`), 'Failed to delete transaction'),
 };
