@@ -48,7 +48,7 @@ export default function Login() {
   });
 
   const onSubmit = async (data) => {
-    console.log('Login form submitted', data); // Debug log
+    console.log("Login form submitted", data); // Debug log
     setError("");
     setLoading(true);
 
@@ -56,10 +56,7 @@ export default function Login() {
       await login(data);
       navigate("/dashboard");
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        "Login failed. Please check your credentials and try again."
-      );
+      setError(err.message);
     } finally {
       setLoading(false);
     }

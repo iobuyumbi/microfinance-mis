@@ -1,55 +1,55 @@
 // Error handling middleware for the microfinance MIS application
 
-const errorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
+// middleware/errorHandler.js
 
-  // Log error for debugging
-  console.error("Error:", {
+const errorHandler = (err, req, res, next) => {
+  console.error('Error:', {
     message: err.message,
     stack: err.stack,
     url: req.url,
     method: req.method,
-    user: req.user?.id || "unauthenticated",
+    user: req.user?.id || 'unauthenticated',
   });
 
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Something went wrong';
+
   // Mongoose bad ObjectId
-  if (err.name === "CastError") {
-    const message = "Resource not found";
-    error = { message, statusCode: 404 };
+  if (err.name === 'CastError') {
+    message = 'Resource not found';
+    statusCode = 404;
   }
 
   // Mongoose duplicate key
   if (err.code === 11000) {
     const field = Object.keys(err.keyValue)[0];
-    const message = `${field} already exists`;
-    error = { message, statusCode: 400 };
+    message = `${field} already exists`;
+    statusCode = 400;
   }
 
   // Mongoose validation error
-  if (err.name === "ValidationError") {
-    const message = Object.values(err.errors)
-      .map((val) => val.message)
-      .join(", ");
-    error = { message, statusCode: 400 };
+  if (err.name === 'ValidationError') {
+    message = Object.values(err.errors)
+      .map(val => val.message)
+      .join(', ');
+    statusCode = 400;
   }
 
   // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    const message = "Invalid token";
-    error = { message, statusCode: 401 };
+  if (err.name === 'JsonWebTokenError') {
+    message = 'Invalid token';
+    statusCode = 401;
   }
 
-  if (err.name === "TokenExpiredError") {
-    const message = "Token expired";
-    error = { message, statusCode: 401 };
+  if (err.name === 'TokenExpiredError') {
+    message = 'Token expired';
+    statusCode = 401;
   }
 
-  // Default error response
-  res.status(error.statusCode || 500).json({
+  res.status(statusCode).json({
     success: false,
-    message: error.message || "Server Error",
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 

@@ -20,7 +20,13 @@
     "build": "echo 'No build step required for Node.js server'",
     "prepare": "test -d .git && husky install || echo 'Skipping husky install: no .git directory'"
   },
-  "keywords": ["microfinance", "mis", "api", "express", "mongodb"],
+  "keywords": [
+    "microfinance",
+    "mis",
+    "api",
+    "express",
+    "mongodb"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "packageManager": "pnpm@10.13.1",
@@ -30,21 +36,23 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.18.0",
     "mongoose": "^8.16.4",
     "morgan": "^1.10.1",
     "nodemailer": "^7.0.5",
+    "pnpm": "^10.13.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
-    "jest": "^29.7.0",
-    "supertest": "^6.3.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-jest": "^27.9.0",
-    "prettier": "^3.2.5",
     "husky": "^8.0.3",
-    "lint-staged": "^15.2.2"
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.2",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.2.5",
+    "supertest": "^6.3.3"
   },
   "jest": {
     "testEnvironment": "node",
@@ -55,7 +63,9 @@
       "!**/coverage/**",
       "!server.js"
     ],
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"]
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ]
   },
   "lint-staged": {
     "*.js": [

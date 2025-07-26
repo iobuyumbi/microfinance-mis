@@ -1,4 +1,3 @@
-import axios from 'axios';
 
 // src/services/api.js
 import axios from 'axios';
