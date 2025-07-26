@@ -62,14 +62,21 @@ exports.login = asyncHandler(async (req, res) => {
   });
 });
 
-// Logout user (by blacklisting token)
+// Logout user (blacklist token)
 exports.logout = asyncHandler((req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.split(' ')[1]
+    : null;
+
   if (token) {
     blacklist.add(token);
   }
 
-  res.status(200).json({ success: true, message: 'Logged out successfully.' });
+  res.status(200).json({
+    success: true,
+    message: 'Logged out successfully.',
+  });
 });
 
 // Forgot password - send reset link
@@ -91,9 +98,9 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   });
 });
 
-// Reset password with token
+// Reset password using token
 exports.resetPassword = asyncHandler(async (req, res) => {
-  const { token, newPassword } = req.body;
+  const { token, password } = req.body;
 
   const decoded = verifyToken(token);
   const user = await User.findById(decoded.id);
@@ -103,7 +110,7 @@ exports.resetPassword = asyncHandler(async (req, res) => {
     throw new Error('Invalid or expired reset token.');
   }
 
-  user.password = newPassword;
+  user.password = password;
   await user.save();
 
   res.status(200).json({
@@ -112,7 +119,7 @@ exports.resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-// Get current user (from req.user, already verified by auth middleware)
+// Get current logged-in user
 exports.getMe = asyncHandler(async (req, res) => {
   const user = req.user;
 

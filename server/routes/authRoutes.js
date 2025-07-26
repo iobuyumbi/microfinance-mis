@@ -1,31 +1,32 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 const {
   register,
   login,
+  logout,
   getMe,
   forgotPassword,
   resetPassword,
-} = require("../controllers/authController");
-const { validateRequiredFields } = require("../middleware/validate");
-const { protect } = require("../middleware/auth");
+} = require('../controllers/authController');
+const { validateRequiredFields } = require('../middleware/validate');
+const { protect } = require('../middleware/auth');
 
-// Auth routes
 router.post(
-  "/register",
-  validateRequiredFields(["name", "email", "password"]),
+  '/register',
+  validateRequiredFields(['name', 'email', 'password']),
   register
 );
-router.post("/login", validateRequiredFields(["email", "password"]), login);
-router.get("/me", protect, getMe);
+router.post('/login', validateRequiredFields(['email', 'password']), login);
+router.post('/logout', protect, logout);
+router.get('/me', protect, getMe);
 router.post(
-  "/forgot-password",
-  validateRequiredFields(["email"]),
+  '/forgot-password',
+  validateRequiredFields(['email']),
   forgotPassword
 );
 router.post(
-  "/reset-password",
-  validateRequiredFields(["token", "password"]),
+  '/reset-password',
+  validateRequiredFields(['token', 'password']),
   resetPassword
 );
 
