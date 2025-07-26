@@ -1,19 +1,34 @@
-
 // src/components/MainLayout.jsx
-import React, { useState } from 'react'; // React is implicitly imported by JSX, but good practice to include for clarity with hooks
+import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext"; // Assuming this path is correct
+import { useTheme } from "@/context/ThemeContext"; // Assuming this path is correct
 
 // Shadcn UI Imports
-import { Button } from '../../components/ui/button'; // Path assumes you've run `shadcn-ui add button`
-import { UserAvatar } from '@/components/custom/UserAvatar';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { Sun, Moon, Monitor, LogOut, User as UserIcon } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
-import { ProfileForm } from '@/components/custom/ProfileForm';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import { userService } from '@/services/userService';
+import { Button } from "../../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// Lucide React Icons
+import { Sun, Moon, Monitor, LogOut, User as UserIcon } from "lucide-react";
+
+// Custom Components (assuming these paths are correct and components exist)
+import { UserAvatar } from "@/components/custom/UserAvatar";
+import { ProfileForm } from "@/components/custom/ProfileForm";
+import { toast } from "sonner"; // Assuming sonner is configured
+import { userService } from "@/services/userService"; // Assuming userService is configured
 import {
   SidebarProvider,
   Sidebar,
@@ -22,8 +37,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarTrigger, // <-- Add this import
-} from '@/components/ui/sidebar';
+  SidebarTrigger,
+} from "@/components/ui/sidebar"; // Assuming these custom sidebar components exist
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
@@ -56,10 +71,10 @@ export default function MainLayout() {
     setProfileLoading(true);
     try {
       await userService.update(user._id || user.id, data);
-      toast.success('Profile updated successfully.');
+      toast.success("Profile updated successfully.");
       setProfileDialogOpen(false);
     } catch (err) {
-      toast.error(err.message || 'Failed to update profile.');
+      toast.error(err.message || "Failed to update profile.");
     } finally {
       setProfileLoading(false);
     }
@@ -67,8 +82,11 @@ export default function MainLayout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex bg-background">
-        {/* Sidebar */}
+      {/* The main container for the entire layout.
+          'h-screen w-screen' ensures it always takes the full height and width of the viewport.
+          'flex' enables flexbox for side-by-side layout of sidebar and main content. */}
+      <div className="flex h-screen w-screen bg-background">
+        {/* Sidebar component, assumed to have its own fixed width (e.g., w-64) internally. */}
         <Sidebar>
           <SidebarContent>
             <div className="h-16 flex items-center justify-center font-bold text-lg border-b">
@@ -95,7 +113,11 @@ export default function MainLayout() {
             </div>
           </SidebarFooter>
         </Sidebar>
-        {/* Main Content */}
+
+        {/* Main Content Area.
+            'flex-1' makes it grow to fill remaining horizontal space.
+            'flex flex-col' arranges header and main content vertically.
+            'w-full' ensures it takes full width of its flex-1 container. */}
         <div className="flex-1 flex flex-col w-full">
           {/* Header */}
           <header className="h-16 border-b flex items-center px-6 justify-between bg-background">
@@ -105,20 +127,35 @@ export default function MainLayout() {
                 <SidebarTrigger />
               </span>
               <span className="font-semibold text-lg">
-                {navItems.find((i) => location.pathname.startsWith(i.to))?.label ||
-                  "Dashboard"}
+                {navItems.find((i) => location.pathname.startsWith(i.to))
+                  ?.label || "Dashboard"}
               </span>
             </div>
             <div className="flex items-center gap-4">
               {/* Theme toggle next to avatar */}
               <div className="flex items-center gap-2">
-                <Button variant={theme === 'light' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('light')} aria-label="Light theme">
+                <Button
+                  variant={theme === "light" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setTheme("light")}
+                  aria-label="Light theme"
+                >
                   <Sun className="h-5 w-5" />
                 </Button>
-                <Button variant={theme === 'dark' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('dark')} aria-label="Dark theme">
+                <Button
+                  variant={theme === "dark" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setTheme("dark")}
+                  aria-label="Dark theme"
+                >
                   <Moon className="h-5 w-5" />
                 </Button>
-                <Button variant={theme === 'system' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme('system')} aria-label="System theme">
+                <Button
+                  variant={theme === "system" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setTheme("system")}
+                  aria-label="System theme"
+                >
                   <Monitor className="h-5 w-5" />
                 </Button>
               </div>
@@ -131,23 +168,35 @@ export default function MainLayout() {
                       </span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel className="flex flex-col items-center">
+                      <DropdownMenuLabel className="flex flex-col items-center p-4">
                         <UserAvatar user={user} size="lg" />
-                        <span className="mt-2 font-semibold">{user.name}</span>
-                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                        <span className="mt-2 font-semibold">
+                          {user.name || user.email}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {user.email}
+                        </span>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setProfileDialogOpen(true)}>
+                      <DropdownMenuItem
+                        onSelect={() => setProfileDialogOpen(true)}
+                      >
                         <UserIcon className="mr-2 h-4 w-4" /> Profile
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} variant="destructive">
+                      <DropdownMenuItem
+                        onSelect={handleLogout}
+                        className="text-red-600 focus:text-red-800"
+                      >
                         <LogOut className="mr-2 h-4 w-4" /> Logout
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
-                    <DialogContent>
+                  <Dialog
+                    open={profileDialogOpen}
+                    onOpenChange={setProfileDialogOpen}
+                  >
+                    <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader>
                         <DialogTitle>Edit Profile</DialogTitle>
                       </DialogHeader>
@@ -156,7 +205,7 @@ export default function MainLayout() {
                         onSubmit={handleProfileSave}
                         onCancel={() => setProfileDialogOpen(false)}
                         loading={profileLoading}
-                        isAdmin={user.role === 'admin'}
+                        isAdmin={user.role === "admin"}
                       />
                     </DialogContent>
                   </Dialog>
@@ -164,14 +213,15 @@ export default function MainLayout() {
               )}
             </div>
           </header>
+          {/* Main content area. 'flex-1' makes it grow to fill remaining vertical space. */}
           <main className="flex-1 w-full overflow-y-auto">
-            <div className="container mx-auto p-8 space-y-8 min-h-full">
+            {/* FIX: Changed min-h-full to h-full to ensure content area always fills available height */}
+            <div className="w-full p-8 space-y-8 h-full">
               <Outlet />
             </div>
           </main>
         </div>
       </div>
     </SidebarProvider>
-    
   );
 }
