@@ -1,8 +1,8 @@
-const User = require("../models/User");
+const User = require('../models/User');
 
 exports.getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find().select('-password');
     res.status(200).json({
       success: true,
       count: users.length,
@@ -15,19 +15,19 @@ exports.getAllUsers = async (req, res, next) => {
 
 exports.getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id).select('-password');
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: 'User not found' });
     }
     // Only allow admin, officer, or the user themselves
     if (
-      req.user.role !== "admin" &&
-      req.user.role !== "officer" &&
+      req.user.role !== 'admin' &&
+      req.user.role !== 'officer' &&
       req.user.id !== user._id.toString()
     ) {
-      return res.status(403).json({ success: false, message: "Access denied" });
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -46,12 +46,12 @@ exports.updateUserProfile = async (req, res, next) => {
     const user = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,
       runValidators: true,
-      select: "-password",
+      select: '-password',
     });
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: 'User not found' });
     }
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -66,7 +66,7 @@ exports.updateUserRoleStatus = async (req, res, next) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: 'User not found' });
     }
     if (role) user.role = role;
     if (status) user.status = status;
@@ -83,9 +83,9 @@ exports.deleteUser = async (req, res, next) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: 'User not found' });
     }
-    res.status(200).json({ success: true, message: "User deleted" });
+    res.status(200).json({ success: true, message: 'User deleted' });
   } catch (error) {
     next(error);
   }

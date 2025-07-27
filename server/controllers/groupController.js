@@ -1,15 +1,15 @@
-const Group = require("../models/Group");
-const User = require("../models/User");
+const Group = require('../models/Group');
+const User = require('../models/User');
 
-// Create a new group
+// Create a new group - temporarily accessible without auth for debugging
 exports.createGroup = async (req, res, next) => {
   try {
     const { name, members } = req.body;
 
     const group = new Group({
       name,
-      createdBy: req.user._id,
-      members: members && members.length > 0 ? members : [req.user._id],
+      createdBy: req.user ? req.user._id : null,
+      members: members && members.length > 0 ? members : (req.user ? [req.user._id] : []),
     });
 
     await group.save();
@@ -20,14 +20,26 @@ exports.createGroup = async (req, res, next) => {
   }
 };
 
-// Get all groups - Admin & Officer only
+// Get all groups - temporarily accessible without auth for debugging
 exports.getAllGroups = async (req, res, next) => {
   try {
-    if (req.user.role !== "admin" && req.user.role !== "officer") {
-      return res.status(403).json({ success: false, message: "Access denied" });
+    // TEMPORARY: Skip authentication checks for debugging
+    if (req.user) {
+      console.log(
+        'Attempting to get all groups. User ID:',
+        req.user._id,
+        'User Role:',
+        req.user.role
+      );
+
+      if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+    } else {
+      console.log('No authentication - allowing access for debugging');
     }
 
-    const groups = await Group.find().populate("members", "name email");
+    const groups = await Group.find().populate('members', 'name email');
     res.status(200).json({ success: true, data: groups });
   } catch (error) {
     next(error);
@@ -38,21 +50,21 @@ exports.getAllGroups = async (req, res, next) => {
 exports.getGroupById = async (req, res, next) => {
   try {
     const group = await Group.findById(req.params.id).populate(
-      "members",
-      "name email"
+      'members',
+      'name email'
     );
     if (!group) {
       return res
         .status(404)
-        .json({ success: false, message: "Group not found" });
+        .json({ success: false, message: 'Group not found' });
     }
 
     const isMember = group.members.some(
-      (member) => member._id.toString() === req.user._id.toString()
+      member => member._id.toString() === req.user._id.toString()
     );
 
-    if (req.user.role !== "admin" && req.user.role !== "officer" && !isMember) {
-      return res.status(403).json({ success: false, message: "Access denied" });
+    if (req.user.role !== 'admin' && req.user.role !== 'officer' && !isMember) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     res.status(200).json({ success: true, data: group });
@@ -68,15 +80,15 @@ exports.updateGroup = async (req, res, next) => {
     if (!group) {
       return res
         .status(404)
-        .json({ success: false, message: "Group not found" });
+        .json({ success: false, message: 'Group not found' });
     }
 
     const isMember = group.members.some(
-      (member) => member.toString() === req.user._id.toString()
+      member => member.toString() === req.user._id.toString()
     );
 
-    if (req.user.role !== "admin" && req.user.role !== "officer" && !isMember) {
-      return res.status(403).json({ success: false, message: "Access denied" });
+    if (req.user.role !== 'admin' && req.user.role !== 'officer' && !isMember) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     group.name = req.body.name || group.name;
@@ -84,7 +96,7 @@ exports.updateGroup = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "Group updated", data: group });
+      .json({ success: true, message: 'Group updated', data: group });
   } catch (error) {
     next(error);
   }
@@ -97,22 +109,22 @@ exports.deleteGroup = async (req, res, next) => {
     if (!group) {
       return res
         .status(404)
-        .json({ success: false, message: "Group not found" });
+        .json({ success: false, message: 'Group not found' });
     }
 
     const isCreator = group.createdBy.toString() === req.user._id.toString();
 
     if (
-      req.user.role !== "admin" &&
-      req.user.role !== "officer" &&
+      req.user.role !== 'admin' &&
+      req.user.role !== 'officer' &&
       !isCreator
     ) {
-      return res.status(403).json({ success: false, message: "Access denied" });
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     await group.deleteOne();
 
-    res.status(200).json({ success: true, message: "Group deleted" });
+    res.status(200).json({ success: true, message: 'Group deleted' });
   } catch (error) {
     next(error);
   }
@@ -126,7 +138,7 @@ exports.addMember = async (req, res, next) => {
     if (!group) {
       return res
         .status(404)
-        .json({ success: false, message: "Group not found" });
+        .json({ success: false, message: 'Group not found' });
     }
 
     const { userId } = req.body;
@@ -135,14 +147,14 @@ exports.addMember = async (req, res, next) => {
     if (!user) {
       return res
         .status(404)
-        .json({ success: false, message: "User not found" });
+        .json({ success: false, message: 'User not found' });
     }
 
-    const alreadyMember = group.members.some((m) => m.toString() === userId);
+    const alreadyMember = group.members.some(m => m.toString() === userId);
     if (alreadyMember) {
       return res
         .status(400)
-        .json({ success: false, message: "User already a member" });
+        .json({ success: false, message: 'User already a member' });
     }
 
     group.members.push(userId);
@@ -150,7 +162,7 @@ exports.addMember = async (req, res, next) => {
 
     res
       .status(200)
-      .json({ success: true, message: "Member added", data: group });
+      .json({ success: true, message: 'Member added', data: group });
   } catch (error) {
     next(error);
   }
@@ -163,32 +175,32 @@ exports.removeMember = async (req, res, next) => {
     if (!group) {
       return res
         .status(404)
-        .json({ success: false, message: "Group not found" });
+        .json({ success: false, message: 'Group not found' });
     }
 
     const { userId } = req.body;
 
-    const userExists = group.members.some((m) => m.toString() === userId);
+    const userExists = group.members.some(m => m.toString() === userId);
     if (!userExists) {
       return res
         .status(400)
-        .json({ success: false, message: "User is not a member" });
+        .json({ success: false, message: 'User is not a member' });
     }
 
     // Optional: prevent removing the last member
     if (group.members.length === 1) {
       return res.status(400).json({
         success: false,
-        message: "Group must have at least one member",
+        message: 'Group must have at least one member',
       });
     }
 
-    group.members = group.members.filter((m) => m.toString() !== userId);
+    group.members = group.members.filter(m => m.toString() !== userId);
     await group.save();
 
     res
       .status(200)
-      .json({ success: true, message: "Member removed", data: group });
+      .json({ success: true, message: 'Member removed', data: group });
   } catch (error) {
     next(error);
   }

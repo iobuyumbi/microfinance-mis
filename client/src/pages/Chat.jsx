@@ -1,13 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { Button, Card, CardHeader, CardTitle, CardContent, Input, Label, Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from '../components/ui';
-import api from '@/services/api';
+import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Input,
+  Label,
+  Select,
+  SelectItem,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui";
+import api from "@/services/api";
 
 export default function Chat() {
   const { user, groups } = useAuth();
-  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
-  const [selectedGroup, setSelectedGroup] = useState('');
-  const [message, setMessage] = useState('');
+  const isStaff =
+    user &&
+    (user.role === "admin" ||
+      user.role === "officer" ||
+      user.role === "leader");
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -21,8 +38,9 @@ export default function Chat() {
   useEffect(() => {
     if (!selectedGroup) return;
     setLoading(true);
-    api.get(`/groups/${selectedGroup}/chats`)
-      .then(res => setMessages(res.data.data || []))
+    api
+      .get(`/groups/${selectedGroup}/chats`)
+      .then((res) => setMessages(res.data.data || []))
       .catch(() => setMessages([]))
       .finally(() => setLoading(false));
   }, [selectedGroup]);
@@ -34,7 +52,7 @@ export default function Chat() {
       setLoading(true);
       const res = await api.post(`/groups/${selectedGroup}/chats`, { message });
       setMessages((prev) => [...prev, res.data.data]);
-      setMessage('');
+      setMessage("");
     } catch {
       // handle error
     } finally {
@@ -43,7 +61,7 @@ export default function Chat() {
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
@@ -79,7 +97,9 @@ export default function Chat() {
             ) : (
               messages.map((msg, idx) => (
                 <div key={msg._id || idx} className="mb-2">
-                  <span className="font-semibold mr-2">{msg.sender?.name || 'User'}:</span>
+                  <span className="font-semibold mr-2">
+                    {msg.sender?.name || "User"}:
+                  </span>
                   <span>{msg.message}</span>
                 </div>
               ))
@@ -87,11 +107,21 @@ export default function Chat() {
             <div ref={messagesEndRef} />
           </div>
           <form onSubmit={handleSend} className="flex space-x-2">
-            <Input value={message} onChange={e => setMessage(e.target.value)} placeholder="Type a message..." disabled={!selectedGroup || loading} />
-            <Button type="submit" disabled={!selectedGroup || loading || !message.trim()}>Send</Button>
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type a message..."
+              disabled={!selectedGroup || loading}
+            />
+            <Button
+              type="submit"
+              disabled={!selectedGroup || loading || !message.trim()}
+            >
+              Send
+            </Button>
           </form>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

@@ -1,9 +1,10 @@
 // src/pages/Members.jsx
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { toast } from 'sonner'; // For toast notifications
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { toast } from "sonner"; // For toast notifications
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 // Lucide React Icons
 import {
@@ -22,16 +23,15 @@ import {
   TrendingUp,
   UserCheck,
   Clock,
-  Target
-} from 'lucide-react';
+  Target,
+} from "lucide-react";
 
 // Shadcn UI Imports
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -40,15 +40,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
-  Table,
+  Table, // Keep Table imports for DataTable's internal use if needed, or remove if DataTable fully abstracts it
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,20 +56,33 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, // Import AlertDialog for delete confirmation
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // Custom Components (assuming these are already defined and styled)
-import { PageHeader } from '@/components/custom/PageHeader'; // You need to provide this component
-import { DataTable } from '@/components/custom/DataTable'; // You need to provide this component
-import { LoadingPage } from '@/components/custom/LoadingSpinner'; // You need to provide this component
-import { ErrorMessage } from '@/components/custom/ErrorBoundary'; // You need to provide this component
-import { UserAvatar } from '@/components/custom/UserAvatar'; // You need to provide this component
-import { StatsCard } from '@/components/custom/StatsCard';
-import MemberForm from '@/components/custom/MemberForm';
+import {
+  PageLayout,
+  StatsGrid,
+  ContentCard,
+} from "@/components/layouts/PageLayout";
+import { DataTable } from "@/components/custom/DataTable"; // You need to provide this component
+import { UserAvatar } from "@/components/custom/UserAvatar"; // You need to provide this component
+import { StatsCard } from "@/components/custom/StatsCard";
+import MemberForm from "@/components/custom/MemberForm";
 
 // Services and Utilities (assuming these paths are correct)
-import { userService } from '@/services/userService';
-import { formatDate, formatCurrency, cn } from '@/lib/utils'; // cn is for Tailwind class merging
+import { userService } from "@/services/userService"; // Ensure this path is correct
+import { formatDate, formatCurrency, cn } from "@/lib/utils"; // cn is for Tailwind class merging
 
 // Zod schema (re-defined here for clarity, but ideally imported from MemberForm or a shared schema file)
 const memberSchema = z.object({
@@ -82,8 +95,14 @@ const memberSchema = z.object({
 });
 
 export default function Members() {
+  const {
+    user: currentUser,
+    isAuthenticated,
+    loading: authLoading,
+  } = useAuth(); // Get current user and auth status
+
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Loading state for members data
   const [error, setError] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false); // Controls add/edit dialog
   const [editingMember, setEditingMember] = useState(null);
@@ -104,20 +123,53 @@ export default function Members() {
     },
   });
 
-  // Fetch members on component mount
+  // Fetch members on component mount, but only if authenticated and authorized
   useEffect(() => {
-    fetchMembers();
-  }, []);
+    if (!authLoading) {
+      console.log(
+        "Members Page - Auth Status:",
+        isAuthenticated,
+        "User Role:",
+        currentUser?.role
+      );
+      // Only fetch if authenticated AND current user is admin, officer, OR LEADER
+      if (
+        isAuthenticated &&
+        (currentUser?.role === "admin" ||
+          currentUser?.role === "officer" ||
+          currentUser?.role === "leader")
+      ) {
+        fetchMembers();
+      } else if (isAuthenticated) {
+        // If authenticated but not admin/officer/leader, show access denied
+        setLoading(false);
+        setError("You do not have permission to view this page.");
+      } else {
+        // Not authenticated
+        setLoading(false);
+        setError("You must be logged in to view members.");
+      }
+    }
+  }, [isAuthenticated, authLoading, currentUser?.role]); // Depend on auth states and current user's role
 
   const fetchMembers = async () => {
     try {
       setLoading(true);
       setError(null);
+      // CORRECTED: Using userService.getAll() as per your userService.js
       const response = await userService.getAll();
-      setMembers(Array.isArray(response) ? response : []);
+      // Ensure response.data is an array if the service returns { data: [...] }
+      setMembers(
+        Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response)
+            ? response
+            : []
+      );
     } catch (err) {
-      setError(err.message || "Failed to load members");
-      toast.error(err.message || "Failed to load members");
+      const errorMessage = err.message || "Failed to load members";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -127,19 +179,21 @@ export default function Members() {
     setSubmitting(true);
     try {
       if (editingMember) {
+        // CORRECTED: Using userService.update() as per your userService.js
         await userService.update(editingMember._id || editingMember.id, data);
         toast.success("Member updated successfully.");
       } else {
+        // CORRECTED: Using userService.create() as per your userService.js
         await userService.create(data);
         toast.success("Member created successfully.");
       }
-      setDialogOpen(false);
-      setEditingMember(null);
-      form.reset();
-      fetchMembers();
+      setDialogOpen(false); // Close the dialog
+      setEditingMember(null); // Clear editing state
+      form.reset(); // Reset form fields
+      fetchMembers(); // Re-fetch members to update the list
     } catch (err) {
       toast.error(err.message || "Operation failed.");
-      throw err;
+      // Do not throw err here, as it's handled by toast
     } finally {
       setSubmitting(false);
     }
@@ -147,7 +201,8 @@ export default function Members() {
 
   const openEditDialog = (member) => {
     setEditingMember(member);
-    form.reset({ // Reset form with current member's data
+    form.reset({
+      // Reset form with current member's data
       name: member.name,
       email: member.email,
       phone: member.phone,
@@ -164,12 +219,13 @@ export default function Members() {
   };
 
   const confirmDelete = async () => {
-    setShowConfirmDelete(false);
-    if (!memberToDelete) return;
+    setShowConfirmDelete(false); // Close dialog first
+    if (!memberToDelete) return; // Should not happen if triggered via dialog
     try {
+      // CORRECTED: Using userService.remove() as per your userService.js
       await userService.remove(memberToDelete);
       toast.success("Member deleted successfully.");
-      fetchMembers();
+      fetchMembers(); // Re-fetch to update the list
     } catch (err) {
       toast.error(err.message || "Failed to delete member.");
     } finally {
@@ -184,15 +240,60 @@ export default function Members() {
 
   // Stats calculations
   const totalMembers = members.length;
-  const activeMembers = members.filter(m => m.status === 'active').length;
-  const inactiveMembers = members.filter(m => m.status === 'inactive').length;
-  const suspendedMembers = members.filter(m => m.status === 'suspended').length;
-  const leaders = members.filter(m => m.role === 'leader').length;
-  const officers = members.filter(m => m.role === 'officer').length;
+  const activeMembers = members.filter((m) => m.status === "active").length;
+  const inactiveMembers = members.filter((m) => m.status === "inactive").length;
+  const suspendedMembers = members.filter(
+    (m) => m.status === "suspended"
+  ).length;
+  const leaders = members.filter((m) => m.role === "leader").length;
+  const officers = members.filter((m) => m.role === "officer").length;
 
-  // Render loading and error states
-  if (loading) return <LoadingPage />;
-  if (error) return <ErrorMessage error={error} onRetry={fetchMembers} />;
+  // Render loading and error states based on authentication and authorization
+  if (authLoading) {
+    return (
+      <PageLayout title="Member Management">
+        <div className="p-6 text-center text-muted-foreground">
+          Checking authentication and permissions...
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // MODIFIED THIS LINE TO INCLUDE 'leader'
+  if (
+    !isAuthenticated ||
+    (currentUser?.role !== "admin" &&
+      currentUser?.role !== "officer" &&
+      currentUser?.role !== "leader")
+  ) {
+    return (
+      <PageLayout title="Member Management">
+        <div className="p-6 text-center text-red-500">
+          <Shield className="h-10 w-10 mx-auto mb-4 text-red-400" />
+          Access Denied: You do not have permission to view this page.
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Once authenticated and authorized, proceed with data loading or error display for members
+  if (loading && members.length === 0) {
+    return (
+      <PageLayout title="Member Management">
+        <div className="p-6 text-center text-muted-foreground">
+          Loading members...
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (error && members.length === 0) {
+    return (
+      <PageLayout title="Member Management">
+        <div className="p-6 text-center text-red-500">{error}</div>
+      </PageLayout>
+    );
+  }
 
   // DataTable columns definition
   const columns = [
@@ -205,7 +306,9 @@ export default function Members() {
           <UserAvatar user={row.original} size="sm" />
           <div>
             <div className="font-medium">{row.original.name}</div>
-            <div className="text-sm text-muted-foreground">{row.original.email}</div>
+            <div className="text-sm text-muted-foreground">
+              {row.original.email}
+            </div>
           </div>
         </div>
       ),
@@ -228,10 +331,14 @@ export default function Members() {
           member: "secondary",
           leader: "default",
           officer: "outline",
+          admin: "primary", // Added admin role color
         };
         return (
-          <Badge variant={roleColors[row.original.role]}>
-            {row.original.role}
+          <Badge
+            variant={roleColors[row.original.role] || "secondary"}
+            className="capitalize"
+          >
+            <Shield className="h-3 w-3 mr-1" /> {row.original.role}
           </Badge>
         );
       },
@@ -246,8 +353,11 @@ export default function Members() {
           suspended: "destructive",
         };
         return (
-          <Badge variant={statusColors[row.original.status]}>
-            {row.original.status}
+          <Badge
+            variant={statusColors[row.original.status] || "secondary"}
+            className="capitalize"
+          >
+            <Activity className="h-3 w-3 mr-1" /> {row.original.status}
           </Badge>
         );
       },
@@ -264,18 +374,27 @@ export default function Members() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => openEditDialog(row.original)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
+            {/* Edit button only for admin/officer */}
+            {(currentUser?.role === "admin" ||
+              currentUser?.role === "officer") && (
+              <DropdownMenuItem onClick={() => openEditDialog(row.original)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => handleDeleteClick(row.original._id || row.original.id)}
-              className="text-red-600"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
+            {/* Delete button only for admin */}
+            {currentUser?.role === "admin" && (
+              <DropdownMenuItem
+                onClick={() =>
+                  handleDeleteClick(row.original._id || row.original.id)
+                }
+                className="text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -283,23 +402,36 @@ export default function Members() {
   ];
 
   return (
-    <div>
-      <PageHeader
-        title="Member Management"
-        description="Manage your microfinance group members and track their activities"
-        action={
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            {/* DialogTrigger for Add/Edit Member */}
+    <PageLayout
+      title="Member Management"
+      action={
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          {/* DialogTrigger for Add/Edit Member */}
+          {/* Only admin/officer can add members */}
+          {(currentUser?.role === "admin" ||
+            currentUser?.role === "officer") && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => {
-                  setEditingMember(null); // Ensure form is for new member
-                  form.reset(memberSchema.parse({})); // Reset form to default values
-                }}>
+                <Button
+                  onClick={() => {
+                    setEditingMember(null); // Ensure form is for new member
+                    form.reset(
+                      memberSchema.parse({
+                        // Reset form to default values
+                        name: "",
+                        email: "",
+                        phone: "",
+                        address: "",
+                        role: "member",
+                        status: "active",
+                      })
+                    );
+                  }}
+                >
                   <UserPlus className="h-4 w-4 mr-2" />
                   Add Member
                 </Button>
@@ -312,8 +444,7 @@ export default function Members() {
                   <DialogDescription>
                     {editingMember
                       ? "Update member information below."
-                      : "Fill in the details to add a new member."
-                    }
+                      : "Fill in the details to add a new member."}
                   </DialogDescription>
                 </DialogHeader>
                 {/* MemberForm component is rendered here */}
@@ -326,13 +457,14 @@ export default function Members() {
                     form.reset(); // Reset form on cancel
                   }}
                   loading={submitting}
+                  form={form} // Pass the useForm instance to MemberForm
                 />
               </DialogContent>
             </Dialog>
-          </div>
-        }
-      />
-
+          )}
+        </div>
+      }
+    >
       {/* Member Statistics */}
       <StatsGrid>
         <StatsCard
@@ -347,8 +479,8 @@ export default function Members() {
           value={activeMembers}
           description="Currently active"
           icon={UserCheck}
-          trend={{ value: 8, isPositive: true }}
           className="border-green-200 bg-green-50/50"
+          trend={{ value: 8, isPositive: true }}
         />
         <StatsCard
           title="Leaders"
@@ -376,117 +508,77 @@ export default function Members() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Users className="h-5 w-5 mr-2 text-blue-600" />
-                All Members
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* DataTable is a custom component, ensure it's available */}
-              <DataTable
-                columns={columns}
-                data={members}
-                searchKey="name"
-                searchPlaceholder="Search members..."
-              />
-            </CardContent>
-          </Card>
+          <ContentCard isLoading={loading} title="All Members">
+            <DataTable
+              columns={columns}
+              data={members}
+              searchKey="name"
+              searchPlaceholder="Search members..."
+            />
+          </ContentCard>
         </TabsContent>
 
         <TabsContent value="active" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CheckCircle2 className="h-5 w-5 mr-2 text-green-600" />
-                Active Members
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                columns={columns}
-                data={members.filter(m => m.status === 'active')}
-                searchKey="name"
-                searchPlaceholder="Search active members..."
-              />
-            </CardContent>
-          </Card>
+          <ContentCard isLoading={loading} title="Active Members">
+            <DataTable
+              columns={columns}
+              data={members.filter((m) => m.status === "active")}
+              searchKey="name"
+              searchPlaceholder="Search active members..."
+            />
+          </ContentCard>
         </TabsContent>
 
         <TabsContent value="leaders" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Shield className="h-5 w-5 mr-2 text-purple-600" />
-                Group Leaders
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                columns={columns}
-                data={members.filter(m => m.role === 'leader' || m.role === 'officer')}
-                searchKey="name"
-                searchPlaceholder="Search leaders..."
-              />
-            </CardContent>
-          </Card>
+          <ContentCard isLoading={loading} title="Group Leaders">
+            <DataTable
+              columns={columns}
+              data={members.filter(
+                (m) => m.role === "leader" || m.role === "officer"
+              )}
+              searchKey="name"
+              searchPlaceholder="Search leaders..."
+            />
+          </ContentCard>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
-                  Member Growth
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Member growth analytics coming soon...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ContentCard isLoading={loading} title="Member Growth">
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Member growth analytics coming soon...</p>
+              </div>
+            </ContentCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Target className="h-5 w-5 mr-2 text-blue-600" />
-                  Member Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Activity tracking coming soon...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ContentCard isLoading={loading} title="Member Activity">
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Activity tracking coming soon...</p>
+              </div>
+            </ContentCard>
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* Confirmation Dialog for Delete */}
-      <Dialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this member? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelDelete}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete}>
+      {/* Confirmation Dialog for Delete - Changed to AlertDialog */}
+      <AlertDialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this member? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
               Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageLayout>
   );
 }
