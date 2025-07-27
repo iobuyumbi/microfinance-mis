@@ -16,19 +16,24 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
+  DialogFooter, // Correct import for Dialog
   AlertDialog, // Import AlertDialog for delete confirmation
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
+  AlertDialogFooter, // Correct import for AlertDialog
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
   Badge, // Import Badge for role/status display
 } from "@/components/ui"; // Correct path for Shadcn UI components
-import { PageLayout, PageSection, StatsGrid, ContentCard } from '@/components/layouts/PageLayout';
+import {
+  PageLayout,
+  PageSection,
+  StatsGrid,
+  ContentCard,
+} from "@/components/layouts/PageLayout";
 import { toast } from "sonner"; // For toast notifications
 
 // Import Lucide React Icons
@@ -53,13 +58,19 @@ import {
 import UserForm from "@/components/custom/UserForm"; // Adjust path as necessary
 
 export default function Users() {
-  const { user: currentUser, isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    user: currentUser,
+    isAuthenticated,
+    loading: authLoading,
+  } = useAuth();
   // Assuming only admin/officer can manage users
-  const canManageUsers = currentUser && (currentUser.role === 'admin' || currentUser.role === 'officer');
+  const canManageUsers =
+    currentUser &&
+    (currentUser.role === "admin" || currentUser.role === "officer");
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true); // Loading state for users data
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false); // Controls add/edit dialog
   const [editingUser, setEditingUser] = useState(null);
   const [submitting, setSubmitting] = useState(false); // For form submission loading state
@@ -69,12 +80,18 @@ export default function Users() {
   // Memoize fetchUsers to prevent unnecessary re-renders and re-fetches
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const data = await userService.getAll();
-      setUsers(Array.isArray(data) ? data : (data.users && Array.isArray(data.users) ? data.users : []));
+      setUsers(
+        Array.isArray(data)
+          ? data
+          : data.users && Array.isArray(data.users)
+            ? data.users
+            : []
+      );
     } catch (err) {
-      const errorMessage = err.message || 'Failed to load users';
+      const errorMessage = err.message || "Failed to load users";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -89,7 +106,7 @@ export default function Users() {
         fetchUsers();
       } else {
         setLoading(false);
-        setError('Access Denied: You do not have permission to view users.');
+        setError("Access Denied: You do not have permission to view users.");
       }
     }
   }, [isAuthenticated, authLoading, canManageUsers, fetchUsers]);
@@ -98,11 +115,12 @@ export default function Users() {
     setSubmitting(true);
     try {
       await userService.create(formData);
-      toast.success('User created successfully.');
+      toast.success("User created successfully.");
       setShowForm(false);
       fetchUsers(); // Re-fetch users to update the list
     } catch (err) {
-      const errorMessage = err.message || err.response?.data?.message || 'Failed to create user';
+      const errorMessage =
+        err.message || err.response?.data?.message || "Failed to create user";
       toast.error(errorMessage);
       throw new Error(errorMessage); // Re-throw to allow UserForm to catch and display its own error
     } finally {
@@ -114,12 +132,13 @@ export default function Users() {
     setSubmitting(true);
     try {
       await userService.update(editingUser._id || editingUser.id, formData);
-      toast.success('User updated successfully.');
+      toast.success("User updated successfully.");
       setShowForm(false);
       setEditingUser(null);
       fetchUsers(); // Re-fetch users to update the list
     } catch (err) {
-      const errorMessage = err.message || err.response?.data?.message || 'Failed to update user';
+      const errorMessage =
+        err.message || err.response?.data?.message || "Failed to update user";
       toast.error(errorMessage);
       throw new Error(errorMessage); // Re-throw to allow UserForm to catch and display its own error
     } finally {
@@ -138,10 +157,12 @@ export default function Users() {
 
     try {
       await userService.remove(deletingUserId);
-      toast.success('User deleted successfully.');
+      toast.success("User deleted successfully.");
       fetchUsers(); // Re-fetch users to update the list
     } catch (err) {
-      toast.error(err.message || err.response?.data?.message || 'Failed to delete user');
+      toast.error(
+        err.message || err.response?.data?.message || "Failed to delete user"
+      );
     } finally {
       setDeletingUserId(null);
     }
@@ -159,20 +180,21 @@ export default function Users() {
 
   // Calculate user statistics
   const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.status === 'active').length;
-  const inactiveUsers = users.filter(u => u.status === 'inactive').length;
-  const suspendedUsers = users.filter(u => u.status === 'suspended').length;
-  const adminUsers = users.filter(u => u.role === 'admin').length;
-  const officerUsers = users.filter(u => u.role === 'officer').length;
-  const memberUsers = users.filter(u => u.role === 'member').length;
-  const leaderUsers = users.filter(u => u.role === 'leader').length;
-
+  const activeUsers = users.filter((u) => u.status === "active").length;
+  const inactiveUsers = users.filter((u) => u.status === "inactive").length;
+  const suspendedUsers = users.filter((u) => u.status === "suspended").length;
+  const adminUsers = users.filter((u) => u.role === "admin").length;
+  const officerUsers = users.filter((u) => u.role === "officer").length;
+  const memberUsers = users.filter((u) => u.role === "member").length;
+  const leaderUsers = users.filter((u) => u.role === "leader").length;
 
   // Render loading and access denied states
   if (authLoading) {
     return (
       <PageLayout title="User Management">
-        <div className="p-6 text-center text-muted-foreground">Checking authentication and permissions...</div>
+        <div className="p-6 text-center text-muted-foreground">
+          Checking authentication and permissions...
+        </div>
       </PageLayout>
     );
   }
@@ -192,7 +214,9 @@ export default function Users() {
   if (loading && users.length === 0) {
     return (
       <PageLayout title="User Management">
-        <div className="p-6 text-center text-muted-foreground">Loading users...</div>
+        <div className="p-6 text-center text-muted-foreground">
+          Loading users...
+        </div>
       </PageLayout>
     );
   }
@@ -258,10 +282,18 @@ export default function Users() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="flex items-center"><UserOutline className="h-4 w-4 mr-2" /> Name</TableHead>
-                <TableHead className="flex items-center"><Mail className="h-4 w-4 mr-2" /> Email</TableHead>
-                <TableHead className="flex items-center"><Shield className="h-4 w-4 mr-2" /> Role</TableHead>
-                <TableHead className="flex items-center"><Activity className="h-4 w-4 mr-2" /> Status</TableHead>
+                <TableHead className="flex items-center">
+                  <UserOutline className="h-4 w-4 mr-2" /> Name
+                </TableHead>
+                <TableHead className="flex items-center">
+                  <Mail className="h-4 w-4 mr-2" /> Email
+                </TableHead>
+                <TableHead className="flex items-center">
+                  <Shield className="h-4 w-4 mr-2" /> Role
+                </TableHead>
+                <TableHead className="flex items-center">
+                  <Activity className="h-4 w-4 mr-2" /> Status
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -270,23 +302,41 @@ export default function Users() {
                 // Skeleton rows for loading state
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
-                    <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
-                    <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                    <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
-                    <TableCell className="text-right"><div className="h-4 bg-muted rounded w-1/2 ml-auto"></div></TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/3"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/4"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/4"></div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="h-4 bg-muted rounded w-1/2 ml-auto"></div>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-4 text-muted-foreground"
+                  >
                     No users found.
                   </TableCell>
                 </TableRow>
               ) : (
                 users.map((u) => (
                   <TableRow key={u.id || u._id}>
-                    <TableCell className="font-medium">{u.name || "-"}</TableCell>
+                    <TableCell className="font-medium">
+                      {u.name || "-"}
+                    </TableCell>
                     <TableCell>{u.email || "-"}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
@@ -294,16 +344,25 @@ export default function Users() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={`capitalize ${
-                        u.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                        u.status === 'inactive' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                        'bg-red-100 text-red-800 hover:bg-red-200'
-                      }`}>
+                      <Badge
+                        className={`capitalize ${
+                          u.status === "active"
+                            ? "bg-green-100 text-green-800 hover:bg-green-200"
+                            : u.status === "inactive"
+                              ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                              : "bg-red-100 text-red-800 hover:bg-red-200"
+                        }`}
+                      >
                         {u.status || "-"}
                       </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openEditModal(u)} className="p-0 h-auto mr-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditModal(u)}
+                        className="p-0 h-auto mr-2"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -312,17 +371,29 @@ export default function Users() {
                             variant="ghost"
                             size="sm"
                             className="text-red-600 hover:text-red-800"
+                            onClick={() => handleDeleteClick(u._id || u.id)} // Set ID on trigger click
                             disabled={deletingUserId === (u.id || u._id)}
                           >
-                            {deletingUserId === (u.id || u._id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            {deletingUserId === (u.id || u._id) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the user
-                              <span className="font-semibold"> {u.name || u.email}</span>.
+                              This action cannot be undone. This will
+                              permanently delete the user
+                              <span className="font-semibold">
+                                {" "}
+                                {u.name || u.email}
+                              </span>
+                              .
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -346,7 +417,7 @@ export default function Users() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingUser ? 'Edit User' : 'New User'}</DialogTitle>
+            <DialogTitle>{editingUser ? "Edit User" : "New User"}</DialogTitle>
           </DialogHeader>
           <UserForm
             initialValues={editingUser || {}}
@@ -357,7 +428,8 @@ export default function Users() {
             }}
             loading={submitting}
           />
-        </DialogContent>
+        </DialogContent>{" "}
+        {/* DialogContent closing tag was missing in some contexts, ensuring it's here */}
       </Dialog>
 
       {/* Confirmation Dialog for Delete User */}
@@ -366,7 +438,8 @@ export default function Users() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user.
+              This action cannot be undone. This will permanently delete the
+              user.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -374,7 +447,7 @@ export default function Users() {
             <AlertDialogAction onClick={() => confirmDelete()}>
               Delete
             </AlertDialogAction>
-          </DialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </PageLayout>
