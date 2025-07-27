@@ -1,41 +1,41 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Please provide your name"],
+      required: [true, 'Please provide your name'],
       trim: true,
-      maxlength: [50, "Name cannot be more than 50 characters"],
+      maxlength: [50, 'Name cannot be more than 50 characters'],
     },
     email: {
       type: String,
-      required: [true, "Please provide your email"],
+      required: [true, 'Please provide your email'],
       unique: true,
       match: [
         /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        "Please provide a valid email",
+        'Please provide a valid email',
       ],
     },
     phone: { type: String },
     nationalID: { type: String },
-    gender: { type: String, enum: ["male", "female", "other"] },
+    gender: { type: String, enum: ['male', 'female', 'other'] },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
-      minlength: [6, "Password must be at least 6 characters"],
+      required: [true, 'Please provide a password'],
+      minlength: [6, 'Password must be at least 6 characters'],
     },
     role: {
       type: String,
-      enum: ["admin", "officer", "leader"],
-      default: "leader",
+      enum: ['admin', 'officer', 'leader', 'member'],
+      default: 'member', // Default to member, admin/officer/leader roles assigned by admin
     },
     status: {
       type: String,
-      enum: ["active", "suspended"],
-      default: "active",
+      enum: ['active', 'suspended'],
+      default: 'active',
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
@@ -46,8 +46,8 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
@@ -60,13 +60,13 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Generate password reset token
 userSchema.methods.generatePasswordResetToken = function () {
-  const resetToken = crypto.randomBytes(20).toString("hex");
+  const resetToken = crypto.randomBytes(20).toString('hex');
   this.resetPasswordToken = crypto
-    .createHash("sha256")
+    .createHash('sha256')
     .update(resetToken)
-    .digest("hex");
+    .digest('hex');
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
   return resetToken;
 };
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);
