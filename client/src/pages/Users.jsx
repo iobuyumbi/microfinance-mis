@@ -52,10 +52,12 @@ import {
   TrendingUp, // For stats
 } from "lucide-react";
 
-// Assuming UserForm is a custom component that handles form logic
-// and takes initialValues, onSubmit, onCancel, and loading props.
-// It should also handle its own internal validation and error display.
-import UserForm from "@/components/custom/UserForm"; // Adjust path as necessary
+// Import modular components
+import UserForm from "@/components/custom/UserForm";
+import UserStats from "@/components/custom/UserStats";
+import UserTable from "@/components/custom/UserTable";
+import UserFormDialog from "@/components/custom/UserFormDialog";
+import UserDeleteConfirmationDialog from "@/components/custom/UserDeleteConfirmationDialog";
 
 export default function Users() {
   const {
@@ -74,8 +76,9 @@ export default function Users() {
   const [showForm, setShowForm] = useState(false); // Controls add/edit dialog
   const [editingUser, setEditingUser] = useState(null);
   const [submitting, setSubmitting] = useState(false); // For form submission loading state
-  const [deletingUserId, setDeletingUserId] = useState(null); // State for delete user confirmation
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false); // State for delete user dialog
+  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
   // Memoize fetchUsers to prevent unnecessary re-renders and re-fetches
   const fetchUsers = useCallback(async () => {
@@ -146,25 +149,28 @@ export default function Users() {
     }
   };
 
-  const handleDeleteClick = (id) => {
-    setDeletingUserId(id);
+  const handleDeleteClick = (userId) => {
+    const user = users.find((u) => (u._id || u.id) === userId);
+    setUserToDelete(user);
+    setDeletingUserId(userId);
     setShowConfirmDelete(true);
   };
 
   const confirmDelete = async () => {
-    setShowConfirmDelete(false); // Close dialog first
+    setShowConfirmDelete(false);
     if (!deletingUserId) return;
 
     try {
       await userService.remove(deletingUserId);
       toast.success("User deleted successfully.");
-      fetchUsers(); // Re-fetch users to update the list
+      fetchUsers();
     } catch (err) {
       toast.error(
         err.message || err.response?.data?.message || "Failed to delete user"
       );
     } finally {
       setDeletingUserId(null);
+      setUserToDelete(null);
     }
   };
 
@@ -177,16 +183,6 @@ export default function Users() {
     setEditingUser(user);
     setShowForm(true);
   };
-
-  // Calculate user statistics
-  const totalUsers = users.length;
-  const activeUsers = users.filter((u) => u.status === "active").length;
-  const inactiveUsers = users.filter((u) => u.status === "inactive").length;
-  const suspendedUsers = users.filter((u) => u.status === "suspended").length;
-  const adminUsers = users.filter((u) => u.role === "admin").length;
-  const officerUsers = users.filter((u) => u.role === "officer").length;
-  const memberUsers = users.filter((u) => u.role === "member").length;
-  const leaderUsers = users.filter((u) => u.role === "leader").length;
 
   // Render loading and access denied states
   if (authLoading) {
@@ -241,215 +237,43 @@ export default function Users() {
     >
       {/* Statistics Section */}
       <PageSection title="Overview">
-        <StatsGrid cols={4}>
-          <StatsCard
-            title="Total Users"
-            value={totalUsers}
-            description="All registered users"
-            icon={UsersIcon}
-            trend={{ value: 5, isPositive: true }} // Example trend
-          />
-          <StatsCard
-            title="Active Users"
-            value={activeUsers}
-            description="Currently active users"
-            icon={UserCheck}
-            className="border-green-200 bg-green-50/50"
-            trend={{ value: 3, isPositive: true }} // Example trend
-          />
-          <StatsCard
-            title="Admins & Officers"
-            value={adminUsers + officerUsers}
-            description="Staff users"
-            icon={Shield}
-            className="border-blue-200 bg-blue-50/50"
-            trend={{ value: 1, isPositive: true }} // Example trend
-          />
-          <StatsCard
-            title="Suspended Users"
-            value={suspendedUsers}
-            description="Users with suspended accounts"
-            icon={UserX}
-            className="border-red-200 bg-red-50/50"
-            trend={{ value: 0, isPositive: true }} // Example trend
-          />
-        </StatsGrid>
+        <UserStats users={users} />
       </PageSection>
 
       {/* Users Table Section */}
       <PageSection title="All Users">
         <ContentCard isLoading={loading}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="flex items-center">
-                  <UserOutline className="h-4 w-4 mr-2" /> Name
-                </TableHead>
-                <TableHead className="flex items-center">
-                  <Mail className="h-4 w-4 mr-2" /> Email
-                </TableHead>
-                <TableHead className="flex items-center">
-                  <Shield className="h-4 w-4 mr-2" /> Role
-                </TableHead>
-                <TableHead className="flex items-center">
-                  <Activity className="h-4 w-4 mr-2" /> Status
-                </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                // Skeleton rows for loading state
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <div className="h-4 bg-muted rounded w-3/4"></div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 bg-muted rounded w-1/2"></div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 bg-muted rounded w-1/3"></div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 bg-muted rounded w-1/4"></div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 bg-muted rounded w-1/4"></div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="h-4 bg-muted rounded w-1/2 ml-auto"></div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : users.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center py-4 text-muted-foreground"
-                  >
-                    No users found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                users.map((u) => (
-                  <TableRow key={u.id || u._id}>
-                    <TableCell className="font-medium">
-                      {u.name || "-"}
-                    </TableCell>
-                    <TableCell>{u.email || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="capitalize">
-                        {u.role || "-"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`capitalize ${
-                          u.status === "active"
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : u.status === "inactive"
-                              ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                              : "bg-red-100 text-red-800 hover:bg-red-200"
-                        }`}
-                      >
-                        {u.status || "-"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditModal(u)}
-                        className="p-0 h-auto mr-2"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-800"
-                            onClick={() => handleDeleteClick(u._id || u.id)} // Set ID on trigger click
-                            disabled={deletingUserId === (u.id || u._id)}
-                          >
-                            {deletingUserId === (u.id || u._id) ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Are you absolutely sure?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will
-                              permanently delete the user
-                              <span className="font-semibold">
-                                {" "}
-                                {u.name || u.email}
-                              </span>
-                              .
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => confirmDelete()}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <UserTable
+            users={users}
+            loading={loading}
+            onEdit={openEditModal}
+            onDelete={handleDeleteClick}
+            deletingUserId={deletingUserId}
+          />
         </ContentCard>
       </PageSection>
 
       {/* New/Edit User Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingUser ? "Edit User" : "New User"}</DialogTitle>
-          </DialogHeader>
-          <UserForm
-            initialValues={editingUser || {}}
-            onSubmit={editingUser ? handleEdit : handleCreate}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingUser(null);
-            }}
-            loading={submitting}
-          />
-        </DialogContent>{" "}
-        {/* DialogContent closing tag was missing in some contexts, ensuring it's here */}
-      </Dialog>
+      <UserFormDialog
+        open={showForm}
+        onOpenChange={setShowForm}
+        editingUser={editingUser}
+        onSubmit={editingUser ? handleEdit : handleCreate}
+        onCancel={() => {
+          setShowForm(false);
+          setEditingUser(null);
+        }}
+        loading={submitting}
+      />
 
       {/* Confirmation Dialog for Delete User */}
-      <AlertDialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              user.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmDelete()}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <UserDeleteConfirmationDialog
+        open={showConfirmDelete}
+        onOpenChange={setShowConfirmDelete}
+        user={userToDelete}
+        onConfirm={confirmDelete}
+        loading={!!deletingUserId}
+      />
     </PageLayout>
   );
 }
