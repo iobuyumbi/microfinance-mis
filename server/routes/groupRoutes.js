@@ -17,11 +17,20 @@ const {
 const chatController = require('../controllers/chatController');
 
 // Group routes - all protected
-// router.use(protect); // <--- TEMPORARILY COMMENTED OUT FOR DEBUGGING
+router.use(protect); // Enable authentication
+
+// Test endpoint to check authentication
+router.get('/test-auth', (req, res) => {
+  res.json({
+    success: true,
+    user: req.user,
+    message: 'Authentication test',
+  });
+});
 
 router
   .route('/')
-  .post(validateRequiredFields(['name']), createGroup)
+  .post(createGroup) // Temporarily remove validation to debug
   .get(getAllGroups); // This route is now protected again by router.use(protect)
 
 router

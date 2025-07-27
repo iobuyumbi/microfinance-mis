@@ -1,21 +1,42 @@
 const Group = require('../models/Group');
 const User = require('../models/User');
 
-// Create a new group - temporarily accessible without auth for debugging
+// Create a new group
 exports.createGroup = async (req, res, next) => {
   try {
-    const { name, members } = req.body;
+    console.log('createGroup called with body:', req.body);
+    console.log('req.user:', req.user);
+
+    // Ensure user is authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required to create a group',
+      });
+    }
+
+    const { name, location, meetingFrequency, members, createdBy } = req.body;
+
+    // Use createdBy from request body if provided, otherwise use authenticated user
+    const creatorId = createdBy || req.user._id;
+
+    console.log('creatorId:', creatorId);
 
     const group = new Group({
       name,
-      createdBy: req.user ? req.user._id : null,
-      members: members && members.length > 0 ? members : (req.user ? [req.user._id] : []),
+      location,
+      meetingFrequency,
+      createdBy: creatorId,
+      members: members && members.length > 0 ? members : [creatorId], // Add creator as first member
     });
+
+    console.log('Group object before save:', group);
 
     await group.save();
 
     res.status(201).json({ success: true, data: group });
   } catch (error) {
+    console.error('Error in createGroup:', error);
     next(error);
   }
 };
@@ -33,7 +54,9 @@ exports.getAllGroups = async (req, res, next) => {
       );
 
       if (req.user.role !== 'admin' && req.user.role !== 'officer') {
-        return res.status(403).json({ success: false, message: 'Access denied' });
+        return res
+          .status(403)
+          .json({ success: false, message: 'Access denied' });
       }
     } else {
       console.log('No authentication - allowing access for debugging');
@@ -92,6 +115,9 @@ exports.updateGroup = async (req, res, next) => {
     }
 
     group.name = req.body.name || group.name;
+    group.location = req.body.location || group.location;
+    group.meetingFrequency =
+      req.body.meetingFrequency || group.meetingFrequency;
     await group.save();
 
     res
@@ -201,6 +227,24 @@ exports.removeMember = async (req, res, next) => {
     res
       .status(200)
       .json({ success: true, message: 'Member removed', data: group });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get groups for a specific user
+exports.getUserGroups = async (req, res, next) => {
+  try {
+    const userId = req.params.userId;
+
+    // Find groups where the user is a member or creator
+    const groups = await Group.find({
+      $or: [{ members: userId }, { createdBy: userId }],
+    })
+      .populate('members', 'name email')
+      .populate('createdBy', 'name email');
+
+    res.status(200).json({ success: true, data: groups });
   } catch (error) {
     next(error);
   }
