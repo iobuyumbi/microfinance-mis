@@ -1,173 +1,382 @@
-import { useEffect, useState } from "react";
-import { userService } from "../services/userService";
-import UserForm from "../../components/custom/UserForm";
+// src/pages/Users.jsx
+import React, { useState, useEffect, useCallback } from "react";
+import { userService } from "@/services/userService"; // Assuming this path is correct
+import { useAuth } from "@/context/AuthContext"; // Import useAuth for authentication and roles
+
+// Shadcn UI Components
+import {
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  AlertDialog, // Import AlertDialog for delete confirmation
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Badge, // Import Badge for role/status display
+} from "@/components/ui"; // Correct path for Shadcn UI components
+import { PageLayout, PageSection, StatsGrid, ContentCard } from '@/components/layouts/PageLayout';
+import { toast } from "sonner"; // For toast notifications
+
+// Import Lucide React Icons
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Users as UsersIcon, // Renamed to avoid conflict with component name
+  User as UserOutline, // For individual user
+  Mail, // For email
+  Shield, // For role
+  Loader2, // For loading spinners
+  UserCheck, // For active users
+  UserX, // For inactive users
+  UserMinus, // For suspended users
+  TrendingUp, // For stats
+} from "lucide-react";
+
+// Assuming UserForm is a custom component that handles form logic
+// and takes initialValues, onSubmit, onCancel, and loading props.
+// It should also handle its own internal validation and error display.
+import UserForm from "@/components/custom/UserForm"; // Adjust path as necessary
 
 export default function Users() {
+  const { user: currentUser, isAuthenticated, loading: authLoading } = useAuth();
+  // Assuming only admin/officer can manage users
+  const canManageUsers = currentUser && (currentUser.role === 'admin' || currentUser.role === 'officer');
+
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [formLoading, setFormLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Loading state for users data
+  const [error, setError] = useState('');
+  const [showForm, setShowForm] = useState(false); // Controls add/edit dialog
   const [editingUser, setEditingUser] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false); // For form submission loading state
+  const [deletingUserId, setDeletingUserId] = useState(null); // State for delete user confirmation
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false); // State for delete user dialog
 
-  const fetchUsers = () => {
+  // Memoize fetchUsers to prevent unnecessary re-renders and re-fetches
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
-    userService
-      .getAll()
-      .then((data) => setUsers(data.users || data || []))
-      .catch((err) =>
-        setError(err.response?.data?.message || "Failed to load users")
-      )
-      .finally(() => setLoading(false));
-  };
+    setError('');
+    try {
+      const data = await userService.getAll();
+      setUsers(Array.isArray(data) ? data : (data.users && Array.isArray(data.users) ? data.users : []));
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to load users';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // No dependencies as it fetches all users
 
+  // Initial fetch on component mount and when auth status changes
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!authLoading) {
+      if (isAuthenticated && canManageUsers) {
+        fetchUsers();
+      } else {
+        setLoading(false);
+        setError('Access Denied: You do not have permission to view users.');
+      }
+    }
+  }, [isAuthenticated, authLoading, canManageUsers, fetchUsers]);
 
-  const handleCreate = async (form) => {
-    setFormLoading(true);
+  const handleCreate = async (formData) => {
+    setSubmitting(true);
     try {
-      await userService.create(form);
-      setModalOpen(false);
-      fetchUsers();
+      await userService.create(formData);
+      toast.success('User created successfully.');
+      setShowForm(false);
+      fetchUsers(); // Re-fetch users to update the list
     } catch (err) {
-      throw new Error(err.response?.data?.message || "Failed to create user");
+      const errorMessage = err.message || err.response?.data?.message || 'Failed to create user';
+      toast.error(errorMessage);
+      throw new Error(errorMessage); // Re-throw to allow UserForm to catch and display its own error
     } finally {
-      setFormLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const handleEdit = async (form) => {
-    setFormLoading(true);
+  const handleEdit = async (formData) => {
+    setSubmitting(true);
     try {
-      await userService.update(editingUser.id || editingUser._id, form);
-      setModalOpen(false);
+      await userService.update(editingUser._id || editingUser.id, formData);
+      toast.success('User updated successfully.');
+      setShowForm(false);
       setEditingUser(null);
-      fetchUsers();
+      fetchUsers(); // Re-fetch users to update the list
     } catch (err) {
-      throw new Error(err.response?.data?.message || "Failed to update user");
+      const errorMessage = err.message || err.response?.data?.message || 'Failed to update user';
+      toast.error(errorMessage);
+      throw new Error(errorMessage); // Re-throw to allow UserForm to catch and display its own error
     } finally {
-      setFormLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-    setDeletingId(id);
+  const handleDeleteClick = (id) => {
+    setDeletingUserId(id);
+    setShowConfirmDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowConfirmDelete(false); // Close dialog first
+    if (!deletingUserId) return;
+
     try {
-      await userService.remove(id);
-      fetchUsers();
+      await userService.remove(deletingUserId);
+      toast.success('User deleted successfully.');
+      fetchUsers(); // Re-fetch users to update the list
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete user");
+      toast.error(err.message || err.response?.data?.message || 'Failed to delete user');
     } finally {
-      setDeletingId(null);
+      setDeletingUserId(null);
     }
   };
 
   const openCreateModal = () => {
     setEditingUser(null);
-    setModalOpen(true);
+    setShowForm(true);
   };
 
   const openEditModal = (user) => {
     setEditingUser(user);
-    setModalOpen(true);
+    setShowForm(true);
   };
 
-  if (loading) return <div>Loading users...</div>;
-  if (error) return <div className="text-red-500">{error}</div>;
+  // Calculate user statistics
+  const totalUsers = users.length;
+  const activeUsers = users.filter(u => u.status === 'active').length;
+  const inactiveUsers = users.filter(u => u.status === 'inactive').length;
+  const suspendedUsers = users.filter(u => u.status === 'suspended').length;
+  const adminUsers = users.filter(u => u.role === 'admin').length;
+  const officerUsers = users.filter(u => u.role === 'officer').length;
+  const memberUsers = users.filter(u => u.role === 'member').length;
+  const leaderUsers = users.filter(u => u.role === 'leader').length;
+
+
+  // Render loading and access denied states
+  if (authLoading) {
+    return (
+      <PageLayout title="User Management">
+        <div className="p-6 text-center text-muted-foreground">Checking authentication and permissions...</div>
+      </PageLayout>
+    );
+  }
+
+  if (!isAuthenticated || !canManageUsers) {
+    return (
+      <PageLayout title="User Management">
+        <div className="p-6 text-center text-red-500">
+          <UsersIcon className="h-10 w-10 mx-auto mb-4 text-red-400" />
+          Access Denied: You do not have permission to view or manage users.
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Once authenticated and authorized, proceed with data loading or error display for users
+  if (loading && users.length === 0) {
+    return (
+      <PageLayout title="User Management">
+        <div className="p-6 text-center text-muted-foreground">Loading users...</div>
+      </PageLayout>
+    );
+  }
+
+  if (error && users.length === 0) {
+    return (
+      <PageLayout title="User Management">
+        <div className="p-6 text-center text-red-500">{error}</div>
+      </PageLayout>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Users</h1>
-        <button
-          className="bg-primary text-primary-foreground px-4 py-2 rounded font-semibold hover:bg-primary/90 transition"
-          onClick={openCreateModal}
-        >
+    <PageLayout
+      title="User Management"
+      action={
+        <Button onClick={openCreateModal} disabled={loading}>
+          <Plus className="h-4 w-4 mr-2" />
           New User
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border text-sm">
-          <thead>
-            <tr>
-              <th className="px-4 py-2 border-b text-left">Name</th>
-              <th className="px-4 py-2 border-b text-left">Email</th>
-              <th className="px-4 py-2 border-b text-left">Role</th>
-              <th className="px-4 py-2 border-b text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="text-center py-4 text-muted-foreground"
-                >
-                  No users found.
-                </td>
-              </tr>
-            ) : (
-              users.map((u) => (
-                <tr key={u.id || u._id} className="border-b">
-                  <td className="px-4 py-2">{u.name || "-"}</td>
-                  <td className="px-4 py-2">{u.email || "-"}</td>
-                  <td className="px-4 py-2">{u.role || "-"}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      className="text-primary underline mr-2"
-                      onClick={() => openEditModal(u)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-destructive underline"
-                      onClick={() => handleDelete(u.id || u._id)}
-                      disabled={deletingId === (u.id || u._id)}
-                    >
-                      {deletingId === (u.id || u._id)
-                        ? "Deleting..."
-                        : "Delete"}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      {/* Modal for New/Edit User */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-card rounded shadow-lg p-6 w-full max-w-md relative">
-            <button
-              className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setModalOpen(false);
-                setEditingUser(null);
-              }}
-              aria-label="Close"
-            >
-              &times;
-            </button>
-            <h2 className="text-xl font-semibold mb-4">
-              {editingUser ? "Edit User" : "New User"}
-            </h2>
-            <UserForm
-              initialValues={editingUser || {}}
-              onSubmit={editingUser ? handleEdit : handleCreate}
-              onCancel={() => {
-                setModalOpen(false);
-                setEditingUser(null);
-              }}
-              loading={formLoading}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+        </Button>
+      }
+    >
+      {/* Statistics Section */}
+      <PageSection title="Overview">
+        <StatsGrid cols={4}>
+          <StatsCard
+            title="Total Users"
+            value={totalUsers}
+            description="All registered users"
+            icon={UsersIcon}
+            trend={{ value: 5, isPositive: true }} // Example trend
+          />
+          <StatsCard
+            title="Active Users"
+            value={activeUsers}
+            description="Currently active users"
+            icon={UserCheck}
+            className="border-green-200 bg-green-50/50"
+            trend={{ value: 3, isPositive: true }} // Example trend
+          />
+          <StatsCard
+            title="Admins & Officers"
+            value={adminUsers + officerUsers}
+            description="Staff users"
+            icon={Shield}
+            className="border-blue-200 bg-blue-50/50"
+            trend={{ value: 1, isPositive: true }} // Example trend
+          />
+          <StatsCard
+            title="Suspended Users"
+            value={suspendedUsers}
+            description="Users with suspended accounts"
+            icon={UserX}
+            className="border-red-200 bg-red-50/50"
+            trend={{ value: 0, isPositive: true }} // Example trend
+          />
+        </StatsGrid>
+      </PageSection>
+
+      {/* Users Table Section */}
+      <PageSection title="All Users">
+        <ContentCard isLoading={loading}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="flex items-center"><UserOutline className="h-4 w-4 mr-2" /> Name</TableHead>
+                <TableHead className="flex items-center"><Mail className="h-4 w-4 mr-2" /> Email</TableHead>
+                <TableHead className="flex items-center"><Shield className="h-4 w-4 mr-2" /> Role</TableHead>
+                <TableHead className="flex items-center"><Activity className="h-4 w-4 mr-2" /> Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                // Skeleton rows for loading state
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><div className="h-4 bg-muted rounded w-3/4"></div></TableCell>
+                    <TableCell><div className="h-4 bg-muted rounded w-1/2"></div></TableCell>
+                    <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
+                    <TableCell><div className="h-4 bg-muted rounded w-1/4"></div></TableCell>
+                    <TableCell className="text-right"><div className="h-4 bg-muted rounded w-1/2 ml-auto"></div></TableCell>
+                  </TableRow>
+                ))
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                    No users found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((u) => (
+                  <TableRow key={u.id || u._id}>
+                    <TableCell className="font-medium">{u.name || "-"}</TableCell>
+                    <TableCell>{u.email || "-"}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">
+                        {u.role || "-"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`capitalize ${
+                        u.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                        u.status === 'inactive' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                        'bg-red-100 text-red-800 hover:bg-red-200'
+                      }`}>
+                        {u.status || "-"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button variant="ghost" size="sm" onClick={() => openEditModal(u)} className="p-0 h-auto mr-2">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                            disabled={deletingUserId === (u.id || u._id)}
+                          >
+                            {deletingUserId === (u.id || u._id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the user
+                              <span className="font-semibold"> {u.name || u.email}</span>.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => confirmDelete()}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </ContentCard>
+      </PageSection>
+
+      {/* New/Edit User Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? 'Edit User' : 'New User'}</DialogTitle>
+          </DialogHeader>
+          <UserForm
+            initialValues={editingUser || {}}
+            onSubmit={editingUser ? handleEdit : handleCreate}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingUser(null);
+            }}
+            loading={submitting}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog for Delete User */}
+      <AlertDialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmDelete()}>
+              Delete
+            </AlertDialogAction>
+          </DialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageLayout>
   );
 }

@@ -1,6 +1,6 @@
 // src/pages/Transactions.jsx
-import React, { useState, useEffect } from 'react';
-import { transactionService } from '@/services/transactionService';
+import React, { useState, useEffect, useCallback } from "react";
+import { transactionService } from "@/services/transactionService";
 import {
   Button,
   Card,
@@ -25,92 +25,173 @@ import {
   DialogTitle,
   DialogFooter,
   Label,
-  Textarea
-} from '../components/ui';
-import { PageLayout, PageSection, StatsGrid, FiltersSection, ContentCard } from '@/components/layouts/PageLayout';
-import { toast } from 'sonner';
-import { useAuth } from '@/context/AuthContext';
+  Textarea,
+  AlertDialog, // Import AlertDialog for delete confirmation
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Badge, // Import Badge for status/category display
+} from "@/components/ui"; // Correct path for Shadcn UI components
+import {
+  PageLayout,
+  PageSection,
+  StatsGrid,
+  FiltersSection,
+  ContentCard,
+} from "@/components/layouts/PageLayout";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+
+// Import Lucide React Icons
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Download,
+  Filter,
+  Search,
+  DollarSign,
+  CheckCircle,
+  Hourglass,
+  XCircle,
+  Calendar,
+  Tag,
+  Hash,
+  User,
+  Info,
+  Loader2,
+} from "lucide-react";
+
+// Custom Components (assuming these are available)
+import { StatsCard } from "@/components/custom/StatsCard"; // Assuming StatsCard is available
 
 export default function Transactions() {
-  const { user, groups } = useAuth();
-  const isStaff = user && (user.role === 'admin' || user.role === 'officer');
-  const [selectedGroup, setSelectedGroup] = useState('');
+  const {
+    user: currentUser,
+    groups,
+    isAuthenticated,
+    loading: authLoading,
+  } = useAuth();
+  const isStaff =
+    currentUser &&
+    (currentUser.role === "admin" || currentUser.role === "officer");
+
+  const [selectedGroup, setSelectedGroup] = useState("");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    type: '',
-    member: '',
-    amount: '',
-    category: 'Deposit',
-    status: 'Pending',
-    reference: '',
-    description: ''
+    date: new Date().toISOString().split("T")[0],
+    type: "",
+    member: "", // This should ideally be a member ID, not just a string name
+    amount: "",
+    category: "Deposit",
+    status: "Pending",
+    reference: "",
+    description: "",
   });
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [submitting, setSubmitting] = useState(false); // For form submission loading state
+  const [deletingId, setDeletingId] = useState(null); // State for delete button loading
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false); // State for delete confirmation dialog
 
-  useEffect(() => {
-    if (groups.length > 0 && !selectedGroup) {
-      setSelectedGroup(groups[0]._id || groups[0].id);
-    }
-  }, [groups, selectedGroup]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  const fetchTransactions = async () => {
+  // Memoize fetchTransactions to prevent unnecessary re-renders and re-fetches
+  const fetchTransactions = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       let params = {};
-      if (!isStaff && groups.length > 0) {
-        params.group = groups.map(g => g._id || g.id);
+      if (!isStaff && isAuthenticated && groups.length > 0) {
+        params.group = groups.map((g) => g._id || g.id);
       } else if (isStaff && selectedGroup) {
         params.group = selectedGroup;
+      } else if (isStaff && groups.length > 0 && !selectedGroup) {
+        // Staff, no group selected, but groups exist: default to first group
+        setSelectedGroup(groups[0]._id || groups[0].id);
+        params.group = groups[0]._id || groups[0].id;
       }
+
       const data = await transactionService.getAll(params);
-      setTransactions(Array.isArray(data) ? data : []);
+      setTransactions(
+        Array.isArray(data)
+          ? data
+          : data.data && Array.isArray(data.data)
+            ? data.data
+            : []
+      );
     } catch (err) {
-      setError(err.message || 'Failed to load transactions');
-      toast.error(err.message || 'Failed to load transactions');
+      const errorMessage = err.message || "Failed to load transactions";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [isStaff, groups, selectedGroup, isAuthenticated]);
+
+  // Initial fetch on component mount and when auth status changes
+  useEffect(() => {
+    if (!authLoading) {
+      if (isAuthenticated) {
+        fetchTransactions();
+      } else {
+        setLoading(false);
+        setError("You must be logged in to view transactions.");
+      }
+    }
+  }, [isAuthenticated, authLoading, fetchTransactions]);
+
+  // Set initial selected group for staff if groups are loaded
+  useEffect(() => {
+    if (isStaff && groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0]._id || groups[0].id);
+    }
+  }, [groups, isStaff, selectedGroup]);
+
+  // Re-fetch transactions when selectedGroup changes for staff
+  useEffect(() => {
+    if (isStaff && selectedGroup) {
+      fetchTransactions();
+    }
+  }, [selectedGroup, isStaff, fetchTransactions]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       if (editingTransaction) {
-        await transactionService.update(editingTransaction._id || editingTransaction.id, formData);
-        toast.success('Transaction updated successfully.');
+        await transactionService.update(
+          editingTransaction._id || editingTransaction.id,
+          formData
+        );
+        toast.success("Transaction updated successfully.");
       } else {
         await transactionService.create(formData);
-        toast.success('Transaction created successfully.');
+        toast.success("Transaction created successfully.");
       }
       setShowForm(false);
       setEditingTransaction(null);
       setFormData({
-        date: new Date().toISOString().split('T')[0],
-        type: '',
-        member: '',
-        amount: '',
-        category: 'Deposit',
-        status: 'Pending',
-        reference: '',
-        description: ''
+        date: new Date().toISOString().split("T")[0],
+        type: "",
+        member: "",
+        amount: "",
+        category: "Deposit",
+        status: "Pending",
+        reference: "",
+        description: "",
       });
       fetchTransactions();
     } catch (err) {
-      toast.error(err.message || 'Operation failed.');
+      toast.error(err.message || "Operation failed.");
     } finally {
       setSubmitting(false);
     }
@@ -120,69 +201,155 @@ export default function Transactions() {
     setEditingTransaction(transaction);
     setFormData({
       ...transaction,
-      amount: transaction.amount.toString()
+      amount: transaction.amount.toString(),
+      date: transaction.date
+        ? new Date(transaction.date).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0], // Ensure date is formatted for input
     });
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+  const handleDeleteClick = (id) => {
+    setDeletingId(id);
+    setShowConfirmDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowConfirmDelete(false); // Close dialog first
+    if (!deletingId) return;
     try {
-      await transactionService.remove(id);
-      toast.success('Transaction deleted successfully.');
+      await transactionService.remove(deletingId);
+      toast.success("Transaction deleted successfully.");
       fetchTransactions();
     } catch (err) {
-      toast.error(err.message || 'Failed to delete transaction.');
+      toast.error(err.message || "Failed to delete transaction.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleStatusChange = async (id, newStatus) => {
+    // Optimistic update for better UX
+    const originalTransactions = [...transactions];
+    setTransactions((prev) =>
+      prev.map((t) =>
+        t._id === id || t.id === id ? { ...t, status: newStatus } : t
+      )
+    );
+
     try {
-      const transaction = transactions.find(t => t.id === id || t._id === id);
-      await transactionService.update(id, { ...transaction, status: newStatus });
-      toast.success('Transaction status updated.');
-      fetchTransactions();
+      const transaction = originalTransactions.find(
+        (t) => t.id === id || t._id === id
+      );
+      if (!transaction) throw new Error("Transaction not found.");
+      await transactionService.update(id, {
+        ...transaction,
+        status: newStatus,
+      });
+      toast.success("Transaction status updated.");
     } catch (err) {
-      toast.error(err.message || 'Failed to update status.');
+      toast.error(err.message || "Failed to update status.");
+      setTransactions(originalTransactions); // Revert on error
     }
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesStatus = filterStatus === 'All' || transaction.status === filterStatus;
-    const matchesCategory = filterCategory === 'All' || transaction.category === filterCategory;
-    const matchesSearch = transaction.member.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          transaction.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (transaction.description && transaction.description.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredTransactions = transactions.filter((transaction) => {
+    const matchesStatus =
+      filterStatus === "All" || transaction.status === filterStatus;
+    const matchesCategory =
+      filterCategory === "All" || transaction.category === filterCategory;
+    const matchesSearch =
+      transaction.member.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (transaction.description &&
+        transaction.description
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()));
     return matchesStatus && matchesCategory && matchesSearch;
   });
 
-  const totalAmount = filteredTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
-  const completedAmount = filteredTransactions.filter(t => t.status === 'Completed').reduce((sum, t) => sum + Number(t.amount), 0);
-  const pendingAmount = filteredTransactions.filter(t => t.status === 'Pending').reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalTransactionsCount = filteredTransactions.length;
+  const totalAmount = filteredTransactions.reduce(
+    (sum, t) => sum + Number(t.amount || 0),
+    0
+  );
+  const completedAmount = filteredTransactions
+    .filter((t) => t.status === "Completed")
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const pendingAmount = filteredTransactions
+    .filter((t) => t.status === "Pending")
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  if (loading) return <div className="p-6">Loading transactions...</div>;
-  if (error) return <div className="p-6 text-red-500">{error}</div>;
+  // Render loading and error states based on authentication and authorization
+  if (authLoading) {
+    return (
+      <PageLayout title="Transaction Management">
+        <div className="p-6 text-center text-muted-foreground">
+          Checking authentication and permissions...
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <PageLayout title="Transaction Management">
+        <div className="p-6 text-center text-red-500">
+          Access Denied: Please log in to view transactions.
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Once authenticated, proceed with data loading or error display for transactions
+  if (loading && transactions.length === 0) {
+    return (
+      <PageLayout title="Transaction Management">
+        <div className="p-6 text-center text-muted-foreground">
+          Loading transactions...
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (error && transactions.length === 0) {
+    return (
+      <PageLayout title="Transaction Management">
+        <div className="p-6 text-center text-red-500">{error}</div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout
       title="Transaction Management"
       action={
-        <Button onClick={() => setShowForm(true)}>
-          + New Transaction
+        <Button onClick={() => setShowForm(true)} disabled={loading}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Transaction
         </Button>
       }
       headerContent={
-        isStaff && (
-          <div className="w-64">
-            <Label htmlFor="group">Group</Label>
-            <Select value={selectedGroup} onValueChange={setSelectedGroup} id="group">
+        isStaff &&
+        groups.length > 0 && (
+          <div className="w-full md:w-64">
+            <Label htmlFor="group" className="mb-2 block">
+              Group
+            </Label>
+            <Select
+              value={selectedGroup}
+              onValueChange={setSelectedGroup}
+              id="group"
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select group" />
               </SelectTrigger>
               <SelectContent>
                 {groups.map((g) => (
-                  <SelectItem key={g._id || g.id} value={g._id || g.id}>{g.name}</SelectItem>
+                  <SelectItem key={g._id || g.id} value={g._id || g.id}>
+                    {g.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -193,46 +360,47 @@ export default function Transactions() {
       {/* Statistics Section */}
       <PageSection title="Overview">
         <StatsGrid cols={4}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Total Transactions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-gray-900">{filteredTransactions.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Total Amount</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-blue-600">${totalAmount.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Completed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600">${completedAmount.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Pending</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">${pendingAmount.toLocaleString()}</p>
-          </CardContent>
-        </Card>
+          <StatsCard
+            title="Total Transactions"
+            value={totalTransactionsCount}
+            description="All recorded transactions"
+            icon={Tag}
+            trend={{ value: 10, isPositive: true }} // Example trend
+          />
+          <StatsCard
+            title="Total Amount"
+            value={`$${totalAmount.toLocaleString()}`}
+            description="Sum of all transactions"
+            icon={DollarSign}
+            className="border-blue-200 bg-blue-50/50"
+            trend={{ value: 5000, isPositive: true, isCurrency: true }} // Example trend
+          />
+          <StatsCard
+            title="Completed Amount"
+            value={`$${completedAmount.toLocaleString()}`}
+            description="Successfully processed"
+            icon={CheckCircle}
+            className="border-green-200 bg-green-50/50"
+            trend={{ value: 3000, isPositive: true, isCurrency: true }} // Example trend
+          />
+          <StatsCard
+            title="Pending Amount"
+            value={`$${pendingAmount.toLocaleString()}`}
+            description="Awaiting completion"
+            icon={Hourglass}
+            className="border-yellow-200 bg-yellow-50/50"
+            trend={{ value: -500, isPositive: false, isCurrency: true }} // Example trend
+          />
         </StatsGrid>
       </PageSection>
 
       {/* Filters Section */}
       <PageSection title="Filters">
         <FiltersSection>
-          <div>
-            <Label htmlFor="search-term" className="mb-2">Search</Label>
+          <div className="flex-1">
+            <Label htmlFor="search-term" className="mb-2 flex items-center">
+              <Search className="h-4 w-4 mr-1" /> Search
+            </Label>
             <Input
               id="search-term"
               type="text"
@@ -241,8 +409,10 @@ export default function Transactions() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div>
-            <Label htmlFor="filter-status" className="mb-2">Status</Label>
+          <div className="flex-1">
+            <Label htmlFor="filter-status" className="mb-2 flex items-center">
+              <Filter className="h-4 w-4 mr-1" /> Status
+            </Label>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger id="filter-status">
                 <SelectValue placeholder="Select Status" />
@@ -255,8 +425,10 @@ export default function Transactions() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="filter-category" className="mb-2">Category</Label>
+          <div className="flex-1">
+            <Label htmlFor="filter-category" className="mb-2 flex items-center">
+              <Tag className="h-4 w-4 mr-1" /> Category
+            </Label>
             <Select value={filterCategory} onValueChange={setFilterCategory}>
               <SelectTrigger id="filter-category">
                 <SelectValue placeholder="Select Category" />
@@ -276,9 +448,9 @@ export default function Transactions() {
               variant="outline"
               className="w-full"
               onClick={() => {
-                setSearchTerm('');
-                setFilterStatus('All');
-                setFilterCategory('All');
+                setSearchTerm("");
+                setFilterStatus("All");
+                setFilterCategory("All");
               }}
             >
               Clear Filters
@@ -289,7 +461,7 @@ export default function Transactions() {
 
       {/* Transactions Table Section */}
       <PageSection title="Transactions">
-        <ContentCard>
+        <ContentCard isLoading={loading}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -300,57 +472,171 @@ export default function Transactions() {
                 <TableHead>Category</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTransactions.map((transaction) => (
-                <TableRow key={transaction.id || transaction._id}>
-                  <TableCell className="text-sm text-gray-500">{transaction.date}</TableCell>
-                  <TableCell className="font-medium">{transaction.reference}</TableCell>
-                  <TableCell className="text-sm text-gray-500">{transaction.type}</TableCell>
-                  <TableCell className="text-sm text-gray-500">{transaction.member}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      transaction.category === 'Deposit' ? 'bg-green-100 text-green-800' :
-                      transaction.category === 'Withdrawal' ? 'bg-red-100 text-red-800' :
-                      transaction.category === 'Repayment' ? 'bg-blue-100 text-blue-800' :
-                      transaction.category === 'Disbursement' ? 'bg-purple-100 text-purple-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {transaction.category}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">${Number(transaction.amount)?.toLocaleString()}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={transaction.status}
-                      onValueChange={(value) => handleStatusChange(transaction.id || transaction._id, value)}
-                    >
-                      <SelectTrigger className={`h-8 text-xs font-semibold rounded-full border-0 ${
-                        transaction.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                        transaction.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Failed">Failed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <Button variant="link" size="sm" onClick={() => handleEdit(transaction)} className="p-0 h-auto mr-2">
-                      Edit
-                    </Button>
-                    <Button variant="link" size="sm" onClick={() => handleDelete(transaction.id || transaction._id)} className="p-0 h-auto text-red-600 hover:text-red-800">
-                      Delete
-                    </Button>
+              {loading ? (
+                // Skeleton rows for loading state
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-3/4"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/3"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/2"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/4"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/3"></div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-4 bg-muted rounded w-1/4"></div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="h-4 bg-muted rounded w-1/2 ml-auto"></div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : filteredTransactions.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="text-center py-4 text-muted-foreground"
+                  >
+                    No transactions found matching your criteria.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredTransactions.map((transaction) => (
+                  <TableRow key={transaction.id || transaction._id}>
+                    <TableCell className="text-sm text-muted-foreground flex items-center">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {new Date(transaction.date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="font-medium flex items-center">
+                      <Hash className="h-4 w-4 mr-2 text-muted-foreground" />
+                      {transaction.reference}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {transaction.type}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      {transaction.member}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`capitalize ${
+                          transaction.category === "Deposit"
+                            ? "bg-green-100 text-green-800 hover:bg-green-200"
+                            : transaction.category === "Withdrawal"
+                              ? "bg-red-100 text-red-800 hover:bg-red-200"
+                              : transaction.category === "Repayment"
+                                ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                : transaction.category === "Disbursement"
+                                  ? "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                                  : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                        }`}
+                      >
+                        {transaction.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground flex items-center">
+                      <DollarSign className="h-4 w-4 mr-1" />
+                      {Number(transaction.amount)?.toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={transaction.status}
+                        onValueChange={(value) =>
+                          handleStatusChange(
+                            transaction.id || transaction._id,
+                            value
+                          )
+                        }
+                        disabled={!isStaff} // Only staff can change status
+                      >
+                        <SelectTrigger
+                          className={`h-8 text-xs font-semibold rounded-full border-0 capitalize ${
+                            transaction.status === "Completed"
+                              ? "bg-green-100 text-green-800"
+                              : transaction.status === "Pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Completed">Completed</SelectItem>
+                          <SelectItem value="Failed">Failed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(transaction)}
+                        className="p-0 h-auto mr-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                            disabled={
+                              deletingId === (transaction.id || transaction._id)
+                            }
+                          >
+                            {deletingId ===
+                            (transaction.id || transaction._id) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete the transaction with reference
+                              <span className="font-semibold">
+                                {" "}
+                                {transaction.reference}
+                              </span>
+                              .
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => confirmDelete()}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </ContentCard>
@@ -359,59 +645,89 @@ export default function Transactions() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</DialogTitle>
+            <DialogTitle>
+              {editingTransaction ? "Edit Transaction" : "New Transaction"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Date</Label>
+                <Label htmlFor="date" className="text-right">
+                  Date
+                </Label>
                 <Input
                   id="date"
                   type="date"
                   required
                   value={formData.date}
-                  onChange={(e) => setFormData({...formData, date: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, date: e.target.value })
+                  }
                   className="col-span-3"
+                  disabled={submitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="type" className="text-right">Transaction Type</Label>
+                <Label htmlFor="type" className="text-right">
+                  Transaction Type
+                </Label>
                 <Input
                   id="type"
                   type="text"
                   required
                   placeholder="e.g., Loan Payment, Savings Deposit"
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, type: e.target.value })
+                  }
                   className="col-span-3"
+                  disabled={submitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="member" className="text-right">Member</Label>
+                <Label htmlFor="member" className="text-right">
+                  Member
+                </Label>
                 <Input
                   id="member"
                   type="text"
                   required
                   value={formData.member}
-                  onChange={(e) => setFormData({...formData, member: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, member: e.target.value })
+                  }
                   className="col-span-3"
+                  disabled={submitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">Amount ($)</Label>
+                <Label htmlFor="amount" className="text-right">
+                  Amount ($)
+                </Label>
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
                   required
                   value={formData.amount}
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, amount: e.target.value })
+                  }
                   className="col-span-3"
+                  disabled={submitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">Category</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                <Label htmlFor="category" className="text-right">
+                  Category
+                </Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, category: value })
+                  }
+                  disabled={submitting}
+                >
                   <SelectTrigger id="category" className="col-span-3">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
@@ -425,8 +741,16 @@ export default function Transactions() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="status" className="text-right">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+                <Label htmlFor="status" className="text-right">
+                  Status
+                </Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, status: value })
+                  }
+                  disabled={submitting || !isStaff} // Only staff can change status in form
+                >
                   <SelectTrigger id="status" className="col-span-3">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
@@ -438,24 +762,34 @@ export default function Transactions() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="reference" className="text-right">Reference</Label>
+                <Label htmlFor="reference" className="text-right">
+                  Reference
+                </Label>
                 <Input
                   id="reference"
                   type="text"
                   placeholder="Auto-generated if empty"
                   value={formData.reference}
-                  onChange={(e) => setFormData({...formData, reference: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, reference: e.target.value })
+                  }
                   className="col-span-3"
+                  disabled={submitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">Description</Label>
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="col-span-3"
                   rows="3"
+                  disabled={submitting}
                 />
               </div>
             </div>
@@ -467,21 +801,25 @@ export default function Transactions() {
                   setShowForm(false);
                   setEditingTransaction(null);
                   setFormData({
-                    date: new Date().toISOString().split('T')[0],
-                    type: '',
-                    member: '',
-                    amount: '',
-                    category: 'Deposit',
-                    status: 'Pending',
-                    reference: '',
-                    description: ''
+                    date: new Date().toISOString().split("T")[0],
+                    type: "",
+                    member: "",
+                    amount: "",
+                    category: "Deposit",
+                    status: "Pending",
+                    reference: "",
+                    description: "",
                   });
                 }}
+                disabled={submitting}
               >
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {editingTransaction ? 'Update' : 'Create'} Transaction
+                {submitting && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {editingTransaction ? "Update" : "Create"} Transaction
               </Button>
             </DialogFooter>
           </form>
