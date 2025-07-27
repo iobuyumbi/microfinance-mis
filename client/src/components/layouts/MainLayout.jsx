@@ -40,18 +40,48 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"; // Assuming these custom sidebar components exist
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/groups", label: "Groups" },
-  { to: "/meetings", label: "Meetings" },
-  { to: "/chat", label: "Chat" },
-  { to: "/members", label: "Members" },
-  { to: "/loans", label: "Loans" },
-  { to: "/savings", label: "Savings" },
-  { to: "/transactions", label: "Transactions" },
-  { to: "/reports", label: "Reports" },
-  { to: "/notifications", label: "Notifications" },
-  { to: "/settings", label: "Settings" },
+// Define all possible navigation items with their required roles
+const allNavItems = [
+  {
+    to: "/dashboard",
+    label: "Dashboard",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  {
+    to: "/groups",
+    label: "Groups",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  { to: "/meetings", label: "Meetings", roles: ["admin", "officer", "leader"] },
+  {
+    to: "/chat",
+    label: "Chat",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  { to: "/members", label: "Members", roles: ["admin", "officer"] },
+  {
+    to: "/loans",
+    label: "Loans",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  {
+    to: "/savings",
+    label: "Savings",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  {
+    to: "/transactions",
+    label: "Transactions",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  { to: "/reports", label: "Reports", roles: ["admin", "officer"] },
+  {
+    to: "/notifications",
+    label: "Notifications",
+    roles: ["admin", "officer", "leader", "member"],
+  },
+  { to: "/settings", label: "Settings", roles: ["admin"] },
+  { to: "/users", label: "User Management", roles: ["admin"] },
 ];
 
 export default function MainLayout() {
@@ -93,18 +123,20 @@ export default function MainLayout() {
               Microfinance MIS
             </div>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location.pathname.startsWith(item.to)}
-                  >
-                    <Link to={item.to} className="w-full">
-                      {item.label}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {allNavItems
+                .filter((item) => user && item.roles.includes(user.role))
+                .map((item) => (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname.startsWith(item.to)}
+                    >
+                      <Link to={item.to} className="w-full">
+                        {item.label}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>
@@ -127,8 +159,10 @@ export default function MainLayout() {
                 <SidebarTrigger />
               </span>
               <span className="font-semibold text-lg">
-                {navItems.find((i) => location.pathname.startsWith(i.to))
-                  ?.label || "Dashboard"}
+                {allNavItems
+                  .filter((item) => user && item.roles.includes(user.role))
+                  .find((i) => location.pathname.startsWith(i.to))?.label ||
+                  "Dashboard"}
               </span>
             </div>
             <div className="flex items-center gap-4">

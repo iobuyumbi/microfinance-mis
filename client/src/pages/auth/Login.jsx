@@ -84,6 +84,18 @@ export default function Login() {
             <CardDescription className="text-center">
               Sign in to your account to continue
             </CardDescription>
+            {process.env.NODE_ENV === "development" && (
+              <Alert className="mt-4">
+                <AlertDescription className="text-sm">
+                  <strong>Development Mode:</strong> Default admin account
+                  available:
+                  <br />
+                  Email: <code>admin@microfinance.com</code>
+                  <br />
+                  Password: <code>admin1234</code>
+                </AlertDescription>
+              </Alert>
+            )}
           </CardHeader>
 
           <Form {...form}>

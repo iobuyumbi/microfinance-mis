@@ -7,14 +7,25 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
+const setupDatabase = require('./scripts/setupDatabase');
 
 // Import all middleware from middleware/index.js
 const { errorHandler, notFound } = require('./middleware');
 // Import all routes from routes/index.js
 const routes = require('./routes');
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and setup database
+async function initializeServer() {
+  try {
+    await connectDB();
+    await setupDatabase();
+  } catch (error) {
+    console.error('Failed to initialize server:', error);
+    process.exit(1);
+  }
+}
+
+initializeServer();
 
 const app = express();
 const server = http.createServer(app);
