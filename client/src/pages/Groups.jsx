@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { groupService } from "@/services/groupService";
 import { useAuth } from "@/context/AuthContext";
-import AuthDebug from "@/components/AuthDebug";
 
 // Shadcn UI Imports
 import {
@@ -77,7 +76,24 @@ export default function Groups() {
     setLoading(true);
     setError("");
     try {
-      const data = await groupService.getAll();
+      let data;
+
+      // Filter groups based on user role
+      if (currentUser.role === "admin" || currentUser.role === "officer") {
+        // Admin and officers can see all groups
+        data = await groupService.getAll();
+      } else if (currentUser.role === "leader") {
+        // Leaders can see groups they created or are members of
+        data = await groupService.getUserGroups(
+          currentUser._id || currentUser.id
+        );
+      } else {
+        // Members can only see groups they belong to
+        data = await groupService.getUserGroups(
+          currentUser._id || currentUser.id
+        );
+      }
+
       setGroups(
         Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []
       );
@@ -101,7 +117,6 @@ export default function Groups() {
         );
         toast.success("Group updated successfully.");
       } else {
-        // Log the data being sent for creation
         console.log("Attempting to create group with data:", formData);
         await groupService.create(formData);
         toast.success("Group created successfully.");
@@ -111,7 +126,6 @@ export default function Groups() {
       setFormData({ name: "", location: "", meetingFrequency: "monthly" });
       fetchGroups();
     } catch (err) {
-      // Log the full error object for better debugging
       console.error("Group creation/update failed:", err);
       toast.error(err.message || "Operation failed.");
     } finally {
@@ -178,12 +192,27 @@ export default function Groups() {
     );
   }
 
+  // Determine page title and action based on user role
+  const getPageTitle = () => {
+    if (currentUser.role === "admin" || currentUser.role === "officer") {
+      return "All Groups";
+    } else if (currentUser.role === "leader") {
+      return "My Groups";
+    } else {
+      return "My Groups";
+    }
+  };
+
+  const canCreateGroup =
+    currentUser.role === "admin" ||
+    currentUser.role === "officer" ||
+    currentUser.role === "leader";
+
   return (
-    <>
-      <AuthDebug />
-      <PageLayout
-        title="Groups Management"
-        action={
+    <PageLayout
+      title={getPageTitle()}
+      action={
+        canCreateGroup ? (
           <Button
             onClick={() => {
               setShowForm(true);
@@ -199,9 +228,10 @@ export default function Groups() {
             <Plus className="h-4 w-4 mr-2" />
             New Group
           </Button>
-        }
+        ) : null
+      }
     >
-      <ContentCard isLoading={loading} title="All Groups">
+      <ContentCard isLoading={loading} title={getPageTitle()}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -235,7 +265,9 @@ export default function Groups() {
                   colSpan={4}
                   className="text-center text-muted-foreground py-4"
                 >
-                  No groups found. Click "New Group" to add one.
+                  {canCreateGroup
+                    ? "No groups found. Click 'New Group' to add one."
+                    : "No groups found. Contact your group leader or administrator."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -245,49 +277,60 @@ export default function Groups() {
                   <TableCell>{group.location}</TableCell>
                   <TableCell>{group.meetingFrequency}</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(group)}
-                      className="mr-2"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
+                    {/* Only show edit/delete for admin, officer, or group creator */}
+                    {(currentUser.role === "admin" ||
+                      currentUser.role === "officer" ||
+                      (currentUser.role === "leader" &&
+                        group.createdBy ===
+                          (currentUser._id || currentUser.id))) && (
+                      <>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:text-red-800"
+                          onClick={() => handleEdit(group)}
+                          className="mr-2"
                         >
-                          <Trash className="h-4 w-4" />
+                          <Edit className="h-4 w-4" />
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Are you absolutely sure?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete the group
-                            <span className="font-semibold">
-                              {" "}
-                              "{group.name}"
-                            </span>{" "}
-                            and remove its data from our servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(group._id || group.id)}
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Are you absolutely sure?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will
+                                permanently delete the group
+                                <span className="font-semibold">
+                                  {" "}
+                                  "{group.name}"
+                                </span>{" "}
+                                and remove its data from our servers.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  handleDelete(group._id || group.id)
+                                }
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -386,6 +429,5 @@ export default function Groups() {
         </DialogContent>
       </Dialog>
     </PageLayout>
-    </>
   );
 }
