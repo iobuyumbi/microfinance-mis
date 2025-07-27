@@ -5,6 +5,8 @@ const User = require('../models/User');
 // Protect routes - verify token and attach user to request
 exports.protect = async (req, res, next) => {
   try {
+    console.log('Auth middleware - headers:', req.headers.authorization);
+
     let token;
     if (
       req.headers.authorization &&
@@ -12,6 +14,9 @@ exports.protect = async (req, res, next) => {
     ) {
       token = req.headers.authorization.split(' ')[1];
     }
+
+    console.log('Token extracted:', token ? 'present' : 'missing');
+
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -29,7 +34,10 @@ exports.protect = async (req, res, next) => {
 
     // Verify token using utils
     const decoded = verifyToken(token);
+    console.log('Token decoded:', decoded);
+
     const user = await User.findById(decoded.id).select('-password');
+    console.log('User found:', user ? 'yes' : 'no');
 
     if (!user) {
       return res.status(401).json({
@@ -39,8 +47,10 @@ exports.protect = async (req, res, next) => {
     }
 
     req.user = user;
+    console.log('User attached to req:', req.user._id);
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     return res.status(401).json({
       success: false,
       message: 'Invalid or expired token.',
