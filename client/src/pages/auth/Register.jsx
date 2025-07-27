@@ -38,9 +38,6 @@ const registerSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Please enter a valid phone number"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["leader", "officer"], {
-    required_error: "Please select a role",
-  }),
 });
 
 export default function Register() {
@@ -57,23 +54,26 @@ export default function Register() {
       email: "",
       phone: "",
       password: "",
-      role: "leader",
     },
   });
 
   const onSubmit = async (data) => {
-    console.log('Register form submitted', data); // Debug log
+    console.log("Register form submitted", data); // Debug log
     setError("");
     setLoading(true);
 
     try {
-      await register(data);
+      // Always register as member role
+      const registrationData = {
+        ...data,
+        role: "member", // Force member role for all registrations
+      };
+      await register(registrationData);
       // User is now automatically logged in, redirect to dashboard
       navigate("/dashboard");
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        "Registration failed. Please try again."
+        err.response?.data?.message || "Registration failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -88,9 +88,11 @@ export default function Register() {
           <div className="mx-auto h-16 w-16 bg-primary rounded-full flex items-center justify-center mb-4">
             <Building2 className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Join Our Community</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Join Our Community
+          </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Create your account to get started
+            Create your member account to join microfinance groups
           </p>
         </div>
 
@@ -210,32 +212,6 @@ export default function Register() {
                           </button>
                         </div>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        disabled={loading}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your role" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="leader">Group Leader</SelectItem>
-                          <SelectItem value="officer">Loan Officer</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
