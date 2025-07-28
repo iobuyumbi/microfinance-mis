@@ -48,17 +48,20 @@ const allNavItems = [
     roles: ["admin", "officer", "leader", "member"],
   },
   {
-    to: "/groups",
-    label: "Groups",
+    to: "/my-groups",
+    label: "My Groups",
     roles: ["admin", "officer", "leader", "member"],
   },
-  { to: "/meetings", label: "Meetings", roles: ["admin", "officer", "leader"] },
+  {
+    to: "/meetings",
+    label: "Meetings",
+    roles: ["admin", "officer", "leader"],
+  },
   {
     to: "/chat",
     label: "Chat",
     roles: ["admin", "officer", "leader", "member"],
   },
-  { to: "/members", label: "Members", roles: ["admin", "officer"] },
   {
     to: "/loans",
     label: "Loans",
@@ -74,14 +77,26 @@ const allNavItems = [
     label: "Transactions",
     roles: ["admin", "officer", "leader", "member"],
   },
-  { to: "/reports", label: "Reports", roles: ["admin", "officer"] },
+  {
+    to: "/reports",
+    label: "Reports",
+    roles: ["admin", "officer", "leader"],
+  },
   {
     to: "/notifications",
     label: "Notifications",
     roles: ["admin", "officer", "leader", "member"],
   },
-  { to: "/settings", label: "Settings", roles: ["admin"] },
-  { to: "/users", label: "User Management", roles: ["admin"] },
+  {
+    to: "/settings",
+    label: "Settings",
+    roles: ["admin"],
+  },
+  {
+    to: "/users",
+    label: "User Management",
+    roles: ["admin"],
+  },
 ];
 
 export default function MainLayout() {
