@@ -189,12 +189,15 @@ export default function Chat() {
   const handleSend = async (e, chatId) => {
     e.preventDefault();
     const trimmedMessage = message.trim();
-    if (!trimmedMessage || !chatId || sendingMessage || !isConnected) return;
+    if (!trimmedMessage || !chatId || sendingMessage) return;
 
     setSendingMessage(true);
     const roomName = chatId === "admin" ? "admin_support" : `group_${chatId}`;
-    stopTyping(roomName);
-    clearTimeout(typingTimeoutRef.current);
+
+    if (isConnected) {
+      stopTyping(roomName);
+      clearTimeout(typingTimeoutRef.current);
+    }
 
     // Optimistically add message
     const newMessage = {
@@ -217,25 +220,31 @@ export default function Chat() {
     }));
     setMessage("");
 
-    try {
-      sendUpdate("chat_message", {
-        chatId: chatId,
-        message: trimmedMessage,
-        senderId: currentUser._id,
-        chatType: chatId === "admin" ? "admin" : "group",
-      });
-    } catch (err) {
-      toast.error("Failed to send message.");
-      setMessages((prev) => ({
-        ...prev,
-        [chatId]: (prev[chatId] || []).filter(
-          (msg) => msg._id !== newMessage._id
-        ),
-      }));
-      setMessage(trimmedMessage);
-    } finally {
-      setSendingMessage(false);
+    // Only try to send to server if connected
+    if (isConnected) {
+      try {
+        sendUpdate("chat_message", {
+          chatId: chatId,
+          message: trimmedMessage,
+          senderId: currentUser._id,
+          chatType: chatId === "admin" ? "admin" : "group",
+        });
+      } catch (err) {
+        toast.error("Failed to send message to server.");
+        setMessages((prev) => ({
+          ...prev,
+          [chatId]: (prev[chatId] || []).filter(
+            (msg) => msg._id !== newMessage._id
+          ),
+        }));
+        setMessage(trimmedMessage);
+      }
+    } else {
+      // Store message locally when disconnected
+      toast.info("Message saved locally (not connected to server)");
     }
+
+    setSendingMessage(false);
   };
 
   const handleMessageInputChange = (e, chatId) => {
@@ -307,6 +316,27 @@ export default function Chat() {
     <PageLayout title="Chat">
       <PageSection title="Real-time Communication">
         <ContentCard>
+          {/* Connection Status */}
+          <div className="mb-4 p-3 rounded-lg border bg-muted/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
+                ></div>
+                <span className="text-sm font-medium">
+                  {isConnected
+                    ? "Connected to chat server"
+                    : "Disconnected from chat server"}
+                </span>
+              </div>
+              {!isConnected && (
+                <div className="text-xs text-muted-foreground">
+                  Messages will be saved locally
+                </div>
+              )}
+            </div>
+          </div>
+
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
@@ -468,15 +498,17 @@ export default function Chat() {
                             onChange={(e) =>
                               handleMessageInputChange(e, selectedGroup)
                             }
-                            placeholder="Type a message..."
-                            disabled={!isConnected || sendingMessage}
+                            placeholder={
+                              !isConnected
+                                ? "Connecting to chat..."
+                                : "Type a message..."
+                            }
+                            disabled={sendingMessage}
                             className="flex-1"
                           />
                           <Button
                             type="submit"
-                            disabled={
-                              !message.trim() || !isConnected || sendingMessage
-                            }
+                            disabled={!message.trim() || sendingMessage}
                           >
                             {sendingMessage ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -485,6 +517,13 @@ export default function Chat() {
                             )}
                           </Button>
                         </div>
+                        {!isConnected && (
+                          <div className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            Not connected to chat server. Messages will be saved
+                            locally.
+                          </div>
+                        )}
                       </form>
                     </div>
                   )}
@@ -575,15 +614,17 @@ export default function Chat() {
                     <Input
                       value={message}
                       onChange={(e) => handleMessageInputChange(e, "admin")}
-                      placeholder="Type a message to admin support..."
-                      disabled={!isConnected || sendingMessage}
+                      placeholder={
+                        !isConnected
+                          ? "Connecting to chat..."
+                          : "Type a message to admin support..."
+                      }
+                      disabled={sendingMessage}
                       className="flex-1"
                     />
                     <Button
                       type="submit"
-                      disabled={
-                        !message.trim() || !isConnected || sendingMessage
-                      }
+                      disabled={!message.trim() || sendingMessage}
                     >
                       {sendingMessage ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -592,6 +633,13 @@ export default function Chat() {
                       )}
                     </Button>
                   </div>
+                  {!isConnected && (
+                    <div className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Not connected to chat server. Messages will be saved
+                      locally.
+                    </div>
+                  )}
                 </form>
               </div>
             </TabsContent>

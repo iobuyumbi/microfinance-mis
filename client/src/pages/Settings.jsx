@@ -343,7 +343,7 @@ export default function Settings() {
                         e.target.value
                       )
                     }
-                    disabled={saving || !isAdmin} // Disable for non-admins
+                    disabled={saving} // Only disable when saving
                   />
                 </div>
                 <div>

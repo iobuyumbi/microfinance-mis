@@ -1,5 +1,5 @@
 // src/components/MainLayout.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext"; // Assuming this path is correct
 import { useTheme } from "@/context/ThemeContext"; // Assuming this path is correct
@@ -83,9 +83,14 @@ const allNavItems = [
     roles: ["admin", "officer", "leader"],
   },
   {
+    to: "/loan-assessment",
+    label: "Loan Assessment",
+    roles: ["officer"],
+  },
+  {
     to: "/notifications",
     label: "Notifications",
-    roles: ["admin", "officer", "leader", "member"],
+    roles: ["admin", "officer"],
   },
   {
     to: "/settings",
@@ -99,6 +104,64 @@ const allNavItems = [
   },
 ];
 
+// Helper function to get role-specific navigation items
+const getRoleNavItems = (userRole) => {
+  if (!userRole) return [];
+
+  // Role-specific navigation items
+  const roleNavItems = {
+    admin: [
+      { to: "/dashboard", label: "Dashboard" },
+      { to: "/my-groups", label: "My Groups" },
+      { to: "/meetings", label: "Meetings" },
+      { to: "/chat", label: "Chat" },
+      { to: "/loans", label: "Loans" },
+      { to: "/savings", label: "Savings" },
+      { to: "/transactions", label: "Transactions" },
+      { to: "/reports", label: "Reports" },
+      { to: "/loan-assessment", label: "Loan Assessment" },
+      { to: "/notifications", label: "Notifications" },
+      { to: "/settings", label: "Settings" },
+      { to: "/users", label: "User Management" },
+    ],
+    officer: [
+      { to: "/dashboard", label: "Dashboard" },
+      { to: "/my-groups", label: "My Groups" },
+      { to: "/meetings", label: "Meetings" },
+      { to: "/chat", label: "Chat" },
+      { to: "/loans", label: "Loans" },
+      { to: "/savings", label: "Savings" },
+      { to: "/transactions", label: "Transactions" },
+      { to: "/reports", label: "Reports" },
+      { to: "/loan-assessment", label: "Loan Assessment" },
+      { to: "/notifications", label: "Notifications" },
+      { to: "/settings", label: "Settings" },
+    ],
+    leader: [
+      { to: "/dashboard", label: "Dashboard" },
+      { to: "/my-groups", label: "My Groups" },
+      { to: "/meetings", label: "Meetings" },
+      { to: "/chat", label: "Chat" },
+      { to: "/loans", label: "Loans" },
+      { to: "/savings", label: "Savings" },
+      { to: "/transactions", label: "Transactions" },
+      { to: "/reports", label: "Reports" },
+      { to: "/settings", label: "Settings" },
+    ],
+    member: [
+      { to: "/dashboard", label: "Dashboard" },
+      { to: "/my-groups", label: "My Groups" },
+      { to: "/chat", label: "Chat" },
+      { to: "/loans", label: "Loans" },
+      { to: "/savings", label: "Savings" },
+      { to: "/transactions", label: "Transactions" },
+      { to: "/settings", label: "Settings" },
+    ],
+  };
+
+  return roleNavItems[userRole] || [];
+};
+
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -106,6 +169,18 @@ export default function MainLayout() {
   const { theme, setTheme } = useTheme();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // Filter navigation items based on user role
+  const filteredNavItems = getRoleNavItems(user?.role);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("MainLayout - User role:", user?.role);
+    console.log(
+      "MainLayout - Filtered nav items:",
+      filteredNavItems.map((item) => item.label)
+    );
+  }, [user, filteredNavItems]);
 
   const handleLogout = () => {
     logout();
@@ -138,20 +213,18 @@ export default function MainLayout() {
               Microfinance MIS
             </div>
             <SidebarMenu>
-              {allNavItems
-                .filter((item) => user && item.roles.includes(user.role))
-                .map((item) => (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname.startsWith(item.to)}
-                    >
-                      <Link to={item.to} className="w-full">
-                        {item.label}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+              {filteredNavItems.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname.startsWith(item.to)}
+                  >
+                    <Link to={item.to} className="w-full">
+                      {item.label}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>
@@ -174,10 +247,9 @@ export default function MainLayout() {
                 <SidebarTrigger />
               </span>
               <span className="font-semibold text-lg">
-                {allNavItems
-                  .filter((item) => user && item.roles.includes(user.role))
-                  .find((i) => location.pathname.startsWith(i.to))?.label ||
-                  "Dashboard"}
+                {filteredNavItems.find((i) =>
+                  location.pathname.startsWith(i.to)
+                )?.label || "Dashboard"}
               </span>
             </div>
             <div className="flex items-center gap-4">
