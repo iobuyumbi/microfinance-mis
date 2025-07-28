@@ -41,28 +41,27 @@ exports.createGroup = async (req, res, next) => {
   }
 };
 
-// Get all groups - temporarily accessible without auth for debugging
+// Get all groups - filtered based on user role and permissions
 exports.getAllGroups = async (req, res, next) => {
   try {
-    // TEMPORARY: Skip authentication checks for debugging
-    if (req.user) {
-      console.log(
-        'Attempting to get all groups. User ID:',
-        req.user._id,
-        'User Role:',
-        req.user.role
-      );
-
-      if (req.user.role !== 'admin' && req.user.role !== 'officer') {
-        return res
-          .status(403)
-          .json({ success: false, message: 'Access denied' });
-      }
-    } else {
-      console.log('No authentication - allowing access for debugging');
+    if (!req.user) {
+      return res
+        .status(401)
+        .json({ success: false, message: 'Authentication required' });
     }
 
-    const groups = await Group.find().populate('members', 'name email');
+    let groups;
+
+    // Admin and Officers can see all groups
+    if (req.user.role === 'admin' || req.user.role === 'officer') {
+      groups = await Group.find().populate('members', 'name email role status');
+    } else {
+      // Leaders and Members can only see groups they belong to
+      groups = await Group.find({
+        members: req.user._id,
+      }).populate('members', 'name email role status');
+    }
+
     res.status(200).json({ success: true, data: groups });
   } catch (error) {
     next(error);
