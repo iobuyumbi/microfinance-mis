@@ -90,7 +90,7 @@ const allNavItems = [
   {
     to: "/settings",
     label: "Settings",
-    roles: ["admin"],
+    roles: ["admin", "officer", "leader", "member"],
   },
   {
     to: "/users",
