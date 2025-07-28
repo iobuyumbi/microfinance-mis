@@ -15,53 +15,75 @@ const {
   getUserFinancialSummary,
 } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
-const {
-  validateObjectId,
-  validateRequiredFields,
-} = require('../middleware/validate');
+const { 
+  authorizeRoles, 
+  authorizeGroupAccess, 
+  authorizeOwnerOrAdmin,
+  authorizeGroupPermission,
+  filterDataByRole 
+} = require('../middleware/rbac');
+const { validateObjectId, validateRequiredFields } = require('../middleware/validate');
 
 // User routes - all protected
 router.use(protect);
 
-router.route('/').get(getAllUsers);
+// Get all users - role-based filtering applied in controller
+router.route('/').get(filterDataByRole, getAllUsers);
 
+// Profile management - users can update their own profile
 router
   .route('/profile')
   .put(validateRequiredFields(['name']), updateUserProfile);
 
+// User management by ID
 router
   .route('/:id')
-  .get(validateObjectId, getUserById)
+  .get(validateObjectId, authorizeOwnerOrAdmin('id'), getUserById)
   .put(
-    authorize('admin'),
+    authorizeRoles('admin', 'officer'),
     validateObjectId,
     validateRequiredFields(['role', 'status']),
     updateUserRoleStatus
   )
-  .delete(authorize('admin'), validateObjectId, deleteUser);
+  .delete(authorizeRoles('admin'), validateObjectId, deleteUser);
 
-// Get groups for a specific user
-router.get('/:id/groups', validateObjectId, getUserGroups);
+// Get groups for a specific user - owner or admin only
+router.get('/:id/groups', validateObjectId, authorizeOwnerOrAdmin('id'), getUserGroups);
 
-// Get user's financial summary
-router.get('/:id/financial-summary', validateObjectId, getUserFinancialSummary);
+// Get user's financial summary - owner or admin only
+router.get('/:id/financial-summary', validateObjectId, authorizeOwnerOrAdmin('id'), getUserFinancialSummary);
 
-// Group member management routes
-router.get('/groups/:groupId/members', validateObjectId, getGroupMembers);
+// Group member management routes with proper RBAC
+router.get('/groups/:groupId/members', 
+  validateObjectId, 
+  authorizeGroupAccess('groupId'), 
+  getGroupMembers
+);
+
 router.put(
   '/groups/:groupId/members/:memberId/role',
   validateObjectId,
+  authorizeGroupPermission('can_manage_members', 'groupId'),
   updateGroupMemberRole
 );
+
 router.put(
   '/groups/:groupId/members/:memberId/status',
   validateObjectId,
+  authorizeGroupPermission('can_manage_members', 'groupId'),
   updateGroupMemberStatus
 );
-router.post('/groups/:groupId/members', validateObjectId, addMemberToGroup);
+
+router.post('/groups/:groupId/members', 
+  validateObjectId, 
+  authorizeGroupPermission('can_manage_members', 'groupId'),
+  addMemberToGroup
+);
+
 router.delete(
   '/groups/:groupId/members/:memberId',
   validateObjectId,
+  authorizeGroupPermission('can_manage_members', 'groupId'),
   removeMemberFromGroup
 );
 

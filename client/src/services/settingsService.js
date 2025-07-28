@@ -1,10 +1,19 @@
-import api from './api';
-import { handleRequest } from './handleRequest';
+import api from "./api";
+import { handleRequest } from "./handleRequest";
 
 export const settingsService = {
   get: () =>
-    handleRequest(() => api.get('/settings'), 'Failed to load settings'),
+    handleRequest(() => api.get("/settings"), "Failed to load settings"),
 
   update: (data) =>
-    handleRequest(() => api.put('/settings', data), 'Failed to update settings'),
+    handleRequest(
+      () => api.put("/settings", data),
+      "Failed to update settings"
+    ),
+
+  reset: () =>
+    handleRequest(
+      () => api.post("/settings/reset"),
+      "Failed to reset settings"
+    ),
 };

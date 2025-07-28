@@ -130,25 +130,38 @@ exports.getDashboardStats = async (req, res, next) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-    // Get basic counts
+    // Apply role-based filtering
+    let userFilter = {};
+    let groupFilter = {};
+    
+    if (!['admin', 'officer'].includes(req.user.role)) {
+      // For leaders and members, filter by their groups
+      const Group = require('../models/Group');
+      const userGroups = await Group.find({ members: req.user._id }).distinct('_id');
+      groupFilter = { group: { $in: userGroups } };
+      userFilter = { $or: [{ _id: req.user._id }, { 'groupRoles.groupId': { $in: userGroups } }] };
+    }
+
+    // Get basic counts with role-based filtering
     const [totalMembers, totalLoans, activeLoans, pendingLoans, overdueLoans] = await Promise.all([
-      User.countDocuments({ role: 'member' }),
-      Loan.countDocuments(),
-      Loan.countDocuments({ status: 'active' }),
-      Loan.countDocuments({ status: 'pending' }),
-      Loan.countDocuments({ status: 'overdue' })
+      User.countDocuments({ role: 'member', ...userFilter }),
+      Loan.countDocuments(groupFilter),
+      Loan.countDocuments({ status: 'active', ...groupFilter }),
+      Loan.countDocuments({ status: 'pending', ...groupFilter }),
+      Loan.countDocuments({ status: 'overdue', ...groupFilter })
     ]);
 
     // Get total savings (sum of all approved loan amounts as a proxy)
     const savingsResult = await Loan.aggregate([
-      { $match: { status: 'approved' } },
+      { $match: { status: 'approved', ...groupFilter } },
       { $group: { _id: null, total: { $sum: '$amountApproved' } } }
     ]);
     const totalSavings = savingsResult[0]?.total || 0;
 
     // Get recent activity (recent loans and repayments)
     const recentLoans = await Loan.find({
-      createdAt: { $gte: startOfMonth }
+      createdAt: { $gte: startOfMonth },
+      ...groupFilter
     })
     .populate('borrower', 'name')
     .sort({ createdAt: -1 })
@@ -213,6 +226,59 @@ exports.getDashboardStats = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
+    next(error);
+  }
+};
+
+// Get recent activity endpoint
+exports.getRecentActivity = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Apply role-based filtering
+    let groupFilter = {};
+    if (!['admin', 'officer'].includes(req.user.role)) {
+      const Group = require('../models/Group');
+      const userGroups = await Group.find({ members: req.user._id }).distinct('_id');
+      groupFilter = { group: { $in: userGroups } };
+    }
+
+    const recentLoans = await Loan.find({
+      createdAt: { $gte: startOfMonth },
+      ...groupFilter
+    })
+    .populate('borrower', 'name')
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+    const recentRepayments = await Repayment.find({
+      createdAt: { $gte: startOfMonth }
+    })
+    .populate('loan')
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+    const recentActivity = [
+      ...recentLoans.map(loan => ({
+        description: `New loan application from ${loan.borrower?.name || 'Unknown'}`,
+        timestamp: loan.createdAt,
+        type: 'loan',
+        amount: loan.amountRequested
+      })),
+      ...recentRepayments.map(repayment => ({
+        description: `Payment received for loan`,
+        timestamp: repayment.createdAt,
+        type: 'payment',
+        amount: repayment.amountPaid
+      }))
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 15);
+
+    res.status(200).json({
+      success: true,
+      data: recentActivity
+    });
+  } catch (error) {
     next(error);
   }
 };
