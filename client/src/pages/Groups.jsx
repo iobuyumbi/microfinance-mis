@@ -62,13 +62,8 @@ export default function Groups() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!authLoading) {
-      if (isAuthenticated) {
-        fetchGroups();
-      } else {
-        setLoading(false);
-        setError("You must be logged in to view groups.");
-      }
+    if (!authLoading && isAuthenticated) {
+      fetchGroups();
     }
   }, [isAuthenticated, authLoading]);
 
@@ -76,24 +71,8 @@ export default function Groups() {
     setLoading(true);
     setError("");
     try {
-      let data;
-
-      // Filter groups based on user role
-      if (currentUser.role === "admin" || currentUser.role === "officer") {
-        // Admin and officers can see all groups
-        data = await groupService.getAll();
-      } else if (currentUser.role === "leader") {
-        // Leaders can see groups they created or are members of
-        data = await groupService.getUserGroups(
-          currentUser._id || currentUser.id
-        );
-      } else {
-        // Members can only see groups they belong to
-        data = await groupService.getUserGroups(
-          currentUser._id || currentUser.id
-        );
-      }
-
+      // The backend now handles role-based filtering
+      const data = await groupService.getAll();
       setGroups(
         Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []
       );
@@ -164,16 +143,6 @@ export default function Groups() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <PageLayout title="Groups Management">
-        <div className="p-6 text-center text-red-500">
-          Access Denied: Please log in to view groups.
-        </div>
-      </PageLayout>
-    );
-  }
-
   if (loading && groups.length === 0) {
     return (
       <PageLayout title="Groups Management">
@@ -207,6 +176,26 @@ export default function Groups() {
     currentUser.role === "admin" ||
     currentUser.role === "officer" ||
     currentUser.role === "leader";
+
+  const canEditGroup = (group) => {
+    // Admin and officers can edit any group
+    if (currentUser.role === "admin" || currentUser.role === "officer") {
+      return true;
+    }
+    // Leaders can only edit groups they created
+    if (currentUser.role === "leader") {
+      return (
+        group.createdBy === currentUser._id ||
+        group.createdBy === currentUser.id
+      );
+    }
+    return false;
+  };
+
+  const canDeleteGroup = (group) => {
+    // Only admins and officers can delete groups
+    return currentUser.role === "admin" || currentUser.role === "officer";
+  };
 
   return (
     <PageLayout
@@ -277,59 +266,55 @@ export default function Groups() {
                   <TableCell>{group.location}</TableCell>
                   <TableCell>{group.meetingFrequency}</TableCell>
                   <TableCell className="text-right">
-                    {/* Only show edit/delete for admin, officer, or group creator */}
-                    {(currentUser.role === "admin" ||
-                      currentUser.role === "officer" ||
-                      (currentUser.role === "leader" &&
-                        group.createdBy ===
-                          (currentUser._id || currentUser.id))) && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(group)}
-                          className="mr-2"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-800"
+                    {/* Show edit/delete based on permissions */}
+                    {canEditGroup(group) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(group)}
+                        className="mr-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeleteGroup(group) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete the group
+                              <span className="font-semibold">
+                                {" "}
+                                "{group.name}"
+                              </span>{" "}
+                              and remove its data from our servers.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() =>
+                                handleDelete(group._id || group.id)
+                              }
                             >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Are you absolutely sure?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will
-                                permanently delete the group
-                                <span className="font-semibold">
-                                  {" "}
-                                  "{group.name}"
-                                </span>{" "}
-                                and remove its data from our servers.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  handleDelete(group._id || group.id)
-                                }
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </TableCell>
                 </TableRow>
