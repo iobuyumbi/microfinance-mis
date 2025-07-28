@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { authService } from "../services/authService";
-import { groupService } from "../services/groupService"; // Import groupService
+import { userService } from "../services/userService";
 import { toast } from "sonner";
 
 const AuthContext = createContext(null);
@@ -36,26 +36,28 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
-      const allGroupsResponse = await groupService.getAll(); // Fetch all groups
-      const allGroups = Array.isArray(allGroupsResponse.data)
-        ? allGroupsResponse.data
-        : Array.isArray(allGroupsResponse)
-          ? allGroupsResponse
-          : [];
+      // Check if user is authenticated first
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setGroups([]);
+        return;
+      }
 
-      // Filter groups where the user is a member or creator
-      const userGroups = allGroups.filter(
-        (g) =>
-          (g.members && g.members.some((m) => (m._id || m.id) === userId)) ||
-          (g.createdBy && (g.createdBy._id || g.createdBy.id) === userId)
-      );
+      // Use the proper endpoint to get user's groups
+      const userGroupsResponse = await userService.getUserGroups(userId);
+      const userGroups = Array.isArray(userGroupsResponse.data)
+        ? userGroupsResponse.data
+        : Array.isArray(userGroupsResponse)
+          ? userGroupsResponse
+          : [];
       setGroups(userGroups);
-      // Optionally store groups in localStorage if needed for persistence across sessions
-      // localStorage.setItem("userGroups", JSON.stringify(userGroups));
     } catch (err) {
       console.error("Failed to fetch user groups in AuthContext:", err);
-      setGroups([]);
-      // Do not toast error here to avoid spamming if it's a common 403 for non-admins
+      // Only set empty groups if it's an authentication error
+      if (err.message === "Access denied" || err.message.includes("403")) {
+        setGroups([]);
+      }
+      // Don't throw the error to prevent authentication failure
     }
   }, []);
 
@@ -67,7 +69,13 @@ export const AuthProvider = ({ children }) => {
       if (fetchedUser) {
         setUser(fetchedUser);
         localStorage.setItem("user", JSON.stringify(fetchedUser));
-        await fetchUserGroups(fetchedUser._id || fetchedUser.id); // Fetch groups after user is set
+        // Fetch groups after user is set, but don't fail if groups can't be fetched
+        try {
+          await fetchUserGroups(fetchedUser._id || fetchedUser.id);
+        } catch (groupError) {
+          console.warn("Could not fetch user groups:", groupError);
+          // Don't fail authentication if groups can't be fetched
+        }
         return fetchedUser;
       } else {
         throw new Error(
@@ -76,7 +84,14 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error fetching authenticated user:", error);
-      logout();
+      // Only logout if it's an authentication error, not a network error
+      if (
+        error.message === "Session expired. Please login again." ||
+        error.message === "Access denied" ||
+        error.response?.status === 401
+      ) {
+        logout();
+      }
       throw error;
     }
   }, [logout, fetchUserGroups]);

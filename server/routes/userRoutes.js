@@ -6,8 +6,14 @@ const {
   updateUserProfile,
   updateUserRoleStatus,
   deleteUser,
+  getUserGroups,
+  getGroupMembers,
+  updateGroupMemberRole,
+  updateGroupMemberStatus,
+  addMemberToGroup,
+  removeMemberFromGroup,
+  getUserFinancialSummary,
 } = require('../controllers/userController');
-const { getUserGroups } = require('../controllers/groupController');
 const { protect, authorize } = require('../middleware/auth');
 const {
   validateObjectId,
@@ -36,5 +42,27 @@ router
 
 // Get groups for a specific user
 router.get('/:id/groups', validateObjectId, getUserGroups);
+
+// Get user's financial summary
+router.get('/:id/financial-summary', validateObjectId, getUserFinancialSummary);
+
+// Group member management routes
+router.get('/groups/:groupId/members', validateObjectId, getGroupMembers);
+router.put(
+  '/groups/:groupId/members/:memberId/role',
+  validateObjectId,
+  updateGroupMemberRole
+);
+router.put(
+  '/groups/:groupId/members/:memberId/status',
+  validateObjectId,
+  updateGroupMemberStatus
+);
+router.post('/groups/:groupId/members', validateObjectId, addMemberToGroup);
+router.delete(
+  '/groups/:groupId/members/:memberId',
+  validateObjectId,
+  removeMemberFromGroup
+);
 
 module.exports = router;

@@ -1,19 +1,21 @@
 // Routes index file - exports all route modules
 
-const authRoutes = require("./authRoutes");
-const userRoutes = require("./userRoutes");
-const groupRoutes = require("./groupRoutes");
-const loanRoutes = require("./loanRoutes");
-const repaymentRoutes = require("./repaymentRoutes");
-const meetingRoutes = require("./meetingRoutes");
-const reportRoutes = require("./reportRoutes");
-const notificationRoutes = require("./notificationRoutes");
-const savingsRoutes = require("./savingsRoutes");
-const transactionRoutes = require("./transactionRoutes");
-const accountRoutes = require("./accountRoutes");
-const accountHistoryRoutes = require("./accountHistoryRoutes");
-const guarantorRoutes = require("./guarantorRoutes");
-const settingsRoutes = require("./settingsRoutes");
+const authRoutes = require('./authRoutes');
+const userRoutes = require('./userRoutes');
+const groupRoutes = require('./groupRoutes');
+const loanRoutes = require('./loanRoutes');
+const repaymentRoutes = require('./repaymentRoutes');
+const meetingRoutes = require('./meetingRoutes');
+const reportRoutes = require('./reportRoutes');
+const notificationRoutes = require('./notificationRoutes');
+const savingsRoutes = require('./savingsRoutes');
+const transactionRoutes = require('./transactionRoutes');
+const accountRoutes = require('./accountRoutes');
+const accountHistoryRoutes = require('./accountHistoryRoutes');
+const guarantorRoutes = require('./guarantorRoutes');
+const settingsRoutes = require('./settingsRoutes');
+const loanAssessmentRoutes = require('./loanAssessmentRoutes');
+const chatRoutes = require('./chatRoutes');
 
 module.exports = {
   authRoutes,
@@ -30,4 +32,6 @@ module.exports = {
   accountHistoryRoutes,
   guarantorRoutes,
   settingsRoutes,
+  loanAssessmentRoutes,
+  chatRoutes,
 };

@@ -41,6 +41,37 @@ export function RoleBasedRoute({
   return children;
 }
 
+// Route-specific access control component
+export function ProtectedRoute({ children, requiredRoles = [] }) {
+  const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Check if user has required role for this specific route
+  const hasRequiredRole =
+    requiredRoles.length === 0 || (user && requiredRoles.includes(user.role));
+
+  // If user doesn't have required role, redirect to dashboard
+  if (!hasRequiredRole) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
 // Specific role-based route components
 export function AdminRoute({ children }) {
   return (

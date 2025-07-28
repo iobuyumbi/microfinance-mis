@@ -78,6 +78,8 @@ const routeList = [
   ['/api/account-history', routes.accountHistoryRoutes],
   ['/api/guarantors', routes.guarantorRoutes],
   ['/api/settings', routes.settingsRoutes],
+  ['/api/loan-assessments', routes.loanAssessmentRoutes],
+  ['/api/chat', routes.chatRoutes],
 ];
 
 // Mount all routes
@@ -115,22 +117,41 @@ io.on('connection', socket => {
   console.log(`👤 User connected: ${socket.id}`);
 
   // Handle user authentication
-  socket.on('authenticate', token => {
-    // You can add JWT verification here if needed
-    console.log(`🔐 User authenticated: ${socket.id}`);
-    socket.authenticated = true;
+  socket.on('authenticate', async token => {
+    try {
+      // Verify JWT token here if needed
+      console.log(`🔐 User authenticated: ${socket.id}`);
+      socket.authenticated = true;
+      socket.userId = token.userId; // Store user ID for later use
+    } catch (error) {
+      console.error('Socket authentication failed:', error);
+    }
   });
 
   // Join user to their personal room
   socket.on('join_room', data => {
     socket.join(data.room);
     console.log(`🏠 User ${socket.id} joined room: ${data.room}`);
+
+    // Notify others in the room
+    socket.to(data.room).emit('user_joined', {
+      userId: socket.userId,
+      room: data.room,
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // Leave room
   socket.on('leave_room', data => {
     socket.leave(data.room);
     console.log(`🚪 User ${socket.id} left room: ${data.room}`);
+
+    // Notify others in the room
+    socket.to(data.room).emit('user_left', {
+      userId: socket.userId,
+      room: data.room,
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // Handle real-time notifications
@@ -145,29 +166,59 @@ io.on('connection', socket => {
 
   // Handle typing indicators
   socket.on('typing_start', data => {
-    socket
-      .to(data.room)
-      .emit('user_typing', { userId: socket.id, typing: true });
+    socket.to(data.room).emit('user_typing', {
+      userId: socket.userId,
+      typing: true,
+      room: data.room,
+    });
   });
 
   socket.on('typing_stop', data => {
-    socket
-      .to(data.room)
-      .emit('user_typing', { userId: socket.id, typing: false });
+    socket.to(data.room).emit('user_typing', {
+      userId: socket.userId,
+      typing: false,
+      room: data.room,
+    });
   });
 
   // Handle user status updates
   socket.on('status_update', data => {
     socket.broadcast.emit('user_status_change', {
-      userId: socket.id,
+      userId: socket.userId,
       status: data.status,
+    });
+  });
+
+  // Handle chat messages (real-time)
+  socket.on('send_message', async data => {
+    try {
+      // Broadcast message to room
+      io.to(data.chatId).emit('new_message', {
+        ...data,
+        timestamp: new Date().toISOString(),
+        socketId: socket.id,
+      });
+    } catch (error) {
+      console.error('Error handling chat message:', error);
+    }
+  });
+
+  // Handle message reactions
+  socket.on('message_reaction', data => {
+    socket.to(data.chatId).emit('message_reaction_update', {
+      messageId: data.messageId,
+      reaction: data.reaction,
+      userId: socket.userId,
     });
   });
 
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log(`👋 User disconnected: ${socket.id}`);
-    socket.broadcast.emit('user_offline', { userId: socket.id });
+    socket.broadcast.emit('user_offline', {
+      userId: socket.userId,
+      socketId: socket.id,
+    });
   });
 });
 

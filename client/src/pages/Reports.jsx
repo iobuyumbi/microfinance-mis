@@ -1,6 +1,7 @@
 // src/pages/Reports.jsx
 import React, { useState, useEffect } from "react";
-import { reportService } from "@/services/reportService"; // Assuming this path is correct
+import { reportService } from "@/services/reportService";
+import { useAuth } from "@/context/AuthContext";
 
 // Shadcn UI Imports (consolidated and ensuring correct paths)
 import {
@@ -49,9 +50,11 @@ import {
   Calendar, // Date
   FileText, // Generic report/document
   Download, // Export action
+  Shield,
 } from "lucide-react";
 
 export default function Reports() {
+  const { user: currentUser, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [dateRange, setDateRange] = useState("30");
   const [selectedReport, setSelectedReport] = useState(null); // For the detailed report dialog
@@ -64,22 +67,69 @@ export default function Reports() {
   const [savingsReports, setSavingsReports] = useState([]);
   const [transactionReports, setTransactionReports] = useState([]);
 
-  // Fetch all reports based on dateRange
+  // Fetch all reports based on dateRange and user role
   useEffect(() => {
-    fetchAllReports();
-  }, [dateRange]); // Re-fetch when dateRange changes
+    if (isAuthenticated) {
+      fetchAllReports();
+    }
+  }, [dateRange, isAuthenticated, currentUser?.role]); // Re-fetch when dateRange or user role changes
 
   const fetchAllReports = async () => {
     setLoading(true);
     setError("");
     try {
-      // Use Promise.all to fetch all data concurrently
-      const [overview, loans, savings, transactions] = await Promise.all([
-        reportService.getFinancialSummary({ range: dateRange }),
-        reportService.getLoanReports({ range: dateRange }),
-        reportService.getSavingsReports({ range: dateRange }),
-        reportService.getTransactionReports({ range: dateRange }),
-      ]);
+      let overview, loans, savings, transactions;
+
+      // Filter reports based on user role
+      if (currentUser?.role === "admin" || currentUser?.role === "officer") {
+        // Admin and officers see all reports
+        [overview, loans, savings, transactions] = await Promise.all([
+          reportService.getFinancialSummary({ range: dateRange }),
+          reportService.getLoanReports({ range: dateRange }),
+          reportService.getSavingsReports({ range: dateRange }),
+          reportService.getTransactionReports({ range: dateRange }),
+        ]);
+      } else if (currentUser?.role === "leader") {
+        // Leaders see reports for their groups only
+        [overview, loans, savings, transactions] = await Promise.all([
+          reportService.getFinancialSummary({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+          reportService.getLoanReports({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+          reportService.getSavingsReports({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+          reportService.getTransactionReports({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+        ]);
+      } else {
+        // Members see only their own reports
+        [overview, loans, savings, transactions] = await Promise.all([
+          reportService.getFinancialSummary({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+          reportService.getLoanReports({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+          reportService.getSavingsReports({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+          reportService.getTransactionReports({
+            range: dateRange,
+            userId: currentUser._id || currentUser.id,
+          }),
+        ]);
+      }
 
       setOverviewData(overview);
       // Ensure data is always an array for tables
@@ -96,6 +146,29 @@ export default function Reports() {
   };
 
   // Function to prepare data for the detailed report dialog
+  // Check access control
+  if (!isAuthenticated) {
+    return (
+      <PageLayout title="Reports">
+        <div className="p-6 text-center text-red-500">
+          <Shield className="h-10 w-10 mx-auto mb-4 text-red-400" />
+          You must be logged in to view reports.
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (currentUser?.role === "member") {
+    return (
+      <PageLayout title="Reports">
+        <div className="p-6 text-center text-red-500">
+          <Shield className="h-10 w-10 mx-auto mb-4 text-red-400" />
+          Access Denied: Members cannot access reports.
+        </div>
+      </PageLayout>
+    );
+  }
+
   const generateReport = (type) => {
     let reportData;
     if (type === "overview") {

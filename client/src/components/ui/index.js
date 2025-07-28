@@ -23,3 +23,4 @@ export * from "./scroll-area";
 export * from "./calendar";
 export * from "./radio-group";
 export * from "./dropdown-menu";
+export * from "./avatar";

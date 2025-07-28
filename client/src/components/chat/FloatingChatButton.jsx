@@ -48,11 +48,7 @@ export default function FloatingChatButton() {
         </Button>
       )}
 
-      {isOpen && (
-        <div className="absolute bottom-16 left-0 w-80 h-96 bg-background border rounded-lg shadow-xl">
-          <ChatWindow onClose={() => setIsOpen(false)} />
-        </div>
-      )}
+      <ChatWindow isOpen={isOpen} onClose={() => setIsOpen(false)} />
     </div>
   );
 }

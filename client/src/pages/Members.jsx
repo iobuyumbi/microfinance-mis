@@ -123,34 +123,12 @@ export default function Members() {
     },
   });
 
-  // Fetch members on component mount, but only if authenticated and authorized
+  // Fetch members on component mount
   useEffect(() => {
-    if (!authLoading) {
-      console.log(
-        "Members Page - Auth Status:",
-        isAuthenticated,
-        "User Role:",
-        currentUser?.role
-      );
-      // Only fetch if authenticated AND current user is admin, officer, OR LEADER
-      if (
-        isAuthenticated &&
-        (currentUser?.role === "admin" ||
-          currentUser?.role === "officer" ||
-          currentUser?.role === "leader")
-      ) {
-        fetchMembers();
-      } else if (isAuthenticated) {
-        // If authenticated but not admin/officer/leader, show access denied
-        setLoading(false);
-        setError("You do not have permission to view this page.");
-      } else {
-        // Not authenticated
-        setLoading(false);
-        setError("You must be logged in to view members.");
-      }
+    if (!authLoading && isAuthenticated) {
+      fetchMembers();
     }
-  }, [isAuthenticated, authLoading, currentUser?.role]); // Depend on auth states and current user's role
+  }, [isAuthenticated, authLoading]);
 
   const fetchMembers = async () => {
     try {
@@ -248,7 +226,7 @@ export default function Members() {
   const leaders = members.filter((m) => m.role === "leader").length;
   const officers = members.filter((m) => m.role === "officer").length;
 
-  // Render loading and error states based on authentication and authorization
+  // Render loading and error states
   if (authLoading) {
     return (
       <PageLayout title="Member Management">
@@ -259,24 +237,7 @@ export default function Members() {
     );
   }
 
-  // MODIFIED THIS LINE TO INCLUDE 'leader'
-  if (
-    !isAuthenticated ||
-    (currentUser?.role !== "admin" &&
-      currentUser?.role !== "officer" &&
-      currentUser?.role !== "leader")
-  ) {
-    return (
-      <PageLayout title="Member Management">
-        <div className="p-6 text-center text-red-500">
-          <Shield className="h-10 w-10 mx-auto mb-4 text-red-400" />
-          Access Denied: You do not have permission to view this page.
-        </div>
-      </PageLayout>
-    );
-  }
-
-  // Once authenticated and authorized, proceed with data loading or error display for members
+  // Once authenticated, proceed with data loading or error display for members
   if (loading && members.length === 0) {
     return (
       <PageLayout title="Member Management">

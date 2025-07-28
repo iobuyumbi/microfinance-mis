@@ -34,9 +34,45 @@ const userSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'suspended'],
+      enum: ['active', 'inactive', 'suspended'],
       default: 'active',
     },
+    address: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Address cannot exceed 200 characters'],
+    },
+    // Group-specific roles and permissions
+    groupRoles: [
+      {
+        groupId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Group',
+          required: true,
+        },
+        role: {
+          type: String,
+          enum: ['member', 'treasurer', 'secretary', 'vice-leader'],
+          default: 'member',
+        },
+        permissions: [
+          {
+            type: String,
+            enum: [
+              'can_approve_loans',
+              'can_record_attendance',
+              'can_manage_savings',
+              'can_view_reports',
+            ],
+          },
+        ],
+        status: {
+          type: String,
+          enum: ['active', 'inactive', 'suspended'],
+          default: 'active',
+        },
+      },
+    ],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
