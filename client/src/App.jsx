@@ -76,6 +76,7 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/chat" element={<Chat />} />
                 <Route path="/profile" element={<Settings />} />
+                <Route path="/settings" element={<Settings />} />
 
                 {/* Member-specific routes */}
                 <Route path="/my-groups" element={<MyGroups />} />
