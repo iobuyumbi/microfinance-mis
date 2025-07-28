@@ -14,7 +14,7 @@ const {
   validateObjectId,
   validateRequiredFields,
 } = require('../middleware/validate');
-const chatController = require('../controllers/chatController');
+// Chat functionality is handled by separate chat routes
 
 // Group routes - all protected
 router.use(protect); // Enable authentication
@@ -44,10 +44,39 @@ router
   .post(validateObjectId, validateRequiredFields(['userId']), addMember)
   .delete(validateObjectId, validateRequiredFields(['userId']), removeMember);
 
-// Group chat routes
-router
-  .route('/:groupId/chats')
-  .get(chatController.getGroupChats)
-  .post(chatController.postGroupChat);
+// Join group route
+router.post('/:id/join', validateObjectId, async (req, res, next) => {
+  try {
+    const group = await require('../models/Group').findById(req.params.id);
+    if (!group) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Group not found' });
+    }
+
+    // Add the current user to the group
+    if (group.members.includes(req.user._id)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: 'User is already a member of this group',
+        });
+    }
+
+    group.members.push(req.user._id);
+    await group.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Successfully joined the group',
+      data: group,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Group chat functionality is handled by /api/chat routes
 
 module.exports = router;
