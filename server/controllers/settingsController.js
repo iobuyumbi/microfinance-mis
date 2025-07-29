@@ -1,22 +1,55 @@
-// server\controllers\settingsController.js
+// server\controllers\settingsController.js (REVISED)
 const Settings = require('../models/Settings');
-const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
-const mongoose = require('mongoose'); // For ObjectId validation (though not strictly needed for fixed _id)
+const asyncHandler = require('../middleware/asyncHandler');
+const ErrorResponse = require('../utils/errorResponse');
+const mongoose = require('mongoose');
 
 // The fixed ID for the single settings document
 const SETTINGS_ID = 'app_settings';
 
+/**
+ * Helper function to deeply merge objects.
+ * This is useful for updating nested settings without overwriting entire sub-objects.
+ * @param {object} target - The object to merge into (modified in place).
+ * @param {object} source - The object to merge from.
+ */
+function deepMerge(target, source) {
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      if (
+        typeof source[key] === 'object' &&
+        source[key] !== null &&
+        !Array.isArray(source[key])
+      ) {
+        if (
+          !target[key] ||
+          typeof target[key] !== 'object' ||
+          Array.isArray(target[key])
+        ) {
+          target[key] = {}; // Ensure target property is an object if source is
+        }
+        deepMerge(target[key], source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    }
+  }
+}
+
 // @desc    Get application settings
 // @route   GET /api/settings
-// @access  Private (Accessible by all authenticated users, but only admin can modify)
+// @access  Private (Accessible by all authenticated users)
 exports.getSettings = asyncHandler(async (req, res, next) => {
   // Attempt to find the single settings document by its fixed ID
   let settings = await Settings.findById(SETTINGS_ID);
 
   // If no settings document exists, create it with defaults
   if (!settings) {
-    settings = await Settings.create({ _id: SETTINGS_ID }); // Ensure _id is set during creation
+    // Use insertMany with a single document to ensure _id is respected during creation
+    // or ensure your schema's pre-save hook handles default _id if not provided.
+    // For simplicity and clarity, explicitly create with _id.
+    settings = await Settings.create({ _id: SETTINGS_ID });
+    console.log('Default settings document created as it did not exist.');
   }
 
   res.status(200).json({ success: true, data: settings });
@@ -29,18 +62,16 @@ exports.updateSettings = asyncHandler(async (req, res, next) => {
   // Find the settings document by its fixed ID
   let settings = await Settings.findById(SETTINGS_ID);
 
-  // If settings don't exist, create them first (though getSettings should have handled this)
+  // If settings don't exist, create them first (though getSettings should ideally ensure existence)
   if (!settings) {
     settings = await Settings.create({ _id: SETTINGS_ID });
+    console.warn(
+      'Settings document not found during update, created a new one.'
+    );
   }
 
-  // Only update provided fields from req.body
-  // Use Object.assign or loop through req.body to apply updates.
-  // Be careful with nested objects if not using a deep merge utility.
-  // For simplicity, assuming direct field updates or shallow merge.
-  // For nested fields like general.currency, req.body should match the structure.
-  // Example: req.body = { general: { currency: 'USD' }, loan: { defaultInterestRate: 10 } }
-  Object.assign(settings, req.body);
+  // Use deepMerge to handle nested objects gracefully
+  deepMerge(settings, req.body);
 
   await settings.save();
 
@@ -55,15 +86,33 @@ exports.updateSettings = asyncHandler(async (req, res, next) => {
 // @route   POST /api/settings/reset
 // @access  Private (Admin only) - authorize('admin') middleware handles this
 exports.resetSettings = asyncHandler(async (req, res, next) => {
-  // Find and delete the existing settings document by its fixed ID
-  const deletedSettings = await Settings.findByIdAndDelete(SETTINGS_ID);
+  // Start a session for atomicity, especially if other operations depend on settings
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // Create a new settings document, which will use the schema defaults
-  const defaultSettings = await Settings.create({ _id: SETTINGS_ID });
+  try {
+    // Find and delete the existing settings document by its fixed ID
+    const deletedSettings = await Settings.findByIdAndDelete(SETTINGS_ID, {
+      session,
+    });
 
-  res.status(200).json({
-    success: true,
-    message: 'Settings reset to default values successfully.',
-    data: defaultSettings,
-  });
+    // Create a new settings document, which will use the schema defaults
+    const defaultSettings = await Settings.create([{ _id: SETTINGS_ID }], {
+      session,
+    });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      success: true,
+      message: 'Settings reset to default values successfully.',
+      data: defaultSettings[0], // Access the first element as create returns an array
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error resetting settings:', error);
+    return next(new ErrorResponse('Failed to reset settings.', 500));
+  }
 });

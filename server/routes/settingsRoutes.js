@@ -1,3 +1,4 @@
+// server\routes\settingsRoutes.js (NO CHANGES)
 const express = require('express');
 const router = express.Router();
 const {

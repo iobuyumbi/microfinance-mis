@@ -1,14 +1,14 @@
 // server\controllers\savingsController.js
 const Account = require('../models/Account');
-const Transaction = require('../models/Transaction'); // Used for all financial movements
-const User = require('../models/User'); // For populating owner
-const Group = require('../models/Group'); // For populating owner
-
+const Transaction = require('../models/Transaction');
+const User = require('../models/User');
+const Group = require('../models/Group');
 const asyncHandler = require('../middleware/asyncHandler');
 const ErrorResponse = require('../utils/errorResponse');
-const mongoose = require('mongoose'); // For ObjectId validation
+const mongoose = require('mongoose');
+const UserGroupMembership = require('../models/UserGroupMembership'); // Needed for some authorization checks
 
-// Helper to get currency from settings (async virtuals need this in controllers)
+// Helper to get currency from settings
 let appSettings = null;
 async function getCurrency() {
   if (!appSettings) {
@@ -24,10 +24,330 @@ async function getCurrency() {
   return appSettings.general.currency;
 }
 
-// @desc    Record a new deposit into an account
+// @desc    Create a new savings account
+// @route   POST /api/savings
+// @access  Private (Admin, Officer, or User creating their own or Leader for their group members)
+exports.createSavings = asyncHandler(async (req, res, next) => {
+  const { owner, ownerModel, initialAmount, description } = req.body;
+
+  // 1. Basic Validation
+  if (!owner || !ownerModel) {
+    return next(
+      new ErrorResponse('Owner ID and owner model are required.', 400)
+    );
+  }
+  if (!['User', 'Group'].includes(ownerModel)) {
+    return next(
+      new ErrorResponse('Owner model must be "User" or "Group".', 400)
+    );
+  }
+  if (!mongoose.Types.ObjectId.isValid(owner)) {
+    return next(new ErrorResponse(`Invalid ${ownerModel} ID format.`, 400));
+  }
+
+  // 2. Authorization based on ownerModel
+  if (ownerModel === 'User') {
+    // User creating their own account
+    if (owner.toString() !== req.user._id.toString()) {
+      // If not self-creation, must be Admin or Officer
+      if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+        return next(
+          new ErrorResponse(
+            'Access denied. You can only create savings accounts for yourself.',
+            403
+          )
+        );
+      }
+    }
+    // Verify user exists
+    const userExists = await User.findById(owner);
+    if (!userExists) return next(new ErrorResponse('User not found.', 404));
+  } else if (ownerModel === 'Group') {
+    // Must be Admin, Officer, or a Leader with 'can_manage_savings' permission in that group
+    if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+      const membership = await UserGroupMembership.findOne({
+        user: req.user._id,
+        group: owner,
+        status: 'active',
+      }).populate('groupRole', 'permissions');
+
+      if (
+        !membership ||
+        !membership.groupRole ||
+        !membership.groupRole.permissions.includes('can_manage_savings')
+      ) {
+        return next(
+          new ErrorResponse(
+            'Access denied. You need "can_manage_savings" permission within this group to create a group savings account.',
+            403
+          )
+        );
+      }
+    }
+    // Verify group exists
+    const groupExists = await Group.findById(owner);
+    if (!groupExists) return next(new ErrorResponse('Group not found.', 404));
+  }
+
+  // Check if a savings account already exists for this owner
+  const existingAccount = await Account.findOne({
+    owner,
+    ownerModel,
+    type: 'savings',
+    deleted: false,
+  });
+  if (existingAccount) {
+    return next(
+      new ErrorResponse(
+        `A savings account already exists for this ${ownerModel}.`,
+        400
+      )
+    );
+  }
+
+  // 3. Create the new savings account
+  const newSavingsAccount = await Account.create({
+    owner,
+    ownerModel,
+    type: 'savings',
+    balance: 0, // Initial balance is 0, initialAmount is added as a deposit transaction
+    accountName: `${ownerModel === 'User' ? (await User.findById(owner)).name : (await Group.findById(owner)).name}'s Savings`,
+    description: description || 'General Savings Account',
+    createdBy: req.user.id,
+  });
+
+  let initialDepositTransaction = null;
+  // 4. If initial amount is provided, record it as a deposit transaction
+  if (initialAmount && initialAmount > 0) {
+    initialDepositTransaction = await Transaction.create({
+      type: 'deposit', // Generic deposit type
+      member: ownerModel === 'User' ? owner : null,
+      group: ownerModel === 'Group' ? owner : null,
+      account: newSavingsAccount._id,
+      amount: initialAmount,
+      description: `Initial deposit for new savings account (${newSavingsAccount.accountNumber})`,
+      status: 'completed',
+      balanceAfter: initialAmount,
+      createdBy: req.user.id,
+      paymentMethod: 'cash', // Default or make configurable
+    });
+    // Update the account balance
+    newSavingsAccount.balance = initialAmount;
+    await newSavingsAccount.save();
+  }
+
+  // Populate owner for response
+  await newSavingsAccount.populate('owner', 'name email');
+
+  res.status(201).json({
+    success: true,
+    message: 'Savings account created successfully.',
+    data: newSavingsAccount,
+    initialDeposit: initialDepositTransaction
+      ? initialDepositTransaction.toObject({ virtuals: true })
+      : null,
+  });
+});
+
+// @desc    Get all savings accounts
+// @route   GET /api/savings
+// @access  Private (Admin, Officer, or filtered by user/group membership for others)
+exports.getSavings = asyncHandler(async (req, res, next) => {
+  // req.dataFilter is populated by filterDataByRole middleware
+  const accounts = await Account.find({ ...req.dataFilter, type: 'savings' })
+    .populate('owner', 'name email')
+    .sort({ createdAt: -1 });
+
+  const formattedAccounts = await Promise.all(
+    accounts.map(async acc => {
+      const obj = acc.toObject({ virtuals: true });
+      // Access virtuals that are async or need currency context
+      obj.formattedBalance = await acc.formattedBalance;
+      return obj;
+    })
+  );
+
+  res.status(200).json({
+    success: true,
+    count: formattedAccounts.length,
+    data: formattedAccounts,
+  });
+});
+
+// @desc    Get single savings account by ID
+// @route   GET /api/savings/:id
+// @access  Private (Admin, Officer, or Account Owner/Group Member via authorizeAccountAccess)
+exports.getSavingsById = asyncHandler(async (req, res, next) => {
+  // req.targetAccount is populated by authorizeAccountAccess middleware
+  const account = req.targetAccount;
+
+  // Ensure it's a savings account
+  if (account.type !== 'savings') {
+    return next(
+      new ErrorResponse('The requested account is not a savings account.', 400)
+    );
+  }
+
+  // Populate owner
+  await account.populate('owner', 'name email');
+
+  const formattedAccount = account.toObject({ virtuals: true });
+  formattedAccount.formattedBalance = await account.formattedBalance;
+
+  res.status(200).json({
+    success: true,
+    data: formattedAccount,
+  });
+});
+
+// @desc    Update savings account (non-financial details)
+// @route   PUT /api/savings/:id
+// @access  Private (Admin, Officer, or Account Owner/Group Leader with 'can_edit_group_info' / 'can_manage_savings')
+exports.updateSavings = asyncHandler(async (req, res, next) => {
+  // req.targetAccount is populated by authorizeAccountAccess middleware
+  let account = req.targetAccount;
+
+  // Ensure it's a savings account
+  if (account.type !== 'savings') {
+    return next(
+      new ErrorResponse('The requested account is not a savings account.', 400)
+    );
+  }
+
+  const { description, accountName, status } = req.body; // Allow updating limited fields
+
+  // Authorization for update specific to savings accounts
+  if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+    // If it's a User account, only the owner can update (basic fields)
+    if (
+      account.ownerModel === 'User' &&
+      account.owner.toString() === req.user._id.toString()
+    ) {
+      // No additional permission needed for self-account updates (e.g., description)
+    } else if (account.ownerModel === 'Group') {
+      // For Group accounts, check if user has 'can_edit_group_info' or 'can_manage_savings' permission in that group
+      const membership = await UserGroupMembership.findOne({
+        user: req.user._id,
+        group: account.owner,
+        status: 'active',
+      }).populate('groupRole', 'permissions');
+
+      if (
+        !membership ||
+        !membership.groupRole ||
+        (!membership.groupRole.permissions.includes('can_edit_group_info') &&
+          !membership.groupRole.permissions.includes('can_manage_savings'))
+      ) {
+        return next(
+          new ErrorResponse(
+            'Access denied. You need "can_edit_group_info" or "can_manage_savings" permission to update this group savings account.',
+            403
+          )
+        );
+      }
+    } else {
+      return next(
+        new ErrorResponse(
+          'Access denied. You are not authorized to update this account.',
+          403
+        )
+      );
+    }
+  }
+
+  // Apply updates (only non-financial fields)
+  if (description !== undefined) account.description = description;
+  if (accountName !== undefined) account.accountName = accountName;
+  if (status !== undefined) account.status = status; // If you add a status field to Account schema
+
+  account = await account.save();
+
+  await account.populate('owner', 'name email');
+  const formattedAccount = account.toObject({ virtuals: true });
+  formattedAccount.formattedBalance = await account.formattedBalance;
+
+  res.status(200).json({
+    success: true,
+    message: 'Savings account updated successfully.',
+    data: formattedAccount,
+  });
+});
+
+// @desc    Soft-delete a savings account
+// @route   DELETE /api/savings/:id
+// @access  Private (Admin, Officer, or Group Leader with 'can_manage_savings' for group accounts)
+exports.deleteSavings = asyncHandler(async (req, res, next) => {
+  // req.targetAccount is populated by authorizeAccountAccess middleware
+  let account = req.targetAccount;
+
+  // Ensure it's a savings account
+  if (account.type !== 'savings') {
+    return next(
+      new ErrorResponse(
+        'The requested account is not a savings account and cannot be deleted via this endpoint.',
+        400
+      )
+    );
+  }
+
+  // Authorization for deletion
+  if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+    // Only Admins/Officers can delete personal savings accounts
+    if (account.ownerModel === 'User') {
+      return next(
+        new ErrorResponse(
+          'Access denied. Only Admins or Officers can delete personal savings accounts.',
+          403
+        )
+      );
+    }
+    // For Group accounts, check if user has 'can_manage_savings' permission in that group
+    if (account.ownerModel === 'Group') {
+      const membership = await UserGroupMembership.findOne({
+        user: req.user._id,
+        group: account.owner,
+        status: 'active',
+      }).populate('groupRole', 'permissions');
+
+      if (
+        !membership ||
+        !membership.groupRole ||
+        !membership.groupRole.permissions.includes('can_manage_savings')
+      ) {
+        return next(
+          new ErrorResponse(
+            'Access denied. You need "can_manage_savings" permission to delete this group savings account.',
+            403
+          )
+        );
+      }
+    } else {
+      return next(
+        new ErrorResponse(
+          'Access denied. You are not authorized to delete this account.',
+          403
+        )
+      );
+    }
+  }
+
+  // Perform soft delete
+  account.deleted = true;
+  account.deletedAt = new Date();
+  account.deletedBy = req.user.id;
+  await account.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Savings account soft-deleted successfully.',
+    data: {},
+  });
+});
+
+// @desc    Record a new deposit into a savings account
 // @route   POST /api/savings/deposit
-// @access  Private (Admin, Officer, or user with 'can_record_deposits' permission for their own/group account)
-exports.recordDeposit = asyncHandler(async (req, res, next) => {
+// @access  Private (Admin, Officer, or user with appropriate access to the account)
+exports.recordSavingsDeposit = asyncHandler(async (req, res, next) => {
   const { accountId, amount, paymentMethod, description } = req.body;
 
   // 1. Basic Validation
@@ -45,30 +365,63 @@ exports.recordDeposit = asyncHandler(async (req, res, next) => {
 
   const account = await Account.findById(accountId);
   if (!account) {
-    return next(new ErrorResponse('Account not found.', 404));
+    return next(new ErrorResponse('Savings Account not found.', 404));
   }
 
-  // Ensure it's a savings account (or relevant account type for deposits)
-  if (!['savings', 'group_savings'].includes(account.type)) {
+  // Ensure it's a savings account
+  if (account.type !== 'savings') {
     return next(
       new ErrorResponse(
-        'Deposits can only be made to savings or group savings accounts.',
+        `Deposits can only be made to 'savings' accounts via this endpoint. Found account type: '${account.type}'.`,
         400
       )
     );
   }
 
-  // 2. Access Control (assuming middleware handles 'can_record_deposits' and `authorizeOwnerOrAdmin` for accounts)
-  // For example, a member can deposit into their own savings account, officers/admins into any.
+  // Authorization: Admin/Officer OR account owner/group member with manage savings permission
+  if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+    if (
+      account.ownerModel === 'User' &&
+      account.owner.toString() === req.user._id.toString()
+    ) {
+      // User depositing into their own savings account is allowed
+    } else if (account.ownerModel === 'Group') {
+      const membership = await UserGroupMembership.findOne({
+        user: req.user._id,
+        group: account.owner,
+        status: 'active',
+      }).populate('groupRole', 'permissions');
 
-  // 3. Update account balance
+      if (
+        !membership ||
+        !membership.groupRole ||
+        !membership.groupRole.permissions.includes('can_manage_savings')
+      ) {
+        return next(
+          new ErrorResponse(
+            'Access denied. You need "can_manage_savings" permission to deposit into this group savings account.',
+            403
+          )
+        );
+      }
+    } else {
+      return next(
+        new ErrorResponse(
+          'Access denied. You are not authorized to deposit into this account.',
+          403
+        )
+      );
+    }
+  }
+
+  // 2. Update account balance
   const newBalance = account.balance + amount;
   account.balance = newBalance;
   await account.save();
 
-  // 4. Create a new 'deposit' Transaction record
+  // 3. Create a new 'deposit' Transaction record
   const depositTransaction = await Transaction.create({
-    type: 'deposit',
+    type: 'deposit', // Generic deposit type
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
     account: account._id, // Link to the specific account
@@ -85,7 +438,7 @@ exports.recordDeposit = asyncHandler(async (req, res, next) => {
   // Populate for response
   await depositTransaction.populate(
     'account',
-    'name accountNumber owner ownerModel type'
+    'accountNumber owner ownerModel type'
   );
   await depositTransaction.populate('member', 'name email');
   await depositTransaction.populate('group', 'name');
@@ -94,8 +447,6 @@ exports.recordDeposit = asyncHandler(async (req, res, next) => {
   // Await async virtuals for formatting
   const formattedDeposit = depositTransaction.toObject({ virtuals: true });
   formattedDeposit.formattedAmount = await depositTransaction.formattedAmount;
-  formattedDeposit.account.formattedBalance =
-    await depositTransaction.account.formattedBalance;
 
   res.status(201).json({
     success: true,
@@ -104,10 +455,10 @@ exports.recordDeposit = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Record a new withdrawal from an account
+// @desc    Record a new withdrawal from a savings account
 // @route   POST /api/savings/withdraw
-// @access  Private (Admin, Officer, or user with 'can_record_withdrawals' permission for their own/group account)
-exports.recordWithdrawal = asyncHandler(async (req, res, next) => {
+// @access  Private (Admin, Officer, or user with appropriate access to the account)
+exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
   const { accountId, amount, paymentMethod, description } = req.body;
 
   // 1. Basic Validation
@@ -125,24 +476,60 @@ exports.recordWithdrawal = asyncHandler(async (req, res, next) => {
 
   const account = await Account.findById(accountId);
   if (!account) {
-    return next(new ErrorResponse('Account not found.', 404));
+    return next(new ErrorResponse('Savings Account not found.', 404));
   }
 
-  // Ensure it's a savings account (or relevant account type for withdrawals)
-  if (!['savings', 'group_savings'].includes(account.type)) {
+  // Ensure it's a savings account
+  if (account.type !== 'savings') {
     return next(
       new ErrorResponse(
-        'Withdrawals can only be made from savings or group savings accounts.',
+        `Withdrawals can only be made from 'savings' accounts via this endpoint. Found account type: '${account.type}'.`,
         400
       )
     );
+  }
+
+  // Authorization: Admin/Officer OR account owner/group member with manage savings permission
+  if (req.user.role !== 'admin' && req.user.role !== 'officer') {
+    if (
+      account.ownerModel === 'User' &&
+      account.owner.toString() === req.user._id.toString()
+    ) {
+      // User withdrawing from their own savings account is allowed
+    } else if (account.ownerModel === 'Group') {
+      const membership = await UserGroupMembership.findOne({
+        user: req.user._id,
+        group: account.owner,
+        status: 'active',
+      }).populate('groupRole', 'permissions');
+
+      if (
+        !membership ||
+        !membership.groupRole ||
+        !membership.groupRole.permissions.includes('can_manage_savings')
+      ) {
+        return next(
+          new ErrorResponse(
+            'Access denied. You need "can_manage_savings" permission to withdraw from this group savings account.',
+            403
+          )
+        );
+      }
+    } else {
+      return next(
+        new ErrorResponse(
+          'Access denied. You are not authorized to withdraw from this account.',
+          403
+        )
+      );
+    }
   }
 
   // 2. Check for sufficient funds
   if (account.balance < amount) {
     return next(
       new ErrorResponse(
-        'Insufficient funds in account for this withdrawal.',
+        'Insufficient funds in savings account for this withdrawal.',
         400
       )
     );
@@ -155,7 +542,7 @@ exports.recordWithdrawal = asyncHandler(async (req, res, next) => {
 
   // 4. Create a new 'withdrawal' Transaction record
   const withdrawalTransaction = await Transaction.create({
-    type: 'withdrawal',
+    type: 'withdrawal', // Generic withdrawal type
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
     account: account._id, // Link to the specific account
@@ -172,7 +559,7 @@ exports.recordWithdrawal = asyncHandler(async (req, res, next) => {
   // Populate for response
   await withdrawalTransaction.populate(
     'account',
-    'name accountNumber owner ownerModel type'
+    'accountNumber owner ownerModel type'
   );
   await withdrawalTransaction.populate('member', 'name email');
   await withdrawalTransaction.populate('group', 'name');
@@ -184,8 +571,6 @@ exports.recordWithdrawal = asyncHandler(async (req, res, next) => {
   });
   formattedWithdrawal.formattedAmount =
     await withdrawalTransaction.formattedAmount;
-  formattedWithdrawal.account.formattedBalance =
-    await withdrawalTransaction.account.formattedBalance;
 
   res.status(200).json({
     success: true,
@@ -194,86 +579,39 @@ exports.recordWithdrawal = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get a specific account by ID (e.g., to check balance)
-// @route   GET /api/accounts/:id
-// @access  Private (Admin, Officer, or Account Owner) - authorizeOwnerOrAdmin middleware
-exports.getAccountById = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return next(new ErrorResponse('Invalid Account ID format.', 400));
-  }
-
-  // `req.dataFilter` could be applied here if `filterDataByRole` is used for single fetch
-  // but `authorizeOwnerOrAdmin` middleware is more direct for specific account access.
-  const account = await Account.findById(id)
-    .populate('owner', 'name email') // Populate owner (User or Group)
-    .populate('members', 'name email'); // If it's a group account, populate its members
-
-  if (!account) {
-    return next(new ErrorResponse('Account not found.', 404));
-  }
-
-  // Await async virtuals for formatting
-  const formattedAccount = account.toObject({ virtuals: true });
-  formattedAccount.formattedBalance = await account.formattedBalance;
-
-  res.status(200).json({
-    success: true,
-    data: formattedAccount,
-  });
-});
-
-// @desc    Get all accounts accessible by the user
-// @route   GET /api/accounts
-// @access  Private (filterDataByRole middleware handles access)
-exports.getAllAccounts = asyncHandler(async (req, res, next) => {
-  // req.dataFilter is set by the filterDataByRole middleware
-  const query = req.dataFilter || {};
-  const currency = await getCurrency();
-
-  const accounts = await Account.find(query)
-    .populate('owner', 'name email') // Populate owner (User or Group)
-    .populate('members', 'name email'); // If it's a group account, populate its members
-
-  // Await async virtuals for formatting
-  const formattedAccounts = await Promise.all(
-    accounts.map(async acc => {
-      const obj = acc.toObject({ virtuals: true });
-      obj.formattedBalance = await acc.formattedBalance;
-      return obj;
-    })
-  );
-
-  res.status(200).json({
-    success: true,
-    count: formattedAccounts.length,
-    data: formattedAccounts,
-  });
-});
-
-// @desc    Get transaction history for a specific account (deposits, withdrawals, etc.)
-// @route   GET /api/accounts/:id/transactions
-// @access  Private (Admin, Officer, or Account Owner) - authorizeOwnerOrAdmin middleware
-exports.getAccountTransactions = asyncHandler(async (req, res, next) => {
+// @desc    Get transaction history for a specific savings account
+// @route   GET /api/savings/:id/transactions
+// @access  Private (Admin, Officer, or Account Owner/Group Member)
+exports.getSavingsAccountTransactions = asyncHandler(async (req, res, next) => {
   const { id } = req.params; // Account ID
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return next(new ErrorResponse('Invalid Account ID format.', 400));
+
+  // req.targetAccount is populated by authorizeAccountAccess middleware
+  const account = req.targetAccount;
+
+  // Ensure it's a savings account
+  if (account.type !== 'savings') {
+    return next(
+      new ErrorResponse('The requested account is not a savings account.', 400)
+    );
   }
 
-  const currency = await getCurrency();
-
-  // First, verify access to the account itself. This is ideally done via middleware.
-  const account = await Account.findById(id);
-  if (!account) {
-    return next(new ErrorResponse('Account not found.', 404));
-  }
-  // The `authorizeOwnerOrAdmin` middleware on the route will ensure access here.
+  // Currency for formatting, though Transaction virtual should handle it.
+  const currency = await getCurrency(); // Not strictly needed here, but good practice
 
   const transactions = await Transaction.find({
     account: id,
     deleted: false, // Exclude soft-deleted transactions
-    type: { $in: ['deposit', 'withdrawal', 'transfer', 'loan_disbursement'] }, // Only show relevant account transactions
+    type: {
+      $in: [
+        'deposit',
+        'withdrawal',
+        'transfer',
+        'savings_contribution', // Include specific savings contribution type if applicable
+      ],
+    },
   })
+    .populate('member', 'name email') // Populate for User accounts
+    .populate('group', 'name') // Populate for Group accounts
     .populate('createdBy', 'name email')
     .sort({ createdAt: -1 }); // Latest transactions first
 

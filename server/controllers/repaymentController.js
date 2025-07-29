@@ -1,4 +1,4 @@
-// server\controllers\repaymentController.js
+// server\controllers\repaymentController.js (REVISED)
 const Transaction = require('../models/Transaction'); // Use Transaction model for repayments
 const Loan = require('../models/Loan');
 const Account = require('../models/Account'); // To update borrower's account
@@ -31,14 +31,12 @@ async function getCurrency() {
 exports.recordRepayment = asyncHandler(async (req, res, next) => {
   const { loanId, amountPaid, paymentDate, paymentMethod, penalty } = req.body;
 
-  // 1. Basic Validation
-  if (!loanId || !amountPaid || amountPaid <= 0) {
-    return next(
-      new ErrorResponse('Loan ID and a positive amount paid are required.', 400)
-    );
-  }
+  // 1. Basic Validation (already handled by validateRequiredFields for essential fields)
   if (!mongoose.Types.ObjectId.isValid(loanId)) {
     return next(new ErrorResponse('Invalid Loan ID format.', 400));
+  }
+  if (amountPaid <= 0) {
+    return next(new ErrorResponse('Amount paid must be positive.', 400));
   }
 
   const loan = await Loan.findById(loanId);
@@ -46,8 +44,9 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Loan not found.', 404));
   }
 
-  // Ensure loan is in a repayable status (e.g., 'approved', 'overdue')
-  if (!['approved', 'overdue'].includes(loan.status)) {
+  // Ensure loan is in a repayable status (e.g., 'approved', 'overdue', 'disbursed')
+  if (!['approved', 'overdue', 'disbursed'].includes(loan.status)) {
+    // Added 'disbursed'
     return next(
       new ErrorResponse(
         `Loan is not in a repayable status. Current status: ${loan.status}.`,
@@ -56,7 +55,7 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // 2. Find the borrower's account
+  // 2. Find the borrower's account (assuming the loan's borrower is linked to an account)
   let borrowerAccount = await Account.findOne({
     owner: loan.borrower,
     ownerModel: loan.borrowerModel,
@@ -65,10 +64,9 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
   });
 
   if (!borrowerAccount) {
-    // This is a critical error, borrower should have a savings account to repay
     return next(
       new ErrorResponse(
-        'Borrower does not have an active savings account.',
+        'Borrower does not have an active savings account to make repayment from.',
         400
       )
     );
@@ -78,8 +76,6 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
   // Repayment DECREASES the borrower's balance
   const newBalance = borrowerAccount.balance - amountPaid;
   if (newBalance < 0) {
-    // This check is important if you don't allow overdrafts for repayments
-    // You might allow it for specific scenarios or handle it differently
     return next(
       new ErrorResponse(
         "Insufficient funds in borrower's account for this repayment.",
@@ -93,6 +89,7 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     type: 'loan_repayment',
     member: loan.borrowerModel === 'User' ? loan.borrower : null,
     group: loan.borrowerModel === 'Group' ? loan.borrower : null,
+    account: borrowerAccount._id, // Link to the account from which payment was made
     amount: amountPaid,
     description: `Loan repayment for Loan ID: ${loan._id}`,
     status: 'completed', // Assuming immediate completion for repayments
@@ -102,6 +99,7 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     penalty: penalty || 0, // Store penalty if any
     relatedEntity: loan._id,
     relatedEntityType: 'Loan',
+    paymentDate: paymentDate ? new Date(paymentDate) : new Date(), // Use provided date or current
   });
 
   // 5. Update the borrower's account balance
@@ -109,59 +107,63 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
   await borrowerAccount.save();
 
   // 6. Update the Loan's repayment schedule
-  let outstandingBalance = loan.getOutstandingBalance(); // Get current outstanding
-  let amountToApply = amountPaid;
+  // This part requires careful implementation to accurately track remaining balance and installment statuses.
+  // The current logic is a simple iteration. For more robust tracking, consider:
+  // - Tracking `loan.amountRepaid` directly.
+  // - More complex installment application (e.g., partial payments, applying to overdue first).
 
-  for (let i = 0; i < loan.repaymentSchedule.length && amountToApply > 0; i++) {
-    const installment = loan.repaymentSchedule[i];
-    if (installment.status === 'pending') {
-      if (amountToApply >= installment.amount) {
-        // Fully pay this installment
+  // Update the loan's `amountRepaid` field
+  loan.amountRepaid = (loan.amountRepaid || 0) + amountPaid;
+
+  // Update repayment schedule installments
+  let remainingPayment = amountPaid;
+  for (const installment of loan.repaymentSchedule) {
+    if (installment.status === 'pending' && remainingPayment > 0) {
+      const amountToPayForInstallment = Math.min(
+        remainingPayment,
+        installment.amount - (installment.amountPaid || 0)
+      );
+
+      installment.amountPaid =
+        (installment.amountPaid || 0) + amountToPayForInstallment;
+      remainingPayment -= amountToPayForInstallment;
+
+      if (installment.amountPaid >= installment.amount) {
         installment.status = 'paid';
-        installment.paidAt = new Date();
-        amountToApply -= installment.amount;
-      } else {
-        // Partially pay this installment (if you allow partial payments, otherwise just apply to next full)
-        // For simplicity, we assume full payment of installments in order.
-        // If partials are needed, you'd adjust installment.amount and add a 'partial_paid' status.
-        // For now, if amountToApply is less than installment.amount, it means this payment
-        // doesn't cover the full next installment, so it will be applied to the next one.
-        // Or you could make this a 'partial_payment' transaction type.
-        // For this example, we'll assume a payment always covers at least one full installment or is a full payment.
-        // If it's a partial payment of the *current* installment, you would need more complex logic.
-        break; // Stop if current payment doesn't cover the next full installment
+        installment.paidAt = new Date(); // Mark paid date
       }
     }
   }
 
-  // Recalculate outstanding balance after applying payments
-  const newOutstandingBalance = loan.repaymentSchedule
+  // Update loan status if fully paid
+  const totalOutstanding = loan.repaymentSchedule
     .filter(r => r.status === 'pending')
     .reduce((sum, r) => sum + r.amount, 0);
 
-  // Update loan status if fully paid
-  if (newOutstandingBalance <= 0) {
+  if (totalOutstanding <= 0 && loan.amountRepaid >= loan.amountApproved) {
+    // Ensure total repaid matches approved amount
     loan.status = 'completed';
-  } else if (loan.status === 'approved' && newOutstandingBalance > 0) {
-    // Keep as approved if still outstanding, or change to overdue if past due date
-    // (Overdue check would be a separate scheduled job)
+  } else if (loan.status === 'approved' && totalOutstanding > 0) {
+    // Keep as approved if still outstanding. Overdue check would be a separate scheduled job.
   }
 
   await loan.save();
 
   // Populate for response
-  await repaymentTransaction.populate(
-    'loan',
-    'amountApproved borrower borrowerModel status repaymentSchedule'
-  );
-  await repaymentTransaction.populate('member', 'name email');
-  await repaymentTransaction.populate('group', 'name');
-  await repaymentTransaction.populate('createdBy', 'name email');
+  await repaymentTransaction.populate([
+    {
+      path: 'loan',
+      select: 'amountApproved borrower borrowerModel status repaymentSchedule',
+    },
+    { path: 'member', select: 'name email' },
+    { path: 'group', select: 'name' },
+    { path: 'createdBy', select: 'name email' },
+    { path: 'account', select: 'accountNumber type' }, // Populate the account used
+  ]);
 
   // Await async virtuals
   const formattedRepayment = repaymentTransaction.toObject({ virtuals: true });
-  formattedRepayment.formattedAmount =
-    await repaymentTransaction.formattedAmount;
+  formattedRepayment.formattedAmount = await formattedRepayment.formattedAmount;
 
   res.status(201).json({
     success: true,
@@ -175,11 +177,8 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAllRepayments = asyncHandler(async (req, res, next) => {
   // req.dataFilter is set by the filterDataByRole middleware
-  const query = { type: 'loan_repayment' };
-  if (req.dataFilter) {
-    Object.assign(query, req.dataFilter);
-  }
-  const currency = await getCurrency();
+  const query = { type: 'loan_repayment', ...(req.dataFilter || {}) }; // Combine with filterDataByRole
+  // const currency = await getCurrency(); // Not directly used here, virtual handles it
 
   const repayments = await Transaction.find(query)
     .populate('loan', 'amountApproved borrower borrowerModel status')
@@ -205,17 +204,18 @@ exports.getAllRepayments = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Get all repayments for a specific loan
-// @route   GET /api/loans/:loanId/repayments
+// @route   GET /api/loans/:loanId/repayments (or /api/repayments/loan/:loanId)
 // @access  Private (authorizeLoanAccess middleware handles access)
 exports.getRepaymentsByLoan = asyncHandler(async (req, res, next) => {
   const { loanId } = req.params;
   if (!mongoose.Types.ObjectId.isValid(loanId)) {
     return next(new ErrorResponse('Invalid Loan ID format.', 400));
   }
-  const currency = await getCurrency();
+  // const currency = await getCurrency(); // Not directly used here
 
-  // Ensure the loan exists and user has access (handled by middleware)
-  const loan = await Loan.findById(loanId);
+  // Access to the loan is already guaranteed by `authorizeLoanAccess` middleware on the route.
+  // So, we don't need to apply req.dataFilter here, just fetch transactions for this loan.
+  const loan = await Loan.findById(loanId); // Fetch loan to ensure it exists
   if (!loan) {
     return next(new ErrorResponse('Loan not found.', 404));
   }
@@ -226,6 +226,7 @@ exports.getRepaymentsByLoan = asyncHandler(async (req, res, next) => {
     deleted: false, // Exclude soft-deleted transactions
   })
     .populate('member', 'name email')
+    .populate('group', 'name') // If group is relevant for the transaction
     .populate('createdBy', 'name email')
     .sort({ createdAt: 1 }); // Chronological order for history
 
@@ -247,7 +248,7 @@ exports.getRepaymentsByLoan = asyncHandler(async (req, res, next) => {
 
 // @desc    Get a specific repayment by Transaction ID
 // @route   GET /api/repayments/:id
-// @access  Private (authorizeLoanAccess middleware handles access via associated loan)
+// @access  Private (filterDataByRole middleware handles access via associated loan)
 exports.getRepaymentById = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -255,13 +256,9 @@ exports.getRepaymentById = asyncHandler(async (req, res, next) => {
       new ErrorResponse('Invalid Repayment Transaction ID format.', 400)
     );
   }
-  const currency = await getCurrency();
+  // const currency = await getCurrency(); // Not directly used here
 
-  let query = { _id: id, type: 'loan_repayment' };
-  // Apply data filter from middleware
-  if (req.dataFilter) {
-    Object.assign(query, req.dataFilter);
-  }
+  let query = { _id: id, type: 'loan_repayment', ...(req.dataFilter || {}) }; // Combine with filterDataByRole
 
   const repaymentTransaction = await Transaction.findOne(query)
     .populate('loan', 'amountApproved borrower borrowerModel status')
@@ -280,8 +277,7 @@ exports.getRepaymentById = asyncHandler(async (req, res, next) => {
 
   // Await async virtuals
   const formattedRepayment = repaymentTransaction.toObject({ virtuals: true });
-  formattedRepayment.formattedAmount =
-    await repaymentTransaction.formattedAmount;
+  formattedRepayment.formattedAmount = await formattedRepayment.formattedAmount;
 
   res.status(200).json({
     success: true,
@@ -290,7 +286,7 @@ exports.getRepaymentById = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Void/Adjust a repayment (instead of deleting)
-// @route   POST /api/repayments/:id/void
+// @route   PUT /api/repayments/:id/void
 // @access  Private (Admin, Officer, or user with 'can_void_repayments' permission)
 exports.voidRepayment = asyncHandler(async (req, res, next) => {
   const { id } = req.params; // ID of the original repayment transaction
@@ -305,11 +301,12 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Reason for voiding is required.', 400));
   }
 
+  // Find the original repayment, ensuring it's a loan_repayment and not already voided/deleted
   const originalRepayment = await Transaction.findOne({
     _id: id,
     type: 'loan_repayment',
-    status: 'completed',
-    deleted: false,
+    status: 'completed', // Only completed repayments can be voided
+    deleted: false, // Ensure it's not already soft-deleted
   });
 
   if (!originalRepayment) {
@@ -327,7 +324,7 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
 
   try {
     // 1. Mark the original repayment as voided (soft delete or status change)
-    originalRepayment.status = 'cancelled'; // Or 'voided' if you add that enum
+    originalRepayment.status = 'voided'; // Use 'voided' status
     originalRepayment.deleted = true; // Mark as soft deleted
     originalRepayment.deletedAt = new Date();
     await originalRepayment.save({ session });
@@ -361,11 +358,12 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
     const reversalTransaction = await Transaction.create(
       [
         {
-          type: 'adjustment', // Or 'loan_repayment_void' if you add that type
+          type: 'loan_repayment_void', // Specific type for voided repayment
           member: originalRepayment.member,
           group: originalRepayment.group,
+          account: borrowerAccount._id, // Link to the account that was affected
           amount: originalRepayment.amount,
-          description: `Reversal of repayment ${originalRepayment._id} (Voided). Reason: ${reason}`,
+          description: `Reversal of loan repayment ${originalRepayment._id} (Voided). Reason: ${reason}`,
           status: 'completed',
           balanceAfter: newBalance,
           createdBy: req.user.id,
@@ -389,13 +387,19 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
         if (amountToReverse >= installment.amount) {
           installment.status = 'pending';
           installment.paidAt = undefined; // Clear paid date
+          installment.amountPaid = 0; // Reset amount paid for this installment
           amountToReverse -= installment.amount;
         } else {
           // This is a partial reversal of an installment.
-          // More complex logic needed if partial payments are tracked granularly.
-          // For now, if it's a partial reversal, we'll just mark the whole installment as pending.
-          installment.status = 'pending';
-          installment.paidAt = undefined;
+          // Adjust amountPaid and potentially status to 'partially_paid' if schema supports.
+          // For simplicity, if it's a partial reversal, we'll just mark the whole installment as pending
+          // and adjust its `amountPaid` accordingly.
+          installment.amountPaid =
+            (installment.amountPaid || 0) - amountToReverse;
+          if (installment.amountPaid < installment.amount) {
+            installment.status = 'pending'; // Or 'partially_paid'
+            installment.paidAt = undefined;
+          }
           amountToReverse = 0; // All reversed
         }
       }
@@ -407,8 +411,14 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
       .reduce((sum, r) => sum + r.amount, 0);
 
     if (loan.status === 'completed' && newOutstandingBalance > 0) {
-      loan.status = 'approved'; // Or 'overdue' if applicable
+      loan.status = 'approved'; // Revert to 'approved' or 'overdue' if applicable
     }
+
+    // Also decrement loan.amountRepaid
+    loan.amountRepaid = Math.max(
+      0,
+      (loan.amountRepaid || 0) - originalRepayment.amount
+    );
 
     await loan.save({ session });
 

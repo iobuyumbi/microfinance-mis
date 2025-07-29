@@ -21,10 +21,9 @@ const getAccountBalance = async (ownerId, ownerModel, accountType) => {
 };
 
 // @desc    Create a new loan assessment
-// @route   POST /api/loanassessments
-// @access  Private (Admin, Officer, or user with 'can_create_loan_assessment' permission)
+// @route   POST /api/loan-assessments
+// @access  Private (Admin, Officer)
 exports.createAssessment = asyncHandler(async (req, res, next) => {
-  // Access control for 'can_create_loan_assessment' will be handled by middleware
   const {
     memberId,
     groupId,
@@ -34,7 +33,7 @@ exports.createAssessment = asyncHandler(async (req, res, next) => {
     eligible,
   } = req.body;
 
-  // 1. Validate input IDs
+  // 1. Validate input IDs (already handled by validateRequiredFields and middleware, but good for specific type checks)
   if (!mongoose.Types.ObjectId.isValid(memberId)) {
     return next(new ErrorResponse('Invalid Member ID format.', 400));
   }
@@ -84,7 +83,7 @@ exports.createAssessment = asyncHandler(async (req, res, next) => {
   const assessment = await LoanAssessment.create({
     member: memberId,
     group: groupId,
-    assessedBy: req.user.id, // Authenticated user
+    assessedBy: req.user.id, // Authenticated user from protect middleware
     individualSavings,
     groupTotalSavings,
     assessmentRules: assessmentRules || {}, // Rules used for this assessment
@@ -102,12 +101,12 @@ exports.createAssessment = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Get all assessments (filtered by role and query params)
-// @route   GET /api/loanassessments
+// @route   GET /api/loan-assessments
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAssessments = asyncHandler(async (req, res, next) => {
   const { memberId, groupId, status } = req.query;
 
-  let filter = req.dataFilter || {}; // Use filter from middleware
+  let filter = req.dataFilter || {}; // Use filter from filterDataByRole middleware
 
   // Apply additional query filters
   if (memberId) {
@@ -136,24 +135,29 @@ exports.getAssessments = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Get assessment by ID
-// @route   GET /api/loanassessments/:id
-// @access  Private (authorizeAssessmentAccess middleware handles access)
+// @route   GET /api/loan-assessments/:id
+// @access  Private (filterDataByRole middleware handles access)
 exports.getAssessmentById = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return next(new ErrorResponse('Invalid Assessment ID format.', 400));
   }
 
-  const assessment = await LoanAssessment.findById(id)
+  // Combine _id from params with req.dataFilter for robust access control
+  const query = { _id: id, ...(req.dataFilter || {}) };
+
+  const assessment = await LoanAssessment.findOne(query)
     .populate('member', 'name email role status')
     .populate('group', 'name location')
     .populate('assessedBy', 'name email');
 
   if (!assessment) {
-    return next(new ErrorResponse('Assessment not found.', 404));
+    // If not found, it means either the ID is wrong, or the user doesn't have access
+    return next(
+      new ErrorResponse('Assessment not found or you do not have access.', 404)
+    );
   }
 
-  // Access check is handled by authorizeAssessmentAccess middleware before this controller runs
   res.status(200).json({
     success: true,
     data: assessment,
@@ -161,8 +165,8 @@ exports.getAssessmentById = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Update assessment status
-// @route   PUT /api/loanassessments/:id/status
-// @access  Private (Admin, Officer, or user with 'can_update_loan_assessment_status' permission)
+// @route   PUT /api/loan-assessments/:id/status
+// @access  Private (Admin, Officer)
 exports.updateAssessmentStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -171,9 +175,17 @@ exports.updateAssessmentStatus = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid Assessment ID format.', 400));
   }
 
-  const assessment = await LoanAssessment.findById(id);
+  // Fetch the assessment using a combined query to enforce data access rules
+  const query = { _id: id, ...(req.dataFilter || {}) }; // Add req.dataFilter for consistency if it was passed
+  let assessment = await LoanAssessment.findOne(query);
+
   if (!assessment) {
-    return next(new ErrorResponse('Assessment not found.', 404));
+    return next(
+      new ErrorResponse(
+        'Assessment not found or you do not have permission to update.',
+        404
+      )
+    );
   }
 
   // Basic validation for status
@@ -190,6 +202,12 @@ exports.updateAssessmentStatus = asyncHandler(async (req, res, next) => {
   assessment.status = status;
   await assessment.save();
 
+  // Re-populate for response if needed
+  assessment = await LoanAssessment.findById(assessment._id)
+    .populate('member', 'name email role status')
+    .populate('group', 'name location')
+    .populate('assessedBy', 'name email');
+
   res.status(200).json({
     success: true,
     message: 'Assessment status updated successfully.',
@@ -198,11 +216,11 @@ exports.updateAssessmentStatus = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Get loan assessment statistics
-// @route   GET /api/loanassessments/stats
+// @route   GET /api/loan-assessments/stats
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAssessmentStats = asyncHandler(async (req, res, next) => {
   const { groupId } = req.query;
-  let filter = req.dataFilter || {}; // Use filter from middleware
+  let filter = req.dataFilter || {}; // Use filter from filterDataByRole middleware
 
   if (groupId) {
     if (!mongoose.Types.ObjectId.isValid(groupId))
@@ -218,7 +236,7 @@ exports.getAssessmentStats = asyncHandler(async (req, res, next) => {
     ineligible: assessments.filter(a => !a.eligible).length,
     pending: assessments.filter(a => a.status === 'pending').length,
     approved: assessments.filter(a => a.status === 'approved').length,
-    rejected: assessments.filter(a => a.filter === 'rejected').length, // Corrected from a.status
+    rejected: assessments.filter(a => a.status === 'rejected').length, // Corrected typo here
     expired: assessments.filter(a => a.status === 'expired').length,
     averageRecommendedAmount: 0,
     averageIndividualSavings: 0,
@@ -249,8 +267,8 @@ exports.getAssessmentStats = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Perform a quick loan assessment (real-time calculation without saving)
-// @route   GET /api/loanassessments/quick
-// @access  Private (Admin, Officer, or user with 'can_perform_quick_assessment' permission)
+// @route   GET /api/loan-assessments/quick
+// @access  Private (Admin, Officer)
 exports.quickAssessment = asyncHandler(async (req, res, next) => {
   const { memberId, groupId } = req.query;
 

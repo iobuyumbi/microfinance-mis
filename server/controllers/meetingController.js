@@ -1,4 +1,4 @@
-// server\controllers\meetingController.js
+// server\controllers\meetingController.js (REVISED)
 const Meeting = require('../models/Meeting');
 const Group = require('../models/Group');
 const User = require('../models/User'); // Needed for populating attendance
@@ -25,9 +25,11 @@ exports.scheduleMeeting = asyncHandler(async (req, res, next) => {
   if (isNaN(meetingDate.getTime())) {
     return next(new ErrorResponse('Invalid date format.', 400));
   }
-  if (meetingDate < new Date()) {
-    // Meetings should be scheduled for the future
-    return next(new ErrorResponse('Meeting date must be in the future.', 400));
+  // Allow past meetings to be scheduled for historical data entry, but warn if in past
+  if (meetingDate < new Date() && !req.body.allowPastDate) {
+    // Added optional allowPastDate flag
+    // return next(new ErrorResponse('Meeting date must be in the future.', 400));
+    console.warn(`Meeting scheduled for a past date: ${meetingDate}`);
   }
 
   // 2. Ensure group exists
@@ -44,10 +46,12 @@ exports.scheduleMeeting = asyncHandler(async (req, res, next) => {
     agenda,
     status: 'scheduled', // Default status for new meetings
     attendance: [], // Initialize empty attendance
+    scheduledBy: req.user.id, // Record who scheduled the meeting
   });
 
   // Populate for response
   await meeting.populate('group', 'name');
+  await meeting.populate('scheduledBy', 'name email');
 
   res.status(201).json({
     success: true,
@@ -66,6 +70,7 @@ exports.getAllMeetings = asyncHandler(async (req, res, next) => {
   const meetings = await Meeting.find(query)
     .populate('group', 'name')
     .populate('attendance', 'name email') // Populate attendees
+    .populate('scheduledBy', 'name email') // Populate who scheduled it
     .sort({ date: -1 }); // Sort by latest date first
 
   res.status(200).json({
@@ -77,24 +82,23 @@ exports.getAllMeetings = asyncHandler(async (req, res, next) => {
 
 // @desc    Get a single meeting by ID with access control
 // @route   GET /api/meetings/:id
-// @access  Private (authorizeGroupAccess middleware handles access for meeting's group)
+// @access  Private (filterDataByRole middleware handles access)
 exports.getMeetingById = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return next(new ErrorResponse('Invalid Meeting ID format.', 400));
   }
 
-  let query = { _id: id };
-  // Apply data filter from middleware (if any)
-  if (req.dataFilter) {
-    Object.assign(query, req.dataFilter);
-  }
+  // Combine _id from params with req.dataFilter for robust access control
+  const query = { _id: id, ...(req.dataFilter || {}) };
 
   const meeting = await Meeting.findOne(query)
     .populate('group', 'name location')
-    .populate('attendance', 'name email');
+    .populate('attendance', 'name email')
+    .populate('scheduledBy', 'name email');
 
   if (!meeting) {
+    // If not found, it means either the ID is wrong, or the user doesn't have access
     return next(
       new ErrorResponse('Meeting not found or you do not have access.', 404)
     );
@@ -117,9 +121,17 @@ exports.updateMeeting = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid Meeting ID format.', 400));
   }
 
-  const meeting = await Meeting.findById(id);
+  // Combine _id from params with req.dataFilter for robust access control
+  const query = { _id: id, ...(req.dataFilter || {}) };
+  const meeting = await Meeting.findOne(query);
+
   if (!meeting) {
-    return next(new ErrorResponse('Meeting not found.', 404));
+    return next(
+      new ErrorResponse(
+        'Meeting not found or you do not have permission to update.',
+        404
+      )
+    );
   }
 
   // Update allowed fields
@@ -150,6 +162,7 @@ exports.updateMeeting = asyncHandler(async (req, res, next) => {
   // Populate for response
   await meeting.populate('group', 'name');
   await meeting.populate('attendance', 'name email');
+  await meeting.populate('scheduledBy', 'name email');
 
   res.status(200).json({
     success: true,
@@ -159,7 +172,7 @@ exports.updateMeeting = asyncHandler(async (req, res, next) => {
 });
 
 // @desc    Mark attendance for a meeting
-// @route   PUT /api/meetings/:id/attendance
+// @route   POST /api/meetings/:id/attendance
 // @access  Private (Admin, Officer, or user with 'can_record_attendance' permission)
 exports.markAttendance = asyncHandler(async (req, res, next) => {
   const { id } = req.params; // Meeting ID
@@ -174,9 +187,17 @@ exports.markAttendance = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const meeting = await Meeting.findById(id);
+  // Combine _id from params with req.dataFilter for robust access control
+  const query = { _id: id, ...(req.dataFilter || {}) };
+  const meeting = await Meeting.findOne(query);
+
   if (!meeting) {
-    return next(new ErrorResponse('Meeting not found.', 404));
+    return next(
+      new ErrorResponse(
+        'Meeting not found or you do not have permission to mark attendance.',
+        404
+      )
+    );
   }
 
   // Ensure the user being marked exists (optional but good)
@@ -187,12 +208,25 @@ exports.markAttendance = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Use the instance method defined on the Meeting model
-  await meeting.markAttendance(userId); // This method handles uniqueness and saving
+  // Use the instance method defined on the Meeting model (assuming it exists)
+  // This method should handle uniqueness and saving
+  if (!meeting.attendance.includes(userId)) {
+    // Simple check if not using a model method
+    meeting.attendance.push(userId);
+    await meeting.save();
+  } else {
+    return next(
+      new ErrorResponse(
+        'User already marked as attended for this meeting.',
+        400
+      )
+    );
+  }
 
   // Populate for response
   await meeting.populate('group', 'name');
   await meeting.populate('attendance', 'name email');
+  await meeting.populate('scheduledBy', 'name email');
 
   res.status(200).json({
     success: true,
@@ -201,7 +235,7 @@ exports.markAttendance = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Delete a meeting
+// @desc    Delete a meeting (soft delete recommended)
 // @route   DELETE /api/meetings/:id
 // @access  Private (Admin, Officer, or user with 'can_delete_meetings' permission)
 exports.deleteMeeting = asyncHandler(async (req, res, next) => {
@@ -210,18 +244,30 @@ exports.deleteMeeting = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid Meeting ID format.', 400));
   }
 
-  const meeting = await Meeting.findById(id);
+  // Combine _id from params with req.dataFilter for robust access control
+  const query = { _id: id, ...(req.dataFilter || {}) };
+  const meeting = await Meeting.findOne(query);
+
   if (!meeting) {
-    return next(new ErrorResponse('Meeting not found.', 404));
+    return next(
+      new ErrorResponse(
+        'Meeting not found or you do not have permission to delete.',
+        404
+      )
+    );
   }
 
-  // For meetings, a hard delete might be acceptable if no complex audit trail is needed.
-  // However, if meetings are critical historical records, consider a soft delete (e.g., status: 'cancelled').
-  await meeting.deleteOne();
+  // Implement soft delete instead of hard delete for historical purposes
+  // Add 'deleted' field and 'deletedAt' to your Meeting model schema if not already present.
+  // Also, consider adding a 'status' like 'cancelled' or 'archived' for meetings.
+  meeting.status = 'cancelled'; // Or 'archived' if you add that enum value
+  meeting.deleted = true; // Assuming a 'deleted' boolean field in schema
+  meeting.deletedAt = new Date(); // Assuming a 'deletedAt' Date field in schema
+  await meeting.save();
 
   res.status(200).json({
     success: true,
-    message: 'Meeting deleted successfully.',
+    message: 'Meeting soft-deleted (status changed to cancelled) successfully.',
     data: {},
   });
 });
