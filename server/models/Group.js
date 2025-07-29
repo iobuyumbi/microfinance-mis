@@ -1,3 +1,4 @@
+// server\models\Group.js
 const mongoose = require('mongoose');
 
 const groupSchema = new mongoose.Schema(
@@ -6,111 +7,59 @@ const groupSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Group name is required'],
       unique: true,
-      index: true, // helpful for faster search
       trim: true,
       maxlength: [100, 'Group name cannot exceed 100 characters'],
     },
-    location: {
+    description: {
       type: String,
       trim: true,
-      maxlength: [100, 'Location cannot exceed 100 characters'],
+      maxlength: [500, 'Description cannot exceed 500 characters'],
     },
-    meetingFrequency: {
-      type: String,
-      enum: ['weekly', 'biweekly', 'monthly'],
-      default: 'monthly',
-      required: true,
-    },
-    createdBy: {
+    leader: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: [true, 'Group must have a leader'],
+      index: true,
     },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'pending'],
+      default: 'pending',
+    },
+    formationDate: {
+      type: Date,
+      default: Date.now,
+    },
+    // Members array for quick lookup of members in a group
+    // Members will also have a UserGroupMembership record
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+        index: true,
       },
     ],
-    memberContributions: [
-      {
-        memberId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-          required: true,
-        },
-        amount: {
-          type: Number,
-          default: 0,
-          min: [0, 'Contribution cannot be negative'],
-        },
-        lastUpdated: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
+    // Group financial details (can be stored here or in a separate GroupAccount)
     totalSavings: {
       type: Number,
       default: 0,
-      min: [0, 'Total savings cannot be negative'],
+      min: 0,
     },
-    // Custom roles defined by group leaders
-    customRoles: [
-      {
-        name: {
-          type: String,
-          required: true,
-          trim: true,
-          maxlength: [50, 'Role name cannot exceed 50 characters'],
-        },
-        description: {
-          type: String,
-          trim: true,
-          maxlength: [200, 'Description cannot exceed 200 characters'],
-        },
-        permissions: [
-          {
-            type: String,
-            enum: [
-              'can_approve_small_loans',
-              'can_record_attendance',
-              'can_manage_savings',
-              'can_view_reports',
-              'can_manage_members',
-              'can_schedule_meetings',
-            ],
-          },
-        ],
-        createdBy: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-          required: true,
-        },
-        isActive: {
-          type: Boolean,
-          default: true,
-        },
-      },
-    ],
-    // Group settings
-    settings: {
-      maxLoanAmount: {
-        type: Number,
-        default: 10000,
-        min: [0, 'Max loan amount cannot be negative'],
-      },
-      minSavingsRequired: {
-        type: Number,
-        default: 1000,
-        min: [0, 'Min savings required cannot be negative'],
-      },
-      loanInterestRate: {
-        type: Number,
-        default: 5,
-        min: [0, 'Interest rate cannot be negative'],
-        max: [100, 'Interest rate cannot exceed 100%'],
-      },
+    totalLoansOutstanding: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    // Group-specific loan/savings rules (can also be pulled from Settings but allows group overrides)
+    minMemberSavingsForLoan: { type: Number, default: 200 },
+    maxLoanRatioToGroupSavings: { type: Number, default: 0.3 },
+    // Reference to a custom group account
+    account: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Account',
+      index: true, // Added index
+      unique: true, // Each group should have one account
+      sparse: true,
     },
   },
   {
@@ -118,28 +67,34 @@ const groupSchema = new mongoose.Schema(
   }
 );
 
-// ========== INSTANCE METHODS ========== //
-
-// Add a member (limit to 30 members)
-groupSchema.methods.addMember = async function (userId) {
-  if (this.members.includes(userId)) return this;
-  if (this.members.length >= 30) {
-    throw new Error('Group member limit reached (30 members max).');
-  }
-  this.members.push(userId);
-  return await this.save();
-};
-
-// Remove a member
-groupSchema.methods.removeMember = async function (userId) {
-  this.members = this.members.filter(id => id.toString() !== userId.toString());
-  return await this.save();
-};
-
-// Get average savings per member
-groupSchema.methods.getAverageSavingsPerMember = function () {
-  const count = this.members.length || 1;
-  return this.totalSavings / count;
-};
+// Index for efficient querying
+groupSchema.index({ leader: 1 });
+groupSchema.index({ status: 1 });
+groupSchema.index({ name: 1 });
 
 module.exports = mongoose.model('Group', groupSchema);
+// ========== INSTANCE METHODS ========== //
+
+// // Add a member (limit to 30 members)
+// groupSchema.methods.addMember = async function (userId) {
+//   if (this.members.includes(userId)) return this;
+//   if (this.members.length >= 30) {
+//     throw new Error('Group member limit reached (30 members max).');
+//   }
+//   this.members.push(userId);
+//   return await this.save();
+// };
+
+// // Remove a member
+// groupSchema.methods.removeMember = async function (userId) {
+//   this.members = this.members.filter(id => id.toString() !== userId.toString());
+//   return await this.save();
+// };
+
+// // Get average savings per member
+// groupSchema.methods.getAverageSavingsPerMember = function () {
+//   const count = this.members.length || 1;
+//   return this.totalSavings / count;
+// };
+
+// module.exports = mongoose.model('Group', groupSchema);

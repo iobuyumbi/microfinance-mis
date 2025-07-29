@@ -1,3 +1,4 @@
+// server\models\CustomGroupRole.js
 const mongoose = require('mongoose');
 
 const customGroupRoleSchema = new mongoose.Schema(
@@ -6,10 +7,11 @@ const customGroupRoleSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
       required: true,
+      index: true, // Added index
     },
     name: {
       type: String,
-      required: true,
+      required: [true, 'Role name is required'],
       trim: true,
       maxlength: [50, 'Role name cannot exceed 50 characters'],
     },
@@ -22,14 +24,13 @@ const customGroupRoleSchema = new mongoose.Schema(
       {
         type: String,
         enum: [
-          'can_approve_small_loans',
+          'can_approve_loans',
           'can_record_attendance',
           'can_manage_savings',
           'can_view_reports',
-          'can_manage_members',
-          'can_schedule_meetings',
-          'can_edit_group_info',
-          'can_manage_roles',
+          'can_manage_members', // Example: add/remove members
+          'can_edit_group_profile', // Example: update group details
+          // Add more granular permissions as needed
         ],
         required: true,
       },
@@ -39,71 +40,16 @@ const customGroupRoleSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    // For role hierarchy
-    priority: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    // For role limits
-    maxMembers: {
-      type: Number,
-      default: null, // null means unlimited
-      min: 1,
-    },
-    // For role requirements
-    requirements: {
-      minSavings: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      minGroupMembership: {
-        type: Number, // months
-        default: 0,
-        min: 0,
-      },
-    },
   },
   {
     timestamps: true,
+    // Ensure a role name is unique within a specific group
+    unique: ['group', 'name'],
   }
 );
 
-// Index for efficient querying
-customGroupRoleSchema.index({ group: 1, isActive: 1 });
-customGroupRoleSchema.index({ createdBy: 1, createdAt: -1 });
-
-// Virtual for member count
-customGroupRoleSchema.virtual('memberCount', {
-  ref: 'User',
-  localField: '_id',
-  foreignField: 'groupRoles.roleId',
-  count: true,
-});
-
-// Ensure virtuals are serialized
-customGroupRoleSchema.set('toJSON', { virtuals: true });
-
-// Pre-save middleware to ensure unique role names within a group
-customGroupRoleSchema.pre('save', async function (next) {
-  if (this.isModified('name') || this.isNew) {
-    const existingRole = await this.constructor.findOne({
-      group: this.group,
-      name: this.name,
-      _id: { $ne: this._id },
-      isActive: true,
-    });
-
-    if (existingRole) {
-      throw new Error('A role with this name already exists in this group');
-    }
-  }
-  next();
-});
+// Indexing for efficient querying
+customGroupRoleSchema.index({ group: 1, name: 1 });
+customGroupRoleSchema.index({ createdBy: 1 });
 
 module.exports = mongoose.model('CustomGroupRole', customGroupRoleSchema);

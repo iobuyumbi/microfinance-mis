@@ -1,25 +1,40 @@
-const mongoose = require("mongoose");
+// server\models\Guarantor.js
+const mongoose = require('mongoose');
 
-const guarantorSchema = new mongoose.Schema({
-  loan: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Loan",
-    required: true,
+const guarantorSchema = new mongoose.Schema(
+  {
+    loan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Loan',
+      required: true,
+      index: true, // Already indexed
+    },
+    guarantor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true, // Already indexed
+    },
+    amountGuaranteed: {
+      type: Number,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    approvedAt: Date, // When was the guarantee approved/rejected
+    rejectedAt: Date, // If rejected
+    approvedBy: {
+      // Who approved/rejected it (e.g., a Group Leader or Officer)
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
-  guarantor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  amountGuaranteed: {
-    type: Number,
-    required: true,
-  },
-  status: {
-    type: String,
-    enum: ["pending", "approved", "rejected"],
-    default: "pending",
-  },
-});
+  {
+    timestamps: true, // Already has timestamps
+  }
+);
 
-module.exports = mongoose.model("Guarantor", guarantorSchema);
+module.exports = mongoose.model('Guarantor', guarantorSchema);

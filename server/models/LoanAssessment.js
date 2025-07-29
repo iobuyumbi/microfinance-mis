@@ -1,4 +1,21 @@
+// server\models\LoanAssessment.js
 const mongoose = require('mongoose');
+
+// Function to get currency from Settings (to avoid hardcoding)
+let appSettings = null;
+async function getCurrency() {
+  if (!appSettings) {
+    const Settings =
+      mongoose.models.Settings ||
+      mongoose.model('Settings', require('./Settings').schema);
+    appSettings = await Settings.findById('app_settings');
+    if (!appSettings) {
+      console.warn('Settings document not found. Using default currency USD.');
+      appSettings = { general: { currency: 'USD' } }; // Fallback
+    }
+  }
+  return appSettings.general.currency;
+}
 
 const loanAssessmentSchema = new mongoose.Schema(
   {
@@ -6,16 +23,19 @@ const loanAssessmentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true, // Added index
     },
     group: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
       required: true,
+      index: true, // Added index
     },
     assessedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true, // Added index
     },
     // Financial data at time of assessment
     individualSavings: {
@@ -28,7 +48,7 @@ const loanAssessmentSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    // Assessment criteria
+    // Assessment criteria (can pull defaults from Settings, but stored here for historical accuracy)
     assessmentRules: {
       minGroupSavings: {
         type: Number,
@@ -108,6 +128,8 @@ const loanAssessmentSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
@@ -117,28 +139,48 @@ loanAssessmentSchema.index({ group: 1, createdAt: -1 });
 loanAssessmentSchema.index({ assessedBy: 1, createdAt: -1 });
 loanAssessmentSchema.index({ status: 1, expiresAt: 1 });
 
-// Virtual for formatted amounts
-loanAssessmentSchema.virtual('formattedIndividualSavings').get(function () {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(this.individualSavings);
-});
+// Virtual for formatted amounts (now dynamic)
+loanAssessmentSchema
+  .virtual('formattedIndividualSavings')
+  .get(async function () {
+    const currency = await getCurrency();
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(this.individualSavings);
+  });
 
-loanAssessmentSchema.virtual('formattedGroupTotalSavings').get(function () {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(this.groupTotalSavings);
-});
+loanAssessmentSchema
+  .virtual('formattedGroupTotalSavings')
+  .get(async function () {
+    const currency = await getCurrency();
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(this.groupTotalSavings);
+  });
 
-loanAssessmentSchema.virtual('formattedRecommendedAmount').get(function () {
-  if (!this.recommendedAmount) return 'N/A';
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(this.recommendedAmount);
-});
+loanAssessmentSchema
+  .virtual('formattedRecommendedAmount')
+  .get(async function () {
+    if (this.recommendedAmount == null) return 'N/A';
+    const currency = await getCurrency();
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(this.recommendedAmount);
+  });
+
+loanAssessmentSchema
+  .virtual('formattedMaxEligibleAmount')
+  .get(async function () {
+    if (this.maxEligibleAmount == null) return 'N/A';
+    const currency = await getCurrency();
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+    }).format(this.maxEligibleAmount);
+  });
 
 // Virtual for assessment age
 loanAssessmentSchema.virtual('ageInDays').get(function () {
@@ -152,11 +194,9 @@ loanAssessmentSchema.virtual('isExpired').get(function () {
   return this.expiresAt && new Date() > this.expiresAt;
 });
 
-// Ensure virtuals are serialized
-loanAssessmentSchema.set('toJSON', { virtuals: true });
-
 // Pre-save middleware to calculate assessment results
 loanAssessmentSchema.pre('save', function (next) {
+  // Only recalculate if key fields are modified or it's a new document
   if (
     this.isModified('individualSavings') ||
     this.isModified('groupTotalSavings') ||
@@ -179,13 +219,13 @@ loanAssessmentSchema.pre('save', function (next) {
 
     if (this.groupTotalSavings < this.assessmentRules.minGroupSavings) {
       this.reasons.push(
-        `Group savings ($${this.groupTotalSavings}) is below minimum requirement ($${this.assessmentRules.minGroupSavings})`
+        `Group savings (${this.groupTotalSavings}) is below minimum requirement (${this.assessmentRules.minGroupSavings})`
       );
     }
 
     if (this.individualSavings < this.assessmentRules.minIndividualSavings) {
       this.reasons.push(
-        `Individual savings ($${this.individualSavings}) is below minimum requirement ($${this.assessmentRules.minIndividualSavings})`
+        `Individual savings (${this.individualSavings}) is below minimum requirement (${this.assessmentRules.minIndividualSavings})`
       );
     }
 
@@ -196,7 +236,12 @@ loanAssessmentSchema.pre('save', function (next) {
 
     // Set recommended amount (conservative approach)
     if (this.eligible) {
-      this.recommendedAmount = Math.min(this.maxEligibleAmount, 5000);
+      this.recommendedAmount = Math.min(
+        this.maxEligibleAmount,
+        this.assessmentRules.maxLoanAmount
+      ); // Use rule max, not hardcoded 5000
+    } else {
+      this.recommendedAmount = 0; // If not eligible, recommend 0
     }
 
     // Determine risk level
