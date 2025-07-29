@@ -80,6 +80,7 @@ const routeList = [
   ['/api/settings', routes.settingsRoutes],
   ['/api/loan-assessments', routes.loanAssessmentRoutes],
   ['/api/chat', routes.chatRoutes],
+  ['/api/contributions', routes.contributionRoutes],
 ];
 
 // Mount all routes

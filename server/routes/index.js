@@ -16,6 +16,7 @@ const guarantorRoutes = require('./guarantorRoutes');
 const settingsRoutes = require('./settingsRoutes');
 const loanAssessmentRoutes = require('./loanAssessmentRoutes');
 const chatRoutes = require('./chatRoutes');
+const contributionRoutes = require('./contributionRoutes');
 
 module.exports = {
   authRoutes,
@@ -34,4 +35,5 @@ module.exports = {
   settingsRoutes,
   loanAssessmentRoutes,
   chatRoutes,
+  contributionRoutes,
 };

@@ -1,4 +1,4 @@
-const Guarantor = require("../models/Guarantor");
+const Guarantor = require('../models/Guarantor');
 
 exports.createGuarantor = async (req, res, next) => {
   try {
@@ -22,7 +22,7 @@ exports.getGuarantorById = async (req, res, next) => {
   try {
     const guarantor = await Guarantor.findById(req.params.id);
     if (!guarantor)
-      return res.status(404).json({ error: "Guarantor not found" });
+      return res.status(404).json({ error: 'Guarantor not found' });
     res.json(guarantor);
   } catch (err) {
     next(err);
@@ -37,7 +37,7 @@ exports.updateGuarantor = async (req, res, next) => {
       { new: true }
     );
     if (!guarantor)
-      return res.status(404).json({ error: "Guarantor not found" });
+      return res.status(404).json({ error: 'Guarantor not found' });
     res.json(guarantor);
   } catch (err) {
     next(err);
@@ -48,8 +48,8 @@ exports.deleteGuarantor = async (req, res, next) => {
   try {
     const guarantor = await Guarantor.findByIdAndDelete(req.params.id);
     if (!guarantor)
-      return res.status(404).json({ error: "Guarantor not found" });
-    res.json({ message: "Guarantor deleted" });
+      return res.status(404).json({ error: 'Guarantor not found' });
+    res.json({ message: 'Guarantor deleted' });
   } catch (err) {
     next(err);
   }

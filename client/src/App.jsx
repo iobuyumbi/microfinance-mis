@@ -40,6 +40,7 @@ import Meetings from "./pages/Meetings";
 import Chat from "./pages/Chat";
 import Users from "./pages/Users";
 import LoanAssessment from "./pages/LoanAssessment";
+import GroupContributions from "./pages/GroupContributions";
 
 // Import floating chat component
 import FloatingChatButton from "./components/chat/FloatingChatButton";
@@ -142,6 +143,14 @@ export default function App() {
                   element={
                     <ProtectedRoute requiredRoles={["officer"]}>
                       <LoanAssessment />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/group-contributions"
+                  element={
+                    <ProtectedRoute requiredRoles={["admin", "officer"]}>
+                      <GroupContributions />
                     </ProtectedRoute>
                   }
                 />

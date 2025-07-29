@@ -83,6 +83,11 @@ const allNavItems = [
     roles: ["admin", "officer", "leader"],
   },
   {
+    to: "/group-contributions",
+    label: "Group Contributions",
+    roles: ["admin", "officer"],
+  },
+  {
     to: "/loan-assessment",
     label: "Loan Assessment",
     roles: ["officer"],
@@ -119,6 +124,7 @@ const getRoleNavItems = (userRole) => {
       { to: "/savings", label: "Savings" },
       { to: "/transactions", label: "Transactions" },
       { to: "/reports", label: "Reports" },
+      { to: "/group-contributions", label: "Group Contributions" },
       { to: "/loan-assessment", label: "Loan Assessment" },
       { to: "/notifications", label: "Notifications" },
       { to: "/settings", label: "Settings" },
@@ -133,6 +139,7 @@ const getRoleNavItems = (userRole) => {
       { to: "/savings", label: "Savings" },
       { to: "/transactions", label: "Transactions" },
       { to: "/reports", label: "Reports" },
+      { to: "/group-contributions", label: "Group Contributions" },
       { to: "/loan-assessment", label: "Loan Assessment" },
       { to: "/notifications", label: "Notifications" },
       { to: "/settings", label: "Settings" },
