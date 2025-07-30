@@ -1,6 +1,6 @@
-// src/services/authService.js
+// client/src/services/authService.js (REVISED)
 import api from "./api";
-import { handleRequest } from "./handleRequest";
+import { handleRequest } from "./handleRequest"; // Assuming this is a utility for error handling/data extraction
 
 export const authService = {
   register: (data) =>
@@ -27,9 +27,18 @@ export const authService = {
       "Failed to send reset email"
     ),
 
-  resetPassword: (token, data) =>
+  // --- CRITICAL CORRECTION HERE ---
+  resetPassword: (
+    token,
+    newPassword // Renamed 'data' to 'newPassword' for clarity
+  ) =>
     handleRequest(
-      () => api.post(`/auth/reset-password/${token}`, data),
+      () =>
+        api.post(
+          "/auth/reset-password", // Changed URL to remove path parameter
+          { token, password: newPassword } // Send token and password in the request body
+        ),
       "Failed to reset password"
     ),
+  // --------------------------------
 };

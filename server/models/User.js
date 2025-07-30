@@ -41,6 +41,29 @@ const userSchema = new mongoose.Schema(
       enum: ['admin', 'officer', 'leader', 'member'],
       default: 'member', // Default to member, admin/officer/leader roles assigned by admin
     },
+    // In server/models/User.js, within userSchema definition
+    groupRoles: [
+      {
+        groupId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Group',
+          required: true,
+        },
+        role: {
+          // e.g., 'member', 'secretary', 'treasurer', 'chairman'
+          type: String,
+          enum: ['member', 'secretary', 'treasurer', 'chairman'],
+          default: 'member',
+        },
+        permissions: [String], // Array of strings, e.g., ['can_manage_loans', 'can_view_reports']
+        status: {
+          // e.g., 'active', 'inactive', 'suspended' within the group
+          type: String,
+          enum: ['active', 'inactive', 'suspended'],
+          default: 'active',
+        },
+      },
+    ],
     status: {
       type: String,
       enum: ['active', 'inactive', 'suspended'],

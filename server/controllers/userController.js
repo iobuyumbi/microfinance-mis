@@ -1,4 +1,4 @@
-// server\controllers\userController.js (REVISED)
+// server\controllers\userController.js (REVISED - ADDED createUser)
 const User = require('../models/User');
 const Group = require('../models/Group');
 const Account = require('../models/Account'); // For savings/balances
@@ -8,6 +8,125 @@ const Loan = require('../models/Loan'); // Ensure Loan model is imported for fin
 const { asyncHandler } = require('../middleware');
 const { ErrorResponse, settingsHelper } = require('../utils');
 const mongoose = require('mongoose');
+
+// --- NEW CONTROLLER: Create a new user ---
+// @desc    Create a new user (by Admin, Officer, or Leader)
+// @route   POST /api/users
+// @access  Private (Admin, Officer, Leader)
+exports.createUser = asyncHandler(async (req, res, next) => {
+  const {
+    name,
+    email,
+    password,
+    role,
+    phone,
+    address,
+    gender,
+    dateOfBirth,
+    nationalId,
+  } = req.body;
+
+  // Basic validation for required fields, though handled by middleware for initial check
+  if (!name || !email || !password || !role) {
+    return next(
+      new ErrorResponse('Name, email, password, and role are required.', 400)
+    );
+  }
+
+  // Validate the role provided
+  const validRoles = ['member', 'leader', 'officer', 'admin'];
+  if (!validRoles.includes(role)) {
+    return next(
+      new ErrorResponse(
+        `Invalid role: ${role}. Must be one of: ${validRoles.join(', ')}.`,
+        400
+      )
+    );
+  }
+
+  // Check if a user with this email already exists
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return next(
+      new ErrorResponse('A user with this email already exists.', 400)
+    );
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Create the user
+    const newUser = await User.create(
+      [
+        {
+          name,
+          email,
+          password, // Password will be hashed by a pre-save hook in the User model
+          role,
+          phone,
+          address,
+          gender,
+          dateOfBirth,
+          nationalId,
+          status: 'active', // Default status for newly created users
+          createdBy: req.user.id, // Record who created this user
+        },
+      ],
+      { session }
+    );
+
+    const user = newUser[0]; // User.create returns an array
+
+    // Create a default primary savings account for the new user
+    const currency = await settingsHelper.getCurrency(); // Get default currency from settings
+
+    await Account.create(
+      [
+        {
+          owner: user._id,
+          ownerModel: 'User',
+          type: 'savings', // Assuming 'savings' is the default account type
+          accountName: `${user.name}'s Primary Savings`,
+          balance: 0,
+          currency: currency,
+          status: 'active',
+          createdBy: req.user.id, // Record who created this account
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Return the new user data (excluding password)
+    const userResponse = user.toObject();
+    delete userResponse.password;
+    delete userResponse.__v;
+
+    res.status(201).json({
+      success: true,
+      message: 'User and primary savings account created successfully.',
+      data: userResponse,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error creating user and account:', error);
+    // Handle Mongoose validation errors or other specific errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(val => val.message);
+      return next(new ErrorResponse(messages.join(', '), 400));
+    }
+    next(
+      new ErrorResponse(
+        'Failed to create user and account. ' + error.message,
+        500
+      )
+    );
+  }
+});
 
 // @desc    Get all users - filtered based on user role and permissions
 // @route   GET /api/users
@@ -22,6 +141,8 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ success: true, count: users.length, data: users });
 });
+
+// ... (rest of your existing userController.js content) ...
 
 // @desc    Get a single user by ID
 // @route   GET /api/users/:id
