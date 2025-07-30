@@ -1,23 +1,23 @@
-
-// src/services/api.js
-import axios from 'axios';
+// src\services\api.js (REVISED)
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  // Corrected environment variable name from VITE_API_URL to VITE_API_BASE_URL
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 10000,
 });
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => {
-    console.error('Request error:', error);
+    console.error("Request error:", error);
     return Promise.reject(error);
   }
 );
@@ -25,20 +25,26 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API error:', error);
+    console.error("API error:", error);
 
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-      return Promise.reject(new Error('Session expired. Please login again.'));
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      // Use react-router-dom's navigate function if available in context,
+      // or ensure this redirect is handled appropriately in a React app.
+      // window.location.href is a direct browser redirect.
+      window.location.href = "/login";
+      return Promise.reject(new Error("Session expired. Please login again."));
     }
 
     if (!error.response) {
-      return Promise.reject(new Error('Network error – please check your internet connection.'));
+      return Promise.reject(
+        new Error("Network error – please check your internet connection.")
+      );
     }
 
-    const message = error.response.data?.message || 'An unexpected error occurred';
+    const message =
+      error.response.data?.message || "An unexpected error occurred";
     return Promise.reject(new Error(message));
   }
 );
@@ -58,11 +64,11 @@ export const apiMethods = {
 // Test connection function
 export const testConnection = async () => {
   try {
-    const response = await api.get('/health');
-    console.log('API Connection successful:', response.data);
+    const response = await api.get("/health");
+    console.log("API Connection successful:", response.data);
     return true;
   } catch (error) {
-    console.error('API Connection failed:', error.message);
+    console.error("API Connection failed:", error.message);
     return false;
   }
 };

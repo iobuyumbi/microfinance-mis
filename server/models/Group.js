@@ -55,7 +55,6 @@ const groupSchema = new mongoose.Schema(
     account: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Account',
-      index: true, // Added index
       unique: true, // Each group should have one account
       sparse: true,
     },

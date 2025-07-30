@@ -1,4 +1,4 @@
-// src/context/AuthContext.jsx
+// src/context/AuthContext.jsx (REVISED)
 import React, {
   createContext,
   useContext,
@@ -9,6 +9,7 @@ import React, {
 import { authService } from "../services/authService";
 import { userService } from "../services/userService";
 import { toast } from "sonner";
+import socketService from "../lib/socket"; // Import your socketService singleton
 
 const AuthContext = createContext(null);
 
@@ -21,78 +22,90 @@ export const AuthProvider = ({ children }) => {
   const [groups, setGroups] = useState([]); // Add groups state
 
   const logout = useCallback(() => {
-    authService.logout();
+    authService.logout(); // Call backend logout (if it exists and clears server-side session/cookies)
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
     setGroups([]); // Clear groups on logout
+
+    // --- SOCKET.IO INTEGRATION: Disconnect socket on logout ---
+    socketService.disconnect();
+    // -----------------------------------------------------------
+
     toast.info("Logged out successfully.");
   }, []);
 
   // Function to fetch user's groups
-  const fetchUserGroups = useCallback(async (userId) => {
-    if (!userId) {
-      setGroups([]);
-      return;
-    }
-    try {
-      // Check if user is authenticated first
-      const token = localStorage.getItem("token");
-      if (!token) {
+  const fetchUserGroups = useCallback(
+    async (userId) => {
+      if (!userId) {
         setGroups([]);
         return;
       }
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setGroups([]);
+          return;
+        }
 
-      // Use the proper endpoint to get user's groups
-      const userGroupsResponse = await userService.getUserGroups(userId);
-      const userGroups = Array.isArray(userGroupsResponse.data)
-        ? userGroupsResponse.data
-        : Array.isArray(userGroupsResponse)
-          ? userGroupsResponse
-          : [];
-      setGroups(userGroups);
-    } catch (err) {
-      console.error("Failed to fetch user groups in AuthContext:", err);
-      // Only set empty groups if it's an authentication error
-      if (err.message === "Access denied" || err.message.includes("403")) {
-        setGroups([]);
+        const userGroupsResponse = await userService.getUserGroups(userId);
+        const userGroups = Array.isArray(userGroupsResponse.data)
+          ? userGroupsResponse.data
+          : Array.isArray(userGroupsResponse)
+            ? userGroupsResponse
+            : [];
+        setGroups(userGroups);
+      } catch (err) {
+        console.error("Failed to fetch user groups in AuthContext:", err);
+        // Ensure error handling aligns with your API's error structure
+        if (err.response?.status === 401 || err.message.includes("403")) {
+          // Use err.response?.status for Axios errors
+          setGroups([]);
+          toast.error("Access to groups denied. Please re-login.");
+          logout(); // Automatically log out if groups fetch fails due to auth
+        }
       }
-      // Don't throw the error to prevent authentication failure
-    }
-  }, []);
+    },
+    [logout]
+  ); // Include logout in dependency array
 
   const getMe = useCallback(async () => {
     try {
       const res = await authService.getMe();
-      const fetchedUser = res.user || res.data || res;
+      const fetchedUser = res.user || res.data || res; // Be explicit about expected response structure
 
-      if (fetchedUser) {
+      if (fetchedUser && fetchedUser._id) {
+        // Ensure user object has an _id for group fetching
         setUser(fetchedUser);
         localStorage.setItem("user", JSON.stringify(fetchedUser));
-        // Fetch groups after user is set, but don't fail if groups can't be fetched
-        try {
-          await fetchUserGroups(fetchedUser._id || fetchedUser.id);
-        } catch (groupError) {
-          console.warn("Could not fetch user groups:", groupError);
-          // Don't fail authentication if groups can't be fetched
+
+        // --- SOCKET.IO INTEGRATION: Connect socket after successful getMe ---
+        const token = localStorage.getItem("token");
+        if (token) {
+          socketService.connect(token);
         }
+        // -------------------------------------------------------------------
+
+        await fetchUserGroups(fetchedUser._id); // Use _id which is typical for MongoDB/Mongoose
         return fetchedUser;
       } else {
         throw new Error(
-          "Invalid user data received from authentication check."
+          "Invalid user data received from authentication check or missing _id."
         );
       }
     } catch (error) {
       console.error("Error fetching authenticated user:", error);
-      // Only logout if it's an authentication error, not a network error
+      // More specific error checks for logout trigger
       if (
-        error.message === "Session expired. Please login again." ||
-        error.message === "Access denied" ||
-        error.response?.status === 401
+        error.response?.status === 401 ||
+        error.response?.status === 403 ||
+        error.message === "Session expired. Please login again." // From api.js interceptor
       ) {
+        toast.error("Session expired or invalid. Please login again.");
         logout();
       }
-      throw error;
+      throw error; // Re-throw to propagate the error if needed by components
     }
   }, [logout, fetchUserGroups]);
 
@@ -102,18 +115,28 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem("token");
 
       if (token) {
-        await getMe();
+        try {
+          await getMe(); // This will connect the socket on success
+        } catch (error) {
+          // getMe already handles logout on auth errors, so no explicit logout here
+          console.log(
+            "Initialization failed, user might be logged out by getMe error."
+          );
+        }
       } else {
         setUser(null);
-        setGroups([]); // Ensure groups are cleared if no token
+        setGroups([]);
         localStorage.removeItem("user");
         localStorage.removeItem("token");
+        // --- SOCKET.IO INTEGRATION: Ensure socket is disconnected if no token ---
+        socketService.disconnect();
+        // -----------------------------------------------------------------------
       }
       setLoading(false);
     };
 
     initializeAuth();
-  }, [getMe]);
+  }, [getMe]); // getMe is a useCallback, so it's stable.
 
   const login = useCallback(
     async (credentials) => {
@@ -123,21 +146,29 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
         setUser(data.user);
+
+        // --- SOCKET.IO INTEGRATION: Connect socket after successful login ---
+        socketService.connect(data.token);
+        // -------------------------------------------------------------------
+
         await fetchUserGroups(data.user._id || data.user.id); // Fetch groups after login
         toast.success("Logged in successfully!");
         return data;
       } catch (err) {
         toast.error(err.response?.data?.message || "Login failed.");
         setUser(null);
-        setGroups([]); // Clear groups on login failure
+        setGroups([]);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        // --- SOCKET.IO INTEGRATION: Ensure socket is disconnected on login failure ---
+        socketService.disconnect();
+        // ---------------------------------------------------------------------------
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [fetchUserGroups]
+    [fetchUserGroups] // fetchUserGroups is a useCallback, so it's stable.
   );
 
   const value = {
@@ -147,6 +178,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     isAuthenticated: !!user,
+    // Provide a way to manually re-fetch user details and groups if needed (e.g., after profile update)
+    refreshUser: getMe,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
