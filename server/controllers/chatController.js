@@ -103,13 +103,34 @@ exports.getChatMessages = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Send a new message
+// NEW: Extracted core message creation logic
+const createAndSaveChatMessage = async (
+  senderId,
+  content,
+  chatType,
+  chatId,
+  groupId
+) => {
+  const message = new ChatMessage({
+    sender: senderId,
+    content: content.trim(),
+    chatType,
+    chatId,
+    groupId: chatType === 'group' ? groupId : undefined,
+    messageType: 'text',
+  });
+  await message.save();
+  await message.populate('sender', 'name email'); // Populate for immediate use
+  return message;
+};
+
+// @desc    Send a new message (HTTP route)
 // @route   POST /api/chat/messages
 // @access  Private
 exports.sendMessage = asyncHandler(async (req, res) => {
   const { content, chatId, chatType, groupId } = req.body;
 
-  // Validate required fields
+  // Validate required fields (as before)
   if (!content || content.trim() === '') {
     res.status(400);
     throw new Error('Message content cannot be empty.');
@@ -119,19 +140,18 @@ exports.sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Chat ID and chat type are required.');
   }
 
-  // Check access permissions
+  // Check access permissions (as before)
   if (chatType === 'group') {
     if (!groupId) {
       res.status(400);
       throw new Error('Group ID is required for group chats.');
     }
-    await checkGroupAccess(groupId, req.user.id, req.user.role); // Use helper for access check
+    await checkGroupAccess(groupId, req.user.id, req.user.role);
   } else if (chatType === 'admin') {
     if (chatId !== 'admin-chat') {
       res.status(400);
       throw new Error('Invalid chat ID for admin chat type.');
     }
-    // Additional access for admin chat: e.g., only members/officers can send to admin
     if (!['member', 'officer', 'admin'].includes(req.user.role)) {
       res.status(403);
       throw new Error(
@@ -143,27 +163,19 @@ exports.sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Invalid chat type specified.');
   }
 
-  // Create new message
-  const message = new ChatMessage({
-    sender: req.user.id,
-    content: content.trim(),
+  const message = await createAndSaveChatMessage(
+    req.user.id,
+    content,
     chatType,
     chatId,
-    groupId: chatType === 'group' ? groupId : undefined, // Only set groupId for group chats
-    messageType: 'text', // Default to text message type
-  });
-
-  await message.save();
-
-  // Populate sender information before sending to client via Socket.IO
-  await message.populate('sender', 'name email');
+    groupId
+  );
 
   // Emit real-time message to connected clients
   const io = req.app.get('io');
   if (io) {
     io.to(chatId).emit('new_message', {
-      // Emit to the specific chat room
-      message: message.toJSON(), // Use toJSON() for clean output, including virtuals
+      message: message.toJSON(),
       chatId,
       chatType,
     });
