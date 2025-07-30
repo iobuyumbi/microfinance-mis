@@ -241,7 +241,7 @@ exports.financialSummary = asyncHandler(async (req, res, next) => {
   const end = month
     ? new Date(year, month, 0, 23, 59, 59, 999)
     : new Date(year, 11, 31, 23, 59, 59, 999); // End of month or end of year
-  matchExpr.createdAt = { $gte: start, $lte: end }; // Assuming createdAt for transactions is paymentDate
+  matchExpr.paymentDate = { $gte: start, $lte: end }; // Assuming createdAt for transactions is paymentDate
 
   // Apply role-based filtering from middleware for 'Transaction' model
   // req.dataFilter for 'Transaction' should provide an $or query for member/group/loan access
@@ -310,15 +310,18 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
         $match: {
           status: 'active',
           $or: [
-            // Accounts can be owned by Users or Groups
             {
               ownerModel: 'User',
-              owner: userQueryFilter._id || { $exists: true },
+              owner: userQueryFilter._id
+                ? { $in: userQueryFilter._id }
+                : { $exists: true }, // Assuming userQueryFilter.id is an array
             },
             {
               ownerModel: 'Group',
-              owner: groupQueryFilter._id || { $exists: true },
               type: 'group_savings',
+              owner: groupQueryFilter._id
+                ? { $in: groupQueryFilter._id }
+                : { $exists: true }, // Assuming groupQueryFilter.id is an array
             },
           ],
         },
@@ -478,7 +481,7 @@ exports.getRecentActivity = asyncHandler(async (req, res, next) => {
       .limit(10)
       .lean(),
     Transaction.find({
-      type: 'deposit',
+      type: 'savings_contribution',
       createdAt: { $gte: startOfMonth },
       ...transactionQueryFilter, // Apply transaction filter
     })
@@ -488,7 +491,7 @@ exports.getRecentActivity = asyncHandler(async (req, res, next) => {
       .limit(10)
       .lean(),
     Transaction.find({
-      type: 'withdrawal',
+      type: 'savings_withdrawal',
       createdAt: { $gte: startOfMonth },
       ...transactionQueryFilter, // Apply transaction filter
     })

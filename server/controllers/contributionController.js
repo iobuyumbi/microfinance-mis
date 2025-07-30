@@ -4,36 +4,27 @@ const Account = require('../models/Account'); // Needed to update account balanc
 const User = require('../models/User'); // For populating member details
 const Group = require('../models/Group'); // For populating group details
 const UserGroupMembership = require('../models/UserGroupMembership'); // For authorization checks
-const { asyncHandler } = require('../middleware');
-const { ErrorResponse } = require('../utils');
+const asyncHandler = require('../middleware/asyncHandler'); // Ensure this is correctly imported
+const { ErrorResponse } = require('../utils'); // Import custom error class
+const { getCurrencyFromSettings } = require('../utils/currencyUtils'); // <<< ADD THIS IMPORT
 const mongoose = require('mongoose');
 
-// Helper to get currency from settings (async virtuals need this in controllers)
-let appSettings = null;
-async function getCurrency() {
-  if (!appSettings) {
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
+// REMOVED: Old getCurrency helper function, now imported from currencyUtils.js
 
 // @desc    Get all savings contributions (system-wide or filtered by user/group)
 // @route   GET /api/contributions
 // @access  Private (Admin, Officer, Leader, Member - filtered by role)
 exports.getAllContributions = asyncHandler(async (req, res, next) => {
   const { groupId, search } = req.query;
-  // const currency = await getCurrency(); // Not directly used here, virtual handles it
+  // const currency = await getCurrencyFromSettings(); // Not directly used here, virtual handles it
 
   // `req.dataFilter` is set by the `filterDataByRole('Transaction')` middleware.
   // It will already contain conditions for `member`, `group`, and `loan` access.
-  let query = { type: 'savings_contribution', ...(req.dataFilter || {}) };
+  let query = {
+    type: 'savings_contribution',
+    deleted: false,
+    ...(req.dataFilter || {}),
+  }; // Added deleted: false
 
   // Apply additional filter by specific group if provided in query params
   // This allows further narrowing down results within the user's accessible data.
@@ -74,12 +65,13 @@ exports.getAllContributions = asyncHandler(async (req, res, next) => {
     .populate('group', 'name')
     .populate('member', 'name email')
     .populate('createdBy', 'name')
+    .populate('account', 'accountNumber accountName type') // Added account populate
     .sort({ createdAt: -1 });
 
   const formattedContributions = await Promise.all(
     contributions.map(async cont => {
       const obj = cont.toObject({ virtuals: true });
-      obj.formattedAmount = await cont.formattedAmount;
+      obj.formattedAmount = await obj.formattedAmount;
       return obj;
     })
   );
@@ -104,13 +96,15 @@ exports.getContribution = asyncHandler(async (req, res, next) => {
   let query = {
     _id: id,
     type: 'savings_contribution',
+    deleted: false, // Added deleted: false
     ...(req.dataFilter || {}),
   };
 
   const contribution = await Transaction.findOne(query)
     .populate('group', 'name')
     .populate('member', 'name email')
-    .populate('createdBy', 'name');
+    .populate('createdBy', 'name')
+    .populate('account', 'accountNumber accountName type'); // Added account populate
 
   if (!contribution) {
     return next(
@@ -217,66 +211,102 @@ exports.createContribution = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // Find or create the member's savings account
-  let memberAccount = await Account.findOne({
-    owner: memberId,
-    ownerModel: 'User',
-    type: 'savings',
-    deleted: false, // Ensure it's not a soft-deleted account
-  });
-  if (!memberAccount) {
-    // Create a new savings account for the user if it doesn't exist
-    memberAccount = await Account.create({
+  // --- CRITICAL IMPROVEMENT: Implement Mongoose Session for Atomicity ---
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  let transaction;
+  let memberAccount;
+
+  try {
+    // Find or create the member's savings account
+    memberAccount = await Account.findOne({
       owner: memberId,
       ownerModel: 'User',
       type: 'savings',
-      accountNumber: `SAV-${memberId.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`, // Simple unique account number
-      balance: 0,
-      accountName: `${member.name}'s Savings`,
-      createdBy: req.user.id,
+      deleted: false, // Ensure it's not a soft-deleted account
+    }).session(session); // Pass session to findOne
+
+    if (!memberAccount) {
+      // Create a new savings account for the user if it doesn't exist
+      const memberUser = await User.findById(memberId).session(session); // Fetch member within session
+      if (!memberUser) {
+        throw new ErrorResponse(`User ${memberId} not found.`, 404); // Throw to abort transaction
+      }
+      memberAccount = await Account.create(
+        [
+          {
+            // Use array for create with session
+            owner: memberId,
+            ownerModel: 'User',
+            type: 'savings',
+            accountNumber: `SAV-${memberId.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`, // Simple unique account number
+            balance: 0,
+            accountName: `${memberUser.name}'s Savings`,
+            createdBy: req.user.id,
+          },
+        ],
+        { session }
+      );
+      memberAccount = memberAccount[0]; // Access the created document from the array
+    }
+
+    // Calculate new balance
+    const newBalance = memberAccount.balance + amount;
+
+    // Create the Transaction record
+    transaction = await Transaction.create(
+      [
+        {
+          // Use array for create with session
+          type: 'savings_contribution',
+          member: memberId,
+          group: groupId,
+          account: memberAccount._id, // Link to the specific account
+          amount: amount,
+          description: description || 'Member savings contribution',
+          status: 'completed', // Assuming immediate completion for contributions
+          balanceAfter: newBalance, // Crucial for audit trail
+          createdBy: req.user.id, // User performing the action
+          paymentMethod: paymentMethod || 'cash',
+          relatedEntity: memberAccount._id, // Link to the account
+          relatedEntityType: 'Account',
+        },
+      ],
+      { session }
+    );
+    transaction = transaction[0]; // Access the created document from the array
+
+    // Update the member's account balance
+    memberAccount.balance = newBalance;
+    await memberAccount.save({ session }); // Pass session to save
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Populate necessary fields for response (outside session after commit)
+    await transaction.populate([
+      { path: 'group', select: 'name' },
+      { path: 'member', select: 'name email' },
+      { path: 'createdBy', select: 'name' },
+      { path: 'account', select: 'accountNumber accountName type' },
+    ]);
+
+    const formattedTransaction = transaction.toObject({ virtuals: true });
+    formattedTransaction.formattedAmount =
+      await formattedTransaction.formattedAmount;
+
+    res.status(201).json({
+      success: true,
+      message: 'Savings contribution recorded successfully.',
+      data: formattedTransaction,
     });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error creating savings contribution:', error); // Specific error message
+    next(error); // Pass error to global error handler
   }
-
-  // Calculate new balance
-  const newBalance = memberAccount.balance + amount;
-
-  // Create the Transaction record
-  const transaction = await Transaction.create({
-    type: 'savings_contribution',
-    member: memberId,
-    group: groupId,
-    account: memberAccount._id, // Link to the specific account
-    amount: amount,
-    description: description || 'Member savings contribution',
-    status: 'completed', // Assuming immediate completion for contributions
-    balanceAfter: newBalance, // Crucial for audit trail
-    createdBy: req.user.id, // User performing the action
-    paymentMethod: paymentMethod || 'cash',
-    relatedEntity: memberAccount._id, // Link to the account
-    relatedEntityType: 'Account',
-  });
-
-  // Update the member's account balance
-  memberAccount.balance = newBalance;
-  await memberAccount.save();
-
-  // Populate necessary fields for response
-  await transaction.populate([
-    { path: 'group', select: 'name' },
-    { path: 'member', select: 'name email' },
-    { path: 'createdBy', select: 'name' },
-    { path: 'account', select: 'accountNumber accountName type' },
-  ]);
-
-  const formattedTransaction = transaction.toObject({ virtuals: true });
-  formattedTransaction.formattedAmount =
-    await formattedTransaction.formattedAmount;
-
-  res.status(201).json({
-    success: true,
-    message: 'Savings contribution recorded successfully.',
-    data: formattedTransaction,
-  });
 });
 
 // @desc    Update a savings contribution (typically not done for financial records, use adjustment)
@@ -292,6 +322,7 @@ exports.updateContribution = asyncHandler(async (req, res, next) => {
   let transaction = await Transaction.findOne({
     _id: id,
     type: 'savings_contribution',
+    deleted: false, // Added deleted: false
     ...(req.dataFilter || {}), // Ensure only accessible transactions can be updated
   });
 
@@ -340,7 +371,12 @@ exports.updateContribution = asyncHandler(async (req, res, next) => {
 
   // Find and update, ensuring the transaction type is correct
   transaction = await Transaction.findOneAndUpdate(
-    { _id: id, type: 'savings_contribution', ...(req.dataFilter || {}) }, // Re-apply filter for update operation
+    {
+      _id: id,
+      type: 'savings_contribution',
+      deleted: false,
+      ...(req.dataFilter || {}),
+    }, // Re-apply filter for update operation + deleted: false
     updates,
     {
       new: true,
@@ -357,10 +393,10 @@ exports.updateContribution = asyncHandler(async (req, res, next) => {
     // Check again after update attempt, if filter prevented it
     return next(
       new ErrorResponse(
-        'Savings contribution not found or you do not have access to update.',
-        404
+        'Savings contribution could not be updated or you do not have access.',
+        500
       )
-    );
+    ); // More specific message
   }
 
   const formattedTransaction = transaction.toObject({ virtuals: true });
@@ -388,6 +424,7 @@ exports.deleteContribution = asyncHandler(async (req, res, next) => {
   const transaction = await Transaction.findOne({
     _id: id,
     type: 'savings_contribution',
+    deleted: false, // Added deleted: false
     ...(req.dataFilter || {}), // Ensure only accessible transactions can be deleted
   });
 
@@ -413,6 +450,7 @@ exports.deleteContribution = asyncHandler(async (req, res, next) => {
 
   transaction.deleted = true;
   transaction.deletedAt = new Date();
+  transaction.deletedBy = req.user.id; // Record who soft-deleted it
   await transaction.save();
 
   res.status(200).json({
@@ -431,8 +469,8 @@ exports.getGroupContributions = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid Group ID format.', 400));
   }
 
-  // Authorization: Ensure user has access to this group (handled by authorizeGroupAccess middleware on route)
-  // The `filterDataByRole` middleware for 'Transaction' will also ensure the user can only see transactions
+  // Authorization: Handled by `authorizeGroupAccess` middleware on route.
+  // `filterDataByRole('Transaction')` middleware will also ensure the user can only see transactions
   // within their accessible groups.
 
   let query = {
@@ -445,12 +483,13 @@ exports.getGroupContributions = asyncHandler(async (req, res, next) => {
   const contributions = await Transaction.find(query)
     .populate('member', 'name email')
     .populate('createdBy', 'name')
+    .populate('account', 'accountNumber accountName type') // Added account populate
     .sort({ createdAt: -1 });
 
   const formattedContributions = await Promise.all(
     contributions.map(async cont => {
       const obj = cont.toObject({ virtuals: true });
-      obj.formattedAmount = await cont.formattedAmount;
+      obj.formattedAmount = await obj.formattedAmount;
       return obj;
     })
   );
@@ -470,17 +509,17 @@ exports.getContributionSummary = asyncHandler(async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(groupId)) {
     return next(new ErrorResponse('Invalid Group ID format.', 400));
   }
-  const currency = await getCurrency();
+  const currency = await getCurrencyFromSettings(); // Use imported helper
 
-  // Authorization: Ensure user has access to this group (handled by authorizeGroupAccess middleware on route)
-  // The `filterDataByRole` middleware for 'Transaction' will also ensure the user can only aggregate transactions
+  // Authorization: Handled by `authorizeGroupAccess` middleware on route.
+  // `filterDataByRole('Transaction')` middleware will also ensure the user can only aggregate transactions
   // within their accessible groups.
 
   let matchQuery = {
     group: new mongoose.Types.ObjectId(groupId),
     type: 'savings_contribution',
     status: 'completed',
-    deleted: false,
+    deleted: false, // Added deleted: false
     ...(req.dataFilter || {}), // Apply data filter from middleware to the aggregation match
   };
 
@@ -699,6 +738,7 @@ exports.bulkImportContributions = asyncHandler(async (req, res, next) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
+    console.error('Error during bulk import of contributions:', error); // Specific error message
     next(error);
   }
 });
@@ -713,7 +753,7 @@ exports.exportContributions = asyncHandler(async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(groupId)) {
     return next(new ErrorResponse('Invalid Group ID format.', 400));
   }
-  const currency = await getCurrency();
+  const currency = await getCurrencyFromSettings(); // Use imported helper
 
   // Authorization: Handled by `authorizeGroupAccess` middleware on the route.
   // The `filterDataByRole` middleware for 'Transaction' will also ensure the user can only export transactions
@@ -727,6 +767,7 @@ exports.exportContributions = asyncHandler(async (req, res, next) => {
   })
     .populate('member', 'name email')
     .populate('createdBy', 'name')
+    .populate('account', 'accountNumber accountName type') // Added account populate
     .sort({ createdAt: 1 });
 
   const exportData = await Promise.all(
@@ -734,7 +775,7 @@ exports.exportContributions = asyncHandler(async (req, res, next) => {
       const memberName = tx.member ? tx.member.name : 'N/A';
       const memberEmail = tx.member ? tx.member.email : 'N/A';
       const createdByName = tx.createdBy ? tx.createdBy.name : 'N/A';
-      const formattedAmount = await tx.formattedAmount;
+      const formattedAmount = await tx.formattedAmount; // Virtual handles currency
 
       return {
         'Transaction ID': tx._id.toString(),
@@ -756,13 +797,22 @@ exports.exportContributions = asyncHandler(async (req, res, next) => {
 
   if (format === 'csv') {
     // Placeholder for CSV export. You'd integrate a library here.
-    res.status(200).json({
-      success: true,
-      message:
-        'CSV export functionality needs a dedicated library. Returning JSON for now.',
-      data: exportData,
-      format: 'json',
-    });
+    // For actual CSV, you'd convert exportData to CSV string and set appropriate headers.
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename=contributions-${groupId}.csv`
+    );
+    // Example using a simple CSV string (requires a CSV library for robustness)
+    const csvString = [
+      Object.keys(exportData[0]).join(','), // Headers
+      ...exportData.map(row =>
+        Object.values(row)
+          .map(val => `"${String(val).replace(/"/g, '""')}"`)
+          .join(',')
+      ), // Data rows
+    ].join('\n');
+    res.status(200).send(csvString);
   } else {
     res.status(200).json({
       success: true,
@@ -780,7 +830,7 @@ exports.getMemberContributionHistory = asyncHandler(async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(memberId)) {
     return next(new ErrorResponse('Invalid Member ID format.', 400));
   }
-  // const currency = await getCurrency(); // Not directly used here
+  // const currency = await getCurrencyFromSettings(); // Not directly used here
 
   // Authorization: Handled by `authorizeOwnerOrAdmin` or `authorizeGroupAccess` middleware on the route.
   // The `filterDataByRole` middleware for 'Transaction' will also ensure the user can only see transactions
@@ -796,12 +846,13 @@ exports.getMemberContributionHistory = asyncHandler(async (req, res, next) => {
   const contributions = await Transaction.find(query)
     .populate('group', 'name')
     .populate('createdBy', 'name')
+    .populate('account', 'accountNumber accountName type') // Added account populate
     .sort({ createdAt: -1 });
 
   const formattedContributions = await Promise.all(
     contributions.map(async cont => {
       const obj = cont.toObject({ virtuals: true });
-      obj.formattedAmount = await cont.formattedAmount;
+      obj.formattedAmount = await obj.formattedAmount;
       return obj;
     })
   );

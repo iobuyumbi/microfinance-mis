@@ -31,6 +31,12 @@ const guarantorSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    revokedAt: Date, // <<< ADD THIS FIELD
+    revokedBy: {
+      // <<< ADD THIS FIELD
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
   {
     timestamps: true, // Already has timestamps
