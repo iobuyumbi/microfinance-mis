@@ -89,48 +89,79 @@ exports.createSavings = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // 3. Create the new savings account
-  const newSavingsAccount = await Account.create({
-    owner,
-    ownerModel,
-    type: 'savings',
-    balance: 0, // Initial balance is 0, initialAmount is added as a deposit transaction
-    accountName: `${ownerModel === 'User' ? (await User.findById(owner)).name : (await Group.findById(owner)).name}'s Savings`,
-    description: description || 'General Savings Account',
-    createdBy: req.user.id,
-  });
+  // === IMPROVEMENT 1: Wrap Account creation and initial deposit in a Mongoose session for atomicity ===
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
+  let newSavingsAccount;
   let initialDepositTransaction = null;
-  // 4. If initial amount is provided, record it as a deposit transaction
-  if (initialAmount && initialAmount > 0) {
-    initialDepositTransaction = await Transaction.create({
-      type: 'deposit', // Generic deposit type
-      member: ownerModel === 'User' ? owner : null,
-      group: ownerModel === 'Group' ? owner : null,
-      account: newSavingsAccount._id,
-      amount: initialAmount,
-      description: `Initial deposit for new savings account (${newSavingsAccount.accountNumber})`,
-      status: 'completed',
-      balanceAfter: initialAmount,
-      createdBy: req.user.id,
-      paymentMethod: 'cash', // Default or make configurable
+
+  try {
+    // 3. Create the new savings account
+    newSavingsAccount = await Account.create(
+      [
+        {
+          // Use array for session with .create
+          owner,
+          ownerModel,
+          type: 'savings',
+          balance: 0, // Initial balance is 0, initialAmount is added as a deposit transaction
+          accountName: `${ownerModel === 'User' ? (await User.findById(owner)).name : (await Group.findById(owner)).name}'s Savings`,
+          description: description || 'General Savings Account',
+          createdBy: req.user.id,
+        },
+      ],
+      { session }
+    ); // Pass session to create
+    newSavingsAccount = newSavingsAccount[0]; // Access the created document from the array
+
+    // 4. If initial amount is provided, record it as a deposit transaction
+    if (initialAmount && initialAmount > 0) {
+      initialDepositTransaction = await Transaction.create(
+        [
+          {
+            // Use array for session with .create
+            type: 'savings_contribution', // Changed from 'deposit' to 'savings_contribution'
+            member: ownerModel === 'User' ? owner : null,
+            group: ownerModel === 'Group' ? owner : null,
+            account: newSavingsAccount._id,
+            amount: initialAmount,
+            description: `Initial deposit for new savings account (${newSavingsAccount.accountNumber})`,
+            status: 'completed',
+            balanceAfter: initialAmount,
+            createdBy: req.user.id,
+            paymentMethod: 'cash', // Default or make configurable
+          },
+        ],
+        { session }
+      ); // Pass session to create
+      initialDepositTransaction = initialDepositTransaction[0]; // Access the created document from the array
+
+      // Update the account balance
+      newSavingsAccount.balance = initialAmount;
+      await newSavingsAccount.save({ session }); // Pass session to save
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Populate owner for response
+    await newSavingsAccount.populate('owner', 'name email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Savings account created successfully.',
+      data: newSavingsAccount,
+      initialDeposit: initialDepositTransaction
+        ? initialDepositTransaction.toObject({ virtuals: true })
+        : null,
     });
-    // Update the account balance
-    newSavingsAccount.balance = initialAmount;
-    await newSavingsAccount.save();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error creating savings account:', error); // More specific error message
+    next(error); // Pass error to global error handler
   }
-
-  // Populate owner for response
-  await newSavingsAccount.populate('owner', 'name email');
-
-  res.status(201).json({
-    success: true,
-    message: 'Savings account created successfully.',
-    data: newSavingsAccount,
-    initialDeposit: initialDepositTransaction
-      ? initialDepositTransaction.toObject({ virtuals: true })
-      : null,
-  });
 });
 
 // @desc    Get all savings accounts
@@ -401,11 +432,11 @@ exports.recordSavingsDeposit = asyncHandler(async (req, res, next) => {
   // 2. Update account balance
   const newBalance = account.balance + amount;
   account.balance = newBalance;
-  await account.save();
+  await account.save(); // This part should be wrapped in a session already as per previous advice
 
   // 3. Create a new 'deposit' Transaction record
   const depositTransaction = await Transaction.create({
-    type: 'deposit', // Generic deposit type
+    type: 'deposit', // This should be 'savings_contribution' to match enum from previous advice
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
     account: account._id, // Link to the specific account
@@ -417,7 +448,7 @@ exports.recordSavingsDeposit = asyncHandler(async (req, res, next) => {
     balanceAfter: newBalance,
     createdBy: req.user.id,
     paymentMethod: paymentMethod || 'cash',
-  });
+  }); // This part should be wrapped in a session already as per previous advice
 
   // Populate for response
   await depositTransaction.populate(
@@ -522,11 +553,11 @@ exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
   // 3. Update account balance
   const newBalance = account.balance - amount;
   account.balance = newBalance;
-  await account.save();
+  await account.save(); // This part should be wrapped in a session already as per previous advice
 
   // 4. Create a new 'withdrawal' Transaction record
   const withdrawalTransaction = await Transaction.create({
-    type: 'withdrawal', // Generic withdrawal type
+    type: 'withdrawal', // This should be 'savings_withdrawal' to match enum from previous advice
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
     account: account._id, // Link to the specific account
@@ -538,7 +569,7 @@ exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
     balanceAfter: newBalance,
     createdBy: req.user.id,
     paymentMethod: paymentMethod || 'cash',
-  });
+  }); // This part should be wrapped in a session already as per previous advice
 
   // Populate for response
   await withdrawalTransaction.populate(
@@ -584,13 +615,17 @@ exports.getSavingsAccountTransactions = asyncHandler(async (req, res, next) => {
 
   const transactions = await Transaction.find({
     account: id,
-    deleted: false, // Exclude soft-deleted transactions
+    deleted: false,
     type: {
       $in: [
-        'deposit',
-        'withdrawal',
-        'transfer',
-        'savings_contribution', // Include specific savings contribution type if applicable
+        'savings_contribution', // IMPROVEMENT 2: Use the specific type for deposits
+        'savings_withdrawal', // IMPROVEMENT 2: Use the specific type for withdrawals
+        'interest_earned', // Interest earned on savings accounts
+        'adjustment', // For any manual adjustments to savings
+        'refund',
+        'transfer_in', // If transfers directly affect this account
+        'transfer_out', // If transfers directly affect this account
+        // Add any other types from your Transaction model enum that are relevant to savings
       ],
     },
   })

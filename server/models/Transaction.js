@@ -1,22 +1,24 @@
 // server\models\Transaction.js
 const mongoose = require('mongoose');
+const { getCurrencyFromSettings } = require('../utils/currencyUtils'); // <<< ADD THIS IMPORT
 
-// Function to get currency from Settings (to avoid hardcoding)
-let appSettings = null; // Will be populated dynamically
-async function getCurrency() {
-  if (!appSettings) {
-    // Lazy load Settings model to prevent circular dependency
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('./Settings').schema);
-    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
+// REMOVE THE OLD getCurrency FUNCTION DEFINITION FROM HERE
+// // Function to get currency from Settings (to avoid hardcoding)
+// let appSettings = null; // Will be populated dynamically
+// async function getCurrency() {
+//   if (!appSettings) {
+//     // Lazy load Settings model to prevent circular dependency
+//     const Settings =
+//       mongoose.models.Settings ||
+//       mongoose.model('Settings', require('./Settings').schema);
+//     appSettings = await Settings.findOne({ settingsId: 'app_settings' });
+//     if (!appSettings) {
+//       console.warn('Settings document not found. Using default currency USD.');
+//       appSettings = { general: { currency: 'USD' } }; // Fallback
+//     }
+//   }
+//   return appSettings.general.currency;
+// }
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -77,7 +79,7 @@ const transactionSchema = new mongoose.Schema(
     // For tracking running balance of the affected account
     balanceAfter: {
       type: Number,
-      min: [0, 'Balance after cannot be negative'],
+      // min: [0, 'Balance after cannot be negative'],
       required: true, // This is crucial for auditing
     },
     // For approval workflow (e.g., for large withdrawals or specific disbursements)
@@ -127,9 +129,9 @@ transactionSchema.index({ relatedEntity: 1, relatedEntityType: 1 }); // Compound
 
 // Virtual for formatted amount (now dynamic based on Settings)
 transactionSchema.virtual('formattedAmount').get(async function () {
-  const currency = await getCurrency();
+  // Use the imported helper
+  const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
-    // en-US for generic formatting, but currency symbol changes
     style: 'currency',
     currency: currency,
   }).format(this.amount);

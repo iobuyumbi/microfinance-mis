@@ -34,6 +34,7 @@ router.post(
   authorize('admin', 'officer', 'leader', 'member'), // Broad roles, controller/middleware will refine
   // You might add a custom middleware here to ensure the user has permission to record for this specific loan/borrower
   // e.g., authorizeLoanAccess('loanId', 'write')
+  authorizeLoanAccess('loanId', 'write'), // <--- ADD THIS LINE
   recordRepayment
 );
 

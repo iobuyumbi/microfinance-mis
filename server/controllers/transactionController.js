@@ -56,20 +56,44 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
   // IMPORTANT: Define your transaction types clearly in your schema/documentation.
   // This logic must be robust and cover all intended transaction types.
   let newBalance;
+  // IMPORTANT: Ensure these lists cover ALL valid enum types from your Transaction model,
+  // and accurately reflect their financial impact on the 'account' field.
   const creditTypes = [
     'savings_contribution',
     'loan_repayment',
     'interest_earned',
     'refund',
-    'other_credit',
+    'transfer_in', // e.g., money coming INTO this account from another
+    'adjustment_credit', // If you have a specific adjustment type that adds
+    'penalty_paid', // When a member pays a penalty, it's a credit to the revenue account
+    'fee_paid', // When a member pays a fee, it's a credit to the revenue account
   ];
   const debitTypes = [
+    'savings_withdrawal', // Assuming 'withdrawal' maps to 'savings_withdrawal'
     'loan_disbursement',
-    'withdrawal',
-    'fee',
-    'penalty',
-    'other_debit',
+    'interest_charged', // e.g., interest added to a loan (reduces loan_fund if loan is an asset)
+    'penalty_incurred', // e.g., penalty reducing member's savings or increasing loan (debit to savings, or credit to loan liability account)
+    'fee_incurred', // e.g., fee reducing member's savings or increasing loan
+    'transfer_out', // e.g., money going OUT of this account to another
+    'adjustment_debit', // If you have a specific adjustment type that subtracts
   ];
+
+  // Map 'withdrawal' to 'savings_withdrawal' for consistency if needed from frontend
+  if (type === 'withdrawal') {
+    type = 'savings_withdrawal';
+  }
+  // Map 'fee' to 'fee_incurred' or 'fee_paid' based on context (if `fee` is a general term)
+  // Map 'penalty' to 'penalty_incurred' or 'penalty_paid' based on context (if `penalty` is a general term)
+
+  // Validate the 'type' against the expanded lists
+  if (!creditTypes.includes(type) && !debitTypes.includes(type)) {
+    return next(
+      new ErrorResponse(
+        `Unsupported or unhandled transaction type: ${type}. Please use specific types.`,
+        400
+      )
+    );
+  }
 
   if (creditTypes.includes(type)) {
     newBalance = targetAccount.balance + amount;
