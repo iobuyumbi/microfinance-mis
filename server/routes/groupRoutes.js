@@ -1,4 +1,4 @@
-// server\routes\groupRoutes.js
+// server\routes\groupRoutes.js (REVISED)
 const express = require('express');
 const router = express.Router();
 const {
@@ -8,9 +8,11 @@ const {
   updateGroup,
   deleteGroup,
   addMember,
-  removeMember,
-  joinGroup, // Assuming this will be moved into groupController for better MVC
-} = require('../controllers/groupController'); // Ensure joinGroup is exported from here
+  removeMember, // Ensure this is imported
+  joinGroup,
+  updateMemberRole, // Added for consistency with groupController
+  getGroupMembers, // Added for consistency with groupController
+} = require('../controllers/groupController');
 const {
   protect,
   authorize,
@@ -39,33 +41,23 @@ router.get('/test-auth', (req, res) => {
 
 // @route   POST /api/groups
 // @desc    Create a new group
-// @access  Private (Admin, Officer, or Member with 'can_create_group' permission - if you have one)
-//          For now, let's allow Officer to create groups. Admins implicitly can.
+// @access  Private (Admin, Officer)
 router.post(
   '/',
-  authorize('admin', 'officer'), // Only Admin and Officers can create groups
-  validateRequiredFields(['name']), // Re-added validation
+  authorize('admin', 'officer'),
+  validateRequiredFields(['name', 'location', 'meetingFrequency', 'leaderId']), // Added more required fields here
   createGroup
 );
 
 // @route   GET /api/groups
 // @desc    Get all groups (filtered by user's access)
 // @access  Private (Admin/Officer see all, others see groups they are members/creators of)
-router.get(
-  '/',
-  filterDataByRole('Group'), // Apply data filtering based on user role/group membership
-  getAllGroups
-);
+router.get('/', filterDataByRole('Group'), getAllGroups);
 
 // @route   GET /api/groups/:id
 // @desc    Get a single group by ID
 // @access  Private (Admin/Officer/Group Member/Group Creator)
-router.get(
-  '/:id',
-  validateObjectId,
-  authorizeGroupAccess('id'), // Ensure user is member/creator or admin/officer
-  getGroupById
-);
+router.get('/:id', validateObjectId, authorizeGroupAccess('id'), getGroupById);
 
 // @route   PUT /api/groups/:id
 // @desc    Update group details
@@ -73,60 +65,67 @@ router.get(
 router.put(
   '/:id',
   validateObjectId,
-  validateRequiredFields(['name']),
-  authorizeGroupPermission('can_edit_group_info', 'id'), // Requires 'can_edit_group_info' in this group
+  // validateRequiredFields(['name']), // Removed: allow partial updates, controller handles defaults
+  authorizeGroupPermission('can_edit_group_info', 'id'),
   updateGroup
 );
 
 // @route   DELETE /api/groups/:id
 // @desc    Delete a group
 // @access  Private (Admin only, or highly privileged Officer)
-//          Group deletion should be heavily restricted for data integrity.
-router.delete(
-  '/:id',
-  validateObjectId,
-  authorize('admin'), // Only admin can delete groups (for now)
-  deleteGroup
-);
+router.delete('/:id', validateObjectId, authorize('admin'), deleteGroup);
 
-// --- Member Management ---
+// --- Member Management (within a group) ---
 
 // @route   POST /api/groups/:id/members
 // @desc    Add a member to a group
 // @access  Private (Admin, Officer, or Group Leader with 'can_manage_members' permission)
 router.post(
-  '/:id/members',
+  '/:id/members', // :id is groupId
   validateObjectId,
   validateRequiredFields(['userId']),
-  authorizeGroupPermission('can_manage_members', 'id'), // Requires 'can_manage_members' in this group
+  authorizeGroupPermission('can_manage_members', 'id'),
   addMember
 );
 
-// @route   DELETE /api/groups/:id/members
+// @route   DELETE /api/groups/:id/members/:userId
 // @desc    Remove a member from a group
 // @access  Private (Admin, Officer, or Group Leader with 'can_manage_members' permission)
 router.delete(
-  '/:id/members',
-  validateObjectId,
-  validateRequiredFields(['userId']),
-  authorizeGroupPermission('can_manage_members', 'id'), // Requires 'can_manage_members' in this group
+  '/:id/members/:userId', // :id is groupId, :userId is member to remove
+  validateObjectId, // Validates :id
+  // No need for validateRequiredFields(['userId']) as it's a param
+  authorizeGroupPermission('can_manage_members', 'id'),
   removeMember
+);
+
+// @route   PUT /api/groups/:groupId/members/:userId/role
+// @desc    Update a member's role within a group
+// @access  Private (authorizeGroupPermission('can_manage_roles') or Admin/Officer)
+router.put(
+  '/:groupId/members/:userId/role',
+  validateObjectId, // Validates :groupId
+  validateObjectId, // Validates :userId
+  validateRequiredFields(['newRoleName']),
+  authorizeGroupPermission('can_manage_roles', 'groupId'), // Assuming 'can_manage_roles' is the permission
+  updateMemberRole
+);
+
+// @route   GET /api/groups/:groupId/members
+// @desc    Get members of a specific group with their roles
+// @access  Private (authorizeGroupAccess or Admin/Officer)
+router.get(
+  '/:groupId/members',
+  validateObjectId, // Validates :groupId
+  authorizeGroupAccess('groupId'),
+  getGroupMembers
 );
 
 // --- Join Group ---
 
 // @route   POST /api/groups/:id/join
 // @desc    Allow a user to join a group (self-service)
-// @access  Private (Authenticated User - does not require specific group permissions, but will become a member)
-//          NOTE: This logic is moved into the controller to keep routes cleaner.
-router.post(
-  '/:id/join',
-  validateObjectId,
-  // No specific group permission needed here, as the user is *joining* not managing.
-  // The controller will handle logic like invitation-only groups vs. open groups.
-  joinGroup // Moved to groupController for cleaner routing and better testability
-);
-
-// Group chat functionality is handled by /api/chat routes (separate router)
+// @access  Private (Authenticated User)
+router.post('/:id/join', validateObjectId, joinGroup);
 
 module.exports = router;

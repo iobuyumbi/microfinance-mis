@@ -22,7 +22,7 @@ const groupSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'pending'],
+      enum: ['active', 'inactive', 'pending', 'deleted'],
       default: 'pending',
     },
     formationDate: {
@@ -57,6 +57,12 @@ const groupSchema = new mongoose.Schema(
       ref: 'Account',
       unique: true, // Each group should have one account
       sparse: true,
+    },
+    deletedAt: Date, // Add for soft delete audit
+    deletedBy: {
+      // Add for soft delete audit
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
   },
   {

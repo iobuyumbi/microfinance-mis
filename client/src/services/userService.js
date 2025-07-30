@@ -1,4 +1,4 @@
-// client\src\services\userService.js (FINAL REVISED VERSION)
+// client\src\services\userService.js (FINAL REVISED VERSION - Corrected Duplicate)
 import api from "./api";
 import { handleRequest } from "./handleRequest";
 
@@ -24,10 +24,11 @@ export const userService = {
     handleRequest(() => api.delete(`/users/${id}`), "Failed to delete user"),
 
   // Get user's groups - maps to GET /users/:id/groups
+  // This is the correct and only definition for getUserGroups
   getUserGroups: (userId) =>
     handleRequest(
       () => api.get(`/users/${userId}/groups`),
-      "Failed to fetch user groups"
+      `Could not load groups for user ${userId}` // Using the more descriptive error message
     ),
 
   // Get group members - maps to GET /users/groups/:groupId/members
