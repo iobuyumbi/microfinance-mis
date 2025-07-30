@@ -18,19 +18,16 @@ const userSchema = new mongoose.Schema(
         /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
         'Please provide a valid email',
       ],
-      index: true,
     },
     phone: {
       type: String,
       unique: true, // Assuming phone numbers are unique
       sparse: true, // Allows null/undefined values for unique constraint
-      index: true,
     },
     nationalID: {
       type: String,
       unique: true, // Assuming National IDs are unique
       sparse: true, // Allows null/undefined values for unique constraint
-      index: true,
     },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     password: {
@@ -43,7 +40,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['admin', 'officer', 'leader', 'member'],
       default: 'member', // Default to member, admin/officer/leader roles assigned by admin
-      index: true,
     },
     status: {
       type: String,

@@ -1,7 +1,7 @@
 // server\controllers\settingsController.js (REVISED)
 const Settings = require('../models/Settings');
 const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const { ErrorResponse } = require('../utils');
 const mongoose = require('mongoose');
 
 // The fixed ID for the single settings document
@@ -41,14 +41,12 @@ function deepMerge(target, source) {
 // @access  Private (Accessible by all authenticated users)
 exports.getSettings = asyncHandler(async (req, res, next) => {
   // Attempt to find the single settings document by its fixed ID
-  let settings = await Settings.findById(SETTINGS_ID);
+  let settings = await Settings.findOne({ settingsId: SETTINGS_ID });
 
   // If no settings document exists, create it with defaults
   if (!settings) {
-    // Use insertMany with a single document to ensure _id is respected during creation
-    // or ensure your schema's pre-save hook handles default _id if not provided.
-    // For simplicity and clarity, explicitly create with _id.
-    settings = await Settings.create({ _id: SETTINGS_ID });
+    // Create with the new settingsId field
+    settings = await Settings.create({ settingsId: SETTINGS_ID });
     console.log('Default settings document created as it did not exist.');
   }
 
@@ -60,11 +58,11 @@ exports.getSettings = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin only) - authorize('admin') middleware handles this
 exports.updateSettings = asyncHandler(async (req, res, next) => {
   // Find the settings document by its fixed ID
-  let settings = await Settings.findById(SETTINGS_ID);
+  let settings = await Settings.findOne({ settingsId: SETTINGS_ID });
 
   // If settings don't exist, create them first (though getSettings should ideally ensure existence)
   if (!settings) {
-    settings = await Settings.create({ _id: SETTINGS_ID });
+    settings = await Settings.create({ settingsId: SETTINGS_ID });
     console.warn(
       'Settings document not found during update, created a new one.'
     );
@@ -92,14 +90,20 @@ exports.resetSettings = asyncHandler(async (req, res, next) => {
 
   try {
     // Find and delete the existing settings document by its fixed ID
-    const deletedSettings = await Settings.findByIdAndDelete(SETTINGS_ID, {
-      session,
-    });
+    const deletedSettings = await Settings.findOneAndDelete(
+      { settingsId: SETTINGS_ID },
+      {
+        session,
+      }
+    );
 
     // Create a new settings document, which will use the schema defaults
-    const defaultSettings = await Settings.create([{ _id: SETTINGS_ID }], {
-      session,
-    });
+    const defaultSettings = await Settings.create(
+      [{ settingsId: SETTINGS_ID }],
+      {
+        session,
+      }
+    );
 
     await session.commitTransaction();
     session.endSession();

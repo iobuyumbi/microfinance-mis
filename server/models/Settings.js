@@ -3,11 +3,12 @@ const mongoose = require('mongoose');
 
 const settingsSchema = new mongoose.Schema(
   {
-    // Add a unique identifier for the single settings document
-    _id: {
+    // Use a different field name to avoid _id conflicts
+    settingsId: {
       type: String,
       default: 'app_settings', // A fixed string ID to ensure only one document
       unique: true,
+      required: true,
     },
     general: {
       organizationName: { type: String, default: 'Chama Solutions Ltd' },

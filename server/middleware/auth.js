@@ -1,6 +1,5 @@
 // server\middleware\auth.js
-const { verifyToken } = require('../utils/jwt');
-const { isBlacklisted } = require('../utils/blacklist');
+const { jwt, blacklist, ErrorResponse } = require('../utils');
 const User = require('../models/User');
 const Group = require('../models/Group');
 const CustomGroupRole = require('../models/CustomGroupRole');
@@ -9,6 +8,7 @@ const Account = require('../models/Account'); // NEW: Import Account model
 const Loan = require('../models/Loan'); // Added Loan model import
 const Transaction = require('../models/Transaction'); // Added Transaction model import
 const mongoose = require('mongoose');
+
 
 // Helper function to log only in development
 const devLog = (...args) => {
@@ -48,7 +48,7 @@ exports.protect = async (req, res, next) => {
     }
 
     // Check if the token is blacklisted
-    if (isBlacklisted(token)) {
+    if (blacklist.isBlacklisted(token)) {
       devLog('Token blacklisted:', token);
       return res.status(401).json({
         success: false,
@@ -57,7 +57,7 @@ exports.protect = async (req, res, next) => {
     }
 
     // Verify token using utils (should throw an error for invalid/expired tokens)
-    const decoded = verifyToken(token);
+    const decoded = jwt.verifyToken(token);
     devLog('Token decoded payload:', decoded);
 
     const user = await User.findById(decoded.id).select('-password');
@@ -481,6 +481,95 @@ exports.authorizeOwnerOrAdmin = (userIdParam = 'userId') => {
   };
 };
 
+// @desc    Helper middleware to check if user can access a specific loan
+// @param   {string} [loanIdParam='loanId'] - The name of the request parameter holding the loan ID.
+// @access  Protected (requires `protect` middleware to run first)
+exports.authorizeLoanAccess = (loanIdParam = 'loanId') => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res
+          .status(401)
+          .json({ success: false, message: 'Authentication required.' });
+      }
+
+      const loanId = req.params[loanIdParam];
+      if (!loanId || !mongoose.Types.ObjectId.isValid(loanId)) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Invalid or missing Loan ID.' });
+      }
+
+      const loan = await Loan.findById(loanId);
+      if (!loan) {
+        return res
+          .status(404)
+          .json({ success: false, message: 'Loan not found.' });
+      }
+
+      // Store loan on request for subsequent middleware/controller
+      req.targetLoan = loan;
+
+      // Admins and Officers bypass specific loan access checks
+      if (req.user.role === 'admin' || req.user.role === 'officer') {
+        devLog(
+          `Access granted for system role (${req.user.role}) to loan ${loanId}.`
+        );
+        return next();
+      }
+
+      // Check if the current user is the borrower of the loan
+      if (loan.borrower.toString() === req.user._id.toString()) {
+        devLog(
+          `Access granted for loan borrower (${req.user._id}) to loan ${loanId}.`
+        );
+        return next();
+      }
+
+      // Check if the current user is a guarantor on the loan
+      const isGuarantor = loan.guarantors.some(
+        guarantor => guarantor.guarantor.toString() === req.user._id.toString()
+      );
+      if (isGuarantor) {
+        devLog(
+          `Access granted for loan guarantor (${req.user._id}) to loan ${loanId}.`
+        );
+        return next();
+      }
+
+      // Check if the current user is an active member of the group that is the borrower
+      if (loan.borrowerModel === 'Group') {
+        const membership = await UserGroupMembership.findOne({
+          user: req.user._id,
+          group: loan.borrower,
+          status: 'active',
+        });
+
+        if (membership) {
+          devLog(
+            `Access granted for group member (${req.user._id}) to group loan ${loanId}.`
+          );
+          return next();
+        }
+      }
+
+      devLog(
+        `Access denied for user ${req.user._id} to loan ${loanId}. Not borrower, guarantor, admin, officer, or active group member.`
+      );
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You are not authorized to access this loan.',
+      });
+    } catch (error) {
+      devLog('authorizeLoanAccess internal error:', error.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Error checking loan access.',
+      });
+    }
+  };
+};
+
 // @desc    Helper middleware to fetch an Account and then apply owner/group authorization
 // @param   {string} [idParam='id'] - The name of the request parameter holding the account ID.
 // @access  Protected (requires `protect` middleware to run first)
@@ -549,13 +638,11 @@ exports.authorizeAccountAccess = (idParam = 'id') => {
       devLog(
         `Access denied for user ${req.user._id} to account ${accountId}. Not owner, admin, officer, or active group member.`
       );
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message:
-            'Access denied. You are not authorized to access this account.',
-        });
+      return res.status(403).json({
+        success: false,
+        message:
+          'Access denied. You are not authorized to access this account.',
+      });
     } catch (error) {
       devLog('authorizeAccountAccess internal error:', error.message);
       return res.status(500).json({

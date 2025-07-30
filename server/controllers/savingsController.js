@@ -4,25 +4,9 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const Group = require('../models/Group');
 const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const { ErrorResponse, settingsHelper } = require('../utils');
 const mongoose = require('mongoose');
 const UserGroupMembership = require('../models/UserGroupMembership'); // Needed for some authorization checks
-
-// Helper to get currency from settings
-let appSettings = null;
-async function getCurrency() {
-  if (!appSettings) {
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findById('app_settings');
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
 
 // @desc    Create a new savings account
 // @route   POST /api/savings
@@ -596,7 +580,7 @@ exports.getSavingsAccountTransactions = asyncHandler(async (req, res, next) => {
   }
 
   // Currency for formatting, though Transaction virtual should handle it.
-  const currency = await getCurrency(); // Not strictly needed here, but good practice
+  const currency = await settingsHelper.getCurrency(); // Not strictly needed here, but good practice
 
   const transactions = await Transaction.find({
     account: id,

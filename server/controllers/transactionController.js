@@ -4,24 +4,8 @@ const Account = require('../models/Account'); // For updating balances
 const User = require('../models/User'); // For populating member details
 const Group = require('../models/Group'); // For populating group details
 const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const { ErrorResponse, settingsHelper } = require('../utils');
 const mongoose = require('mongoose');
-
-// Helper to get currency (assuming this exists and is consistent)
-let appSettings = null;
-async function getCurrency() {
-  if (!appSettings) {
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findById('app_settings');
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
 
 // @desc    Create a new transaction (general purpose, for admin/officer)
 // @route   POST /api/transactions

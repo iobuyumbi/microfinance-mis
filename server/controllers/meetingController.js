@@ -3,7 +3,7 @@ const Meeting = require('../models/Meeting');
 const Group = require('../models/Group');
 const User = require('../models/User'); // Needed for populating attendance
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
+const { ErrorResponse } = require('../utils'); // Import custom error class
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // @desc    Schedule a new meeting

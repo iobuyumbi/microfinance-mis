@@ -1,26 +1,13 @@
-// Utils index file - exports all utility functions
-
-const { generateToken, verifyToken, decodeToken } = require('./jwt');
-const {
-  sendEmail,
-  sendWelcomeEmail,
-  sendPasswordResetEmail,
-} = require('./sendEmail');
-
-const { addToBlacklist, isBlacklisted } = require('../blacklist');
+const jwt = require('./jwt');
+const sendEmail = require('./sendEmail');
+const blacklist = require('./blacklist');
+const ErrorResponse = require('./errorResponse');
+const settingsHelper = require('./settingsHelper');
 
 module.exports = {
-  // JWT utilities
-  generateToken,
-  verifyToken,
-  decodeToken,
-
-  // Email utilities
+  jwt,
   sendEmail,
-  sendWelcomeEmail,
-  sendPasswordResetEmail,
-
-  // Blacklist utilities
-  addToBlacklist,
-  isBlacklisted,
+  blacklist,
+  ErrorResponse,
+  settingsHelper,
 };

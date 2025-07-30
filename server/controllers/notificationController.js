@@ -4,7 +4,7 @@ const User = require('../models/User'); // Needed for recipient validation and p
 const Group = require('../models/Group'); // Needed for recipient validation and population
 
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
+const { ErrorResponse } = require('../utils'); // Import custom error class
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // @desc    Create a new notification

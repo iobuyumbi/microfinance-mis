@@ -1,38 +1,40 @@
-// Validation middleware for common input validation
+// Validation middleware for input validation
+const { ErrorResponse } = require('../utils');
+const mongoose = require('mongoose');
 
+// Validate MongoDB ObjectId
 const validateObjectId = (req, res, next) => {
   const { id } = req.params;
-  const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
-
-  if (!id || !isValidObjectId) {
-    return res.status(422).json({
-      success: false,
-      message: "Invalid ID format. Must be a 24-character hexadecimal string.",
-    });
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new ErrorResponse('Invalid ID format', 400));
   }
-
   next();
 };
 
+// Validate required fields
+const validateRequiredFields = fields => {
+  return (req, res, next) => {
+    const missingFields = fields.filter(field => !req.body[field]);
+    if (missingFields.length > 0) {
+      return next(
+        new ErrorResponse(
+          `Missing required fields: ${missingFields.join(', ')}`,
+          400
+        )
+      );
+    }
+    next();
+  };
+};
+
+// Validate pagination parameters
 const validatePagination = (req, res, next) => {
-  const { page = "1", limit = "10" } = req.query;
+  const { page = 1, limit = 10 } = req.query;
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
 
-  const pageNum = parseInt(page, 10);
-  const limitNum = parseInt(limit, 10);
-
-  const isValid =
-    Number.isInteger(pageNum) &&
-    Number.isInteger(limitNum) &&
-    pageNum > 0 &&
-    limitNum > 0 &&
-    limitNum <= 100;
-
-  if (!isValid) {
-    return res.status(422).json({
-      success: false,
-      message:
-        "Pagination parameters invalid: 'page' must be >= 1 and 'limit' must be between 1 and 100.",
-    });
+  if (pageNum < 1 || limitNum < 1 || limitNum > 100) {
+    return next(new ErrorResponse('Invalid pagination parameters', 400));
   }
 
   req.pagination = {
@@ -44,28 +46,8 @@ const validatePagination = (req, res, next) => {
   next();
 };
 
-const validateRequiredFields = (requiredFields) => {
-  return (req, res, next) => {
-    const missing = requiredFields.filter(
-      (field) =>
-        req.body[field] === undefined ||
-        req.body[field] === null ||
-        req.body[field] === ""
-    );
-
-    if (missing.length > 0) {
-      return res.status(422).json({
-        success: false,
-        message: `Missing required field(s): ${missing.join(", ")}`,
-      });
-    }
-
-    next();
-  };
-};
-
 module.exports = {
   validateObjectId,
-  validatePagination,
   validateRequiredFields,
+  validatePagination,
 };

@@ -5,7 +5,7 @@ const Transaction = require('../models/Transaction'); // Will be used for checks
 const Loan = require('../models/Loan'); // Will be used for checks
 
 const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const { ErrorResponse } = require('../utils');
 
 // Helper to get currency from settings (async virtuals need this in controllers)
 let appSettings = null;
@@ -14,7 +14,7 @@ async function getCurrency() {
     const Settings =
       mongoose.models.Settings ||
       mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findById('app_settings');
+    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettings) {
       console.warn('Settings document not found. Using default currency USD.');
       appSettings = { general: { currency: 'USD' } }; // Fallback

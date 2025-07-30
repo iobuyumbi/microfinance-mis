@@ -42,7 +42,7 @@ router.post(
 // @access  Private (filterDataByRole middleware handles access)
 router.get(
   '/',
-  filterDataByRole('Transaction', 'loan_repayment'), // Filter for 'loan_repayment' type transactions
+  filterDataByRole('Transaction'), // Filter for transactions
   getAllRepayments
 );
 
@@ -52,7 +52,7 @@ router.get(
 router.get(
   '/:id',
   validateObjectId,
-  filterDataByRole('Transaction', 'loan_repayment'), // Filter for 'loan_repayment' type transactions
+  filterDataByRole('Transaction'), // Filter for transactions
   getRepaymentById
 );
 

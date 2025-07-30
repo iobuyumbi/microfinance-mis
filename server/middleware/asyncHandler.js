@@ -1,4 +1,4 @@
-// Async error handler wrapper
+// Async handler middleware to catch async errors
 const asyncHandler = fn => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };

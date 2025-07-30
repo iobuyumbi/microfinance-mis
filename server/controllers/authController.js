@@ -1,14 +1,8 @@
 // server\controllers\authController.js
 
 const User = require('../models/User');
-const { generateToken, verifyToken } = require('../utils/jwt');
-const {
-  sendWelcomeEmail,
-  sendPasswordResetEmail,
-} = require('../utils/sendEmail');
-const blacklist = require('../utils/blacklist');
-const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
+const { jwt, sendEmail, blacklist, ErrorResponse } = require('../utils');
+const { asyncHandler } = require('../middleware');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -42,7 +36,7 @@ exports.register = asyncHandler(async (req, res, next) => {
   // Send welcome email (async, doesn't block response)
   // Wrap in try-catch to prevent email sending failures from breaking registration
   try {
-    await sendWelcomeEmail(user.email, user.name);
+    await sendEmail.sendWelcomeEmail(user.email, user.name);
   } catch (emailError) {
     console.error(`Failed to send welcome email to ${user.email}:`, emailError);
     // Decide if you want to rollback user creation or just log the error
@@ -166,11 +160,11 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   // It's generally better to use a dedicated reset token that is hashed and stored on the user model,
   // and invalidated after use, rather than a JWT for password resets.
   // For this setup, we'll continue with JWT but acknowledge the alternative.
-  const resetToken = generateToken(user._id, '15m'); // 15 minutes validity
+  const resetToken = jwt.generateToken(user._id, '15m'); // 15 minutes validity
 
   // Send password reset email
   try {
-    await sendPasswordResetEmail(user.email, resetToken);
+    await sendEmail.sendPasswordResetEmail(user.email, resetToken);
     res.status(200).json({
       success: true,
       message:
@@ -199,13 +193,13 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
 
   let decoded;
   try {
-    decoded = verifyToken(token);
+    decoded = jwt.verifyToken(token);
   } catch (err) {
     return next(new ErrorResponse('Invalid or expired reset token.', 400));
   }
 
   // Check if the token is blacklisted (if a JWT is used for reset tokens)
-  if (blacklist.has(token)) {
+  if (blacklist.isBlacklisted(token)) {
     return next(
       new ErrorResponse(
         'This reset link has already been used or is invalid.',
@@ -223,7 +217,7 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   // Update password and blacklist the token to prevent reuse
   user.password = password; // Mongoose pre-save hook will hash this
   await user.save();
-  blacklist.add(token); // Invalidate the used reset token
+  blacklist.addToBlacklist(token); // Invalidate the used reset token
 
   res.status(200).json({
     success: true,

@@ -8,7 +8,7 @@ async function getCurrency() {
     const Settings =
       mongoose.models.Settings ||
       mongoose.model('Settings', require('./Settings').schema);
-    appSettings = await Settings.findById('app_settings');
+    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettings) {
       console.warn('Settings document not found. Using default currency USD.');
       appSettings = { general: { currency: 'USD' } }; // Fallback

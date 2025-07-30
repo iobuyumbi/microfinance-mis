@@ -7,31 +7,15 @@ const User = require('../models/User'); // For member counts
 const UserGroupMembership = require('../models/UserGroupMembership'); // To get user's accessible groups
 
 const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const { ErrorResponse, settingsHelper } = require('../utils');
 const mongoose = require('mongoose'); // For ObjectId validation
-
-// Helper to get currency from settings (async virtuals need this in controllers)
-let appSettings = null;
-async function getCurrency() {
-  if (!appSettings) {
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findById('app_settings');
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
 
 // @desc    Get repayments due within a specified period (default next 30 days)
 // @route   GET /api/reports/upcoming-repayments
 // @access  Private (filterDataByRole applies loan access)
 exports.upcomingRepayments = asyncHandler(async (req, res, next) => {
   const { startDate, endDate } = req.query; // Optional query parameters
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
 
   const now = new Date();
   const startFilterDate = startDate ? new Date(startDate) : now;
@@ -102,7 +86,7 @@ exports.upcomingRepayments = asyncHandler(async (req, res, next) => {
 // @route   GET /api/reports/total-loans-disbursed
 // @access  Private (Admin, Officer, or filterDataByRole for loans)
 exports.totalLoansDisbursed = asyncHandler(async (req, res, next) => {
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
 
   // The filterDataByRole middleware provides the `req.dataFilter` for 'Loan' model
   const loanFilter = req.dataFilter || {};
@@ -123,7 +107,7 @@ exports.totalLoansDisbursed = asyncHandler(async (req, res, next) => {
 // @route   GET /api/reports/group-savings-performance
 // @access  Private (filterDataByRole for groups)
 exports.groupSavingsPerformance = asyncHandler(async (req, res, next) => {
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
 
   // req.dataFilter for 'Group' should provide either an empty object (for admin/officer)
   // or { _id: { $in: [...] }} for specific groups a leader/member belongs to.
@@ -181,7 +165,7 @@ exports.groupSavingsPerformance = asyncHandler(async (req, res, next) => {
 // @route   GET /api/reports/active-loan-defaulters
 // @access  Private (filterDataByRole applies loan access)
 exports.activeLoanDefaulters = asyncHandler(async (req, res, next) => {
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
   const now = new Date();
 
   // Prepare loan query based on req.dataFilter from middleware
@@ -234,7 +218,7 @@ exports.activeLoanDefaulters = asyncHandler(async (req, res, next) => {
 // @route   GET /api/reports/financial-summary
 // @access  Private (Admin, Officer, or filterDataByRole for transactions)
 exports.financialSummary = asyncHandler(async (req, res, next) => {
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
   const year = parseInt(req.query.year) || new Date().getFullYear();
   const month = req.query.month ? parseInt(req.query.month) : null; // 1-12 for month
 
@@ -291,7 +275,7 @@ exports.financialSummary = asyncHandler(async (req, res, next) => {
 // @route   GET /api/reports/dashboard
 // @access  Private (filterDataByRole applies relevant filters)
 exports.getDashboardStats = asyncHandler(async (req, res, next) => {
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const thirtyDaysFromNow = new Date();
@@ -460,7 +444,7 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
 // @route   GET /api/reports/recent-activity
 // @access  Private (filterDataByRole applies relevant filters)
 exports.getRecentActivity = asyncHandler(async (req, res, next) => {
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 

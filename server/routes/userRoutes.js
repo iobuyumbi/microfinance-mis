@@ -17,15 +17,12 @@ const {
 } = require('../controllers/userController');
 const {
     protect,
-    authorize
-} = require('../middleware/auth');
-const {
-    authorizeRoles,
-    authorizeGroupAccess,
+    authorize,
     authorizeOwnerOrAdmin,
     authorizeGroupPermission,
-    filterDataByRole
-} = require('../middleware/rbac');
+    filterDataByRole,
+    authorizeGroupAccess
+} = require('../middleware/auth');
 const { validateObjectId, validateRequiredFields } = require('../middleware/validate');
 
 // User routes - all protected
@@ -44,13 +41,13 @@ router
     .route('/:id')
     .get(validateObjectId, authorizeOwnerOrAdmin('id'), getUserById)
     .put(
-        authorizeRoles('admin', 'officer'),
+        authorize('admin', 'officer'),
         validateObjectId,
         // Removed validateRequiredFields(['role', 'status']) here to allow partial updates.
         // Validation for content of role/status is in the controller.
         updateUserRoleStatus
     )
-    .delete(authorizeRoles('admin'), validateObjectId, deleteUser);
+    .delete(authorize('admin'), validateObjectId, deleteUser);
 
 // Get groups for a specific user - owner or admin only
 router.get('/:id/groups', validateObjectId, authorizeOwnerOrAdmin('id'), getUserGroups);

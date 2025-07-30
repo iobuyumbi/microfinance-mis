@@ -6,7 +6,7 @@ const Account = require('../models/Account'); // To fetch savings balances from 
 const UserGroupMembership = require('../models/UserGroupMembership'); // To verify member-group relationship
 
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
+const { ErrorResponse } = require('../utils'); // Import custom error class
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // Helper to get account balance

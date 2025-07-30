@@ -53,7 +53,7 @@ router.post(
 // @access  Private (Admin/Officer see all, others see groups they are members/creators of)
 router.get(
   '/',
-  filterDataByRole, // Apply data filtering based on user role/group membership
+  filterDataByRole('Group'), // Apply data filtering based on user role/group membership
   getAllGroups
 );
 

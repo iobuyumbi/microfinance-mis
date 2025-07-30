@@ -19,7 +19,6 @@ const groupSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Group must have a leader'],
-      index: true,
     },
     status: {
       type: String,
@@ -36,7 +35,6 @@ const groupSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        index: true,
       },
     ],
     // Group financial details (can be stored here or in a separate GroupAccount)
@@ -70,7 +68,7 @@ const groupSchema = new mongoose.Schema(
 // Index for efficient querying
 groupSchema.index({ leader: 1 });
 groupSchema.index({ status: 1 });
-groupSchema.index({ name: 1 });
+// Note: name field already has unique: true which creates an index automatically
 
 module.exports = mongoose.model('Group', groupSchema);
 // ========== INSTANCE METHODS ========== //

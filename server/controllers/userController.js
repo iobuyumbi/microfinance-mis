@@ -5,25 +5,9 @@ const Account = require('../models/Account'); // For savings/balances
 const Transaction = require('../models/Transaction'); // For all financial movements
 const Loan = require('../models/Loan'); // Ensure Loan model is imported for financial summary
 
-const asyncHandler = require('../middleware/asyncHandler');
-const ErrorResponse = require('../utils/errorResponse');
+const { asyncHandler } = require('../middleware');
+const { ErrorResponse, settingsHelper } = require('../utils');
 const mongoose = require('mongoose');
-
-// Helper to get currency from settings (async virtuals need this in controllers)
-let appSettings = null;
-async function getCurrency() {
-  if (!appSettings) {
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findById('app_settings');
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
 
 // @desc    Get all users - filtered based on user role and permissions
 // @route   GET /api/users
@@ -705,7 +689,7 @@ exports.getUserFinancialSummary = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid user ID format.', 400));
   }
 
-  const currency = await getCurrency();
+  const currency = await settingsHelper.getCurrency();
 
   // Get user's primary savings account balance
   // Assuming 'savings' is the type for individual member savings

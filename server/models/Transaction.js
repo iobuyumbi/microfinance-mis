@@ -6,16 +6,17 @@ let appSettings = null; // Will be populated dynamically
 async function getCurrency() {
   if (!appSettings) {
     // Lazy load Settings model to prevent circular dependency
-    const Settings = mongoose.models.Settings || mongoose.model('Settings', require('./Settings').schema);
-    appSettings = await Settings.findById('app_settings');
+    const Settings =
+      mongoose.models.Settings ||
+      mongoose.model('Settings', require('./Settings').schema);
+    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettings) {
-        console.warn("Settings document not found. Using default currency USD.");
-        appSettings = { general: { currency: "USD" } }; // Fallback
+      console.warn('Settings document not found. Using default currency USD.');
+      appSettings = { general: { currency: 'USD' } }; // Fallback
     }
   }
   return appSettings.general.currency;
 }
-
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -39,15 +40,15 @@ const transactionSchema = new mongoose.Schema(
       ],
       required: true,
     },
-    member: { // The primary member involved in the transaction (can be null for group-level transactions)
+    member: {
+      // The primary member involved in the transaction (can be null for group-level transactions)
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      index: true,
     },
-    group: { // The group involved in the transaction (can be null for system-level transactions not tied to a group)
+    group: {
+      // The group involved in the transaction (can be null for system-level transactions not tied to a group)
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
-      index: true,
     },
     amount: {
       type: Number,
@@ -68,7 +69,6 @@ const transactionSchema = new mongoose.Schema(
     relatedEntity: {
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'relatedEntityType',
-      index: true,
     },
     relatedEntityType: {
       type: String,
@@ -128,7 +128,8 @@ transactionSchema.index({ relatedEntity: 1, relatedEntityType: 1 }); // Compound
 // Virtual for formatted amount (now dynamic based on Settings)
 transactionSchema.virtual('formattedAmount').get(async function () {
   const currency = await getCurrency();
-  return new Intl.NumberFormat('en-US', { // en-US for generic formatting, but currency symbol changes
+  return new Intl.NumberFormat('en-US', {
+    // en-US for generic formatting, but currency symbol changes
     style: 'currency',
     currency: currency,
   }).format(this.amount);

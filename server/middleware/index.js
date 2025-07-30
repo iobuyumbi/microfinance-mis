@@ -1,44 +1,16 @@
 // server\middleware\index.js
 // Middleware index file - exports all middleware functions
 
-const {
-  protect,
-  authorize,
-  optionalAuth,
-  authorizeGroupPermission, // New
-  authorizeGroupAccess, // New
-  authorizeOwnerOrAdmin, // New
-  filterDataByRole, // New
-  // getDefaultPermissions is internal to auth.js, no need to export here
-} = require('./auth');
-const {
-  validateObjectId,
-  validatePagination,
-  validateRequiredFields,
-} = require('./validate');
-const asyncHandler = require('./asyncHandler');
+const auth = require('./auth');
 const errorHandler = require('./errorHandler');
+const asyncHandler = require('./asyncHandler');
 const notFound = require('./notFound');
+const validate = require('./validate');
 
 module.exports = {
-  // Auth & Authorization middleware
-  protect,
-  authorize,
-  optionalAuth,
-  authorizeGroupPermission,
-  authorizeGroupAccess,
-  authorizeOwnerOrAdmin,
-  filterDataByRole, // Consider if this is truly 'middleware' or a 'utility', but fine here for now.
-
-  // Validation middleware
-  validateObjectId,
-  validatePagination,
-  validateRequiredFields,
-
-  // Utility middleware
-  asyncHandler,
-
-  // Error handling
+  auth,
   errorHandler,
+  asyncHandler,
   notFound,
+  validate,
 };

@@ -1,6 +1,8 @@
+// 404 Not Found middleware
+const { ErrorResponse } = require('../utils');
+
 const notFound = (req, res, next) => {
-  const error = new Error(`Route ${req.originalUrl} not found`);
-  res.status(404);
+  const error = new ErrorResponse(`Route ${req.originalUrl} not found`, 404);
   next(error);
 };
 

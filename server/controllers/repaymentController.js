@@ -6,7 +6,7 @@ const User = require('../models/User'); // For populating
 const Group = require('../models/Group'); // For populating
 
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
+const { ErrorResponse } = require('../utils'); // Import custom error class
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // Helper to get currency from settings (async virtuals need this in controllers)
@@ -16,7 +16,7 @@ async function getCurrency() {
     const Settings =
       mongoose.models.Settings ||
       mongoose.model('Settings', require('../models/Settings').schema);
-    appSettings = await Settings.findById('app_settings');
+    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettings) {
       console.warn('Settings document not found. Using default currency USD.');
       appSettings = { general: { currency: 'USD' } }; // Fallback

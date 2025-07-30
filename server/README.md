@@ -1,374 +1,276 @@
 # Microfinance MIS - Backend Server
 
-Node.js/Express backend API for the Microfinance Management Information System.
+A robust, production-ready backend API for the Microfinance Management Information System built with Node.js, Express, and MongoDB.
 
-## 🛠️ Tech Stack
+## 🏗️ Architecture
 
-- **Node.js** - JavaScript runtime environment
-- **Express.js** - Web application framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - MongoDB object modeling
-- **JWT** - JSON Web Tokens for authentication
-- **Bcrypt** - Password hashing
-- **Nodemailer** - Email sending
-- **Cors** - Cross-origin resource sharing
-- **Helmet** - Security headers
-- **Express Rate Limit** - Rate limiting middleware
-
-## 📁 Project Structure
+### Clean Architecture Structure
 
 ```
 server/
-├── controllers/          # Route handlers and business logic
-│   ├── authController.js
-│   ├── userController.js
-│   ├── groupController.js
-│   ├── loanController.js
-│   ├── savingsController.js
-│   ├── transactionController.js
-│   ├── meetingController.js
-│   ├── repaymentController.js
-│   ├── notificationController.js
-│   └── reportController.js
-├── models/              # MongoDB schemas and models
-│   ├── User.js
-│   ├── Group.js
-│   ├── Loan.js
-│   ├── Savings.js
-│   ├── Transaction.js
-│   ├── Meeting.js
-│   ├── Repayment.js
-│   ├── Notification.js
-│   ├── Account.js
-│   ├── AccountHistory.js
-│   └── Guarantor.js
-├── routes/              # API route definitions
-│   ├── authRoutes.js
-│   ├── userRoutes.js
-│   ├── groupRoutes.js
-│   ├── loanRoutes.js
-│   ├── savingsRoutes.js
-│   ├── transactionRoutes.js
-│   ├── meetingRoutes.js
-│   ├── repaymentRoutes.js
-│   ├── notificationRoutes.js
-│   └── reportRoutes.js
-├── middleware/          # Custom middleware functions
-│   ├── auth.js         # Authentication middleware
-│   ├── validate.js     # Input validation
-│   ├── errorHandler.js # Error handling
-│   └── rateLimiter.js  # Rate limiting
-├── utils/               # Utility functions
-│   ├── jwt.js          # JWT utilities
-│   ├── sendEmail.js    # Email utilities
-│   └── index.js        # Utility exports
-├── config/              # Configuration files
-│   └── database.js     # Database connection
-├── tests/               # Test files
-├── .env.example         # Environment variables template
-├── server.js            # Application entry point
-└── package.json         # Dependencies and scripts
+├── config/           # Configuration files (database, environment)
+├── controllers/      # Business logic handlers
+├── middleware/       # Custom middleware (auth, validation, error handling)
+├── models/          # MongoDB schemas and models
+├── routes/          # API route definitions
+├── utils/           # Utility functions and helpers
+├── scripts/         # Database setup and admin creation scripts
+├── tests/           # Test files
+└── server.js        # Main application entry point
 ```
+
+### Key Features
+
+- **🔐 JWT Authentication & Authorization** - Role-based access control
+- **🛡️ Security Middleware** - Helmet, CORS, Rate limiting, XSS protection
+- **📊 Real-time Communication** - Socket.IO for chat functionality
+- **🗄️ MongoDB Integration** - Mongoose ODM with optimized schemas
+- **⚡ Performance** - Compression, caching, and optimized queries
+- **🧪 Testing Ready** - Jest setup with coverage reporting
+- **📝 API Documentation** - Comprehensive endpoint documentation
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js (v16 or higher)
+
+- Node.js (v18 or higher)
 - MongoDB (local or Atlas)
-- npm or yarn
+- pnpm (recommended) or npm
 
 ### Installation
 
-1. **Navigate to server directory:**
+1. **Clone and navigate to server directory**
+
    ```bash
    cd server
    ```
 
-2. **Install dependencies:**
+2. **Install dependencies**
+
    ```bash
+   pnpm install
+   # or
    npm install
    ```
 
-3. **Set up environment variables:**
+3. **Environment Setup**
+
    ```bash
    cp .env.example .env
    ```
-   Edit `.env` with your configuration (see Environment Variables section)
 
-4. **Start the server:**
-   ```bash
-   # Development mode with auto-restart
-   npm run dev
-   
-   # Production mode
-   npm start
+   Configure your `.env` file:
+
+   ```env
+   NODE_ENV=development
+   PORT=5000
+   MONGODB_URI=mongodb://localhost:27017/microfinance-mis
+   JWT_SECRET=your-super-secret-jwt-key
+   JWT_EXPIRE=30d
+   CLIENT_URL=http://localhost:5173
    ```
 
-5. **Server will run on:**
-   `http://localhost:5000`
+4. **Database Setup**
 
-## 📜 Available Scripts
+   ```bash
+   # Create admin user
+   pnpm run create-admin
+   ```
 
-- `npm start` - Start production server
-- `npm run dev` - Start development server with nodemon
-- `npm test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage report
-- `npm run seed` - Seed database with sample data
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint errors
+5. **Start Development Server**
+   ```bash
+   pnpm run dev
+   ```
 
-## 🔧 API Endpoints
+## 📋 API Endpoints
 
-### Authentication (`/api/auth`)
-- `POST /register` - Register new user
-- `POST /login` - User login
-- `GET /me` - Get current user profile
-- `POST /forgot-password` - Request password reset
-- `PUT /reset-password/:token` - Reset password with token
-- `PUT /change-password` - Change password (authenticated)
+### Authentication
 
-### Users (`/api/users`)
-- `GET /` - Get all users (admin/officer only)
-- `GET /:id` - Get user by ID
-- `PUT /profile` - Update user profile
-- `PUT /:id/role` - Update user role (admin only)
-- `DELETE /:id` - Delete user (admin only)
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
 
-### Groups (`/api/groups`)
-- `GET /` - Get all groups
-- `POST /` - Create new group
-- `GET /:id` - Get group by ID
-- `PUT /:id` - Update group
-- `DELETE /:id` - Delete group
-- `POST /:id/members` - Add member to group
-- `DELETE /:id/members/:memberId` - Remove member from group
+### Users
 
-### Loans (`/api/loans`)
-- `GET /` - Get all loans
-- `POST /` - Apply for loan
-- `GET /:id` - Get loan by ID
-- `PUT /:id` - Update loan
-- `PUT /:id/approve` - Approve loan (officer/admin)
-- `PUT /:id/reject` - Reject loan (officer/admin)
-- `DELETE /:id` - Delete loan
+- `GET /api/users` - Get all users (Admin/Officer)
+- `POST /api/users` - Create user (Admin)
+- `GET /api/users/:id` - Get user by ID
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user (Admin)
 
-### Savings (`/api/savings`)
-- `GET /` - Get all savings accounts
-- `POST /` - Create savings account
-- `GET /:id` - Get savings account by ID
-- `PUT /:id` - Update savings account
-- `DELETE /:id` - Delete savings account
+### Groups
 
-### Transactions (`/api/transactions`)
-- `GET /` - Get all transactions
-- `POST /` - Create new transaction
-- `GET /:id` - Get transaction by ID
-- `PUT /:id` - Update transaction
-- `DELETE /:id` - Delete transaction
+- `GET /api/groups` - Get all groups
+- `POST /api/groups` - Create group (Admin/Officer)
+- `GET /api/groups/:id` - Get group by ID
+- `PUT /api/groups/:id` - Update group
+- `DELETE /api/groups/:id` - Delete group (Admin)
 
-### Meetings (`/api/meetings`)
-- `GET /` - Get all meetings
-- `POST /` - Schedule new meeting
-- `GET /:id` - Get meeting by ID
-- `PUT /:id` - Update meeting
-- `DELETE /:id` - Delete meeting
-- `POST /:id/attendance` - Record attendance
+### Loans
 
-### Repayments (`/api/repayments`)
-- `GET /` - Get all repayments
-- `POST /` - Record repayment
-- `GET /:id` - Get repayment by ID
-- `GET /loan/:loanId` - Get repayments for specific loan
-- `DELETE /:id` - Delete repayment
+- `GET /api/loans` - Get all loans
+- `POST /api/loans` - Create loan
+- `GET /api/loans/:id` - Get loan by ID
+- `PUT /api/loans/:id` - Update loan
+- `DELETE /api/loans/:id` - Delete loan
 
-### Notifications (`/api/notifications`)
-- `GET /` - Get user notifications
-- `POST /` - Create notification
-- `PUT /:id` - Mark notification as read
-- `DELETE /:id` - Delete notification
+### Contributions
 
-### Reports (`/api/reports`)
-- `GET /financial-summary` - Financial overview
-- `GET /loan-portfolio` - Loan portfolio analysis
-- `GET /savings-performance` - Savings account performance
-- `GET /transaction-trends` - Transaction trends
-- `GET /member-activity` - Member activity reports
+- `GET /api/contributions` - Get all contributions
+- `POST /api/contributions` - Create contribution
+- `GET /api/contributions/:id` - Get contribution by ID
+- `PUT /api/contributions/:id` - Update contribution
+- `DELETE /api/contributions/:id` - Delete contribution
 
-## 🔒 Authentication & Authorization
+### Real-time Chat
 
-### JWT Authentication
-- All protected routes require `Authorization: Bearer <token>` header
-- Tokens expire after 30 days (configurable)
-- Refresh token mechanism (planned)
+- `GET /api/chat/groups/:groupId` - Get group chat messages
+- `POST /api/chat/groups/:groupId` - Send message to group
 
-### Role-Based Access Control
-1. **Admin** - Full system access
-2. **Officer** - Group and loan management
-3. **Member** - Personal data and group participation
+## 🔐 Authentication & Authorization
 
-### Middleware
-- `protect` - Verify JWT token
-- `authorize(...roles)` - Check user roles
-- `optionalAuth` - Optional authentication for public endpoints
+### Roles
+
+- **Admin** - Full system access
+- **Officer** - Loan management, user management
+- **Leader** - Group management, member management
+- **Member** - Personal data, group participation
+
+### JWT Token Structure
+
+```json
+{
+  "id": "user_id",
+  "email": "user@example.com",
+  "role": "admin",
+  "iat": 1234567890,
+  "exp": 1234567890
+}
+```
 
 ## 🗄️ Database Models
 
 ### Core Models
-- **User** - System users with roles and profiles
-- **Group** - Microfinance groups with members
-- **Loan** - Loan applications and tracking
-- **Savings** - Savings accounts and balances
-- **Transaction** - Financial transactions
-- **Meeting** - Group meetings and attendance
-- **Repayment** - Loan repayment records
+
+- **User** - User accounts and profiles
+- **Group** - Microfinance groups
+- **Loan** - Loan applications and management
+- **Savings** - Savings accounts and transactions
+- **Contribution** - Group contribution tracking
+- **Transaction** - Financial transaction history
+- **Meeting** - Group meeting management
 - **Notification** - System notifications
 
 ### Relationships
-- Users belong to multiple Groups
-- Groups have multiple Users (members)
-- Loans belong to Users or Groups
-- Savings accounts belong to Users or Groups
-- Transactions reference Users, Groups, Loans, or Savings
-- Repayments reference Loans
-- Meetings belong to Groups
+
+- Users can belong to multiple groups
+- Groups have multiple members and loans
+- Loans are associated with users and groups
+- Transactions track all financial movements
+
+## 🛡️ Security Features
+
+### Middleware Stack
+
+1. **Helmet** - Security headers
+2. **CORS** - Cross-origin resource sharing
+3. **Rate Limiting** - API request throttling
+4. **MongoDB Sanitization** - NoSQL injection prevention
+5. **XSS Protection** - Cross-site scripting prevention
+6. **Parameter Pollution Protection** - HPP prevention
+
+### Authentication Flow
+
+1. User submits credentials
+2. Server validates and generates JWT
+3. Client stores JWT in secure storage
+4. JWT included in subsequent requests
+5. Server validates JWT on protected routes
 
 ## 🧪 Testing
 
-### Test Structure
-```
-tests/
-├── unit/               # Unit tests
-├── integration/        # Integration tests
-├── fixtures/           # Test data
-└── helpers/            # Test utilities
-```
+### Run Tests
 
-### Running Tests
 ```bash
 # Run all tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-
-# Run specific test file
-npm test -- --grep "User"
+pnpm test
 
 # Run tests in watch mode
-npm run test:watch
+pnpm run test:watch
+
+# Run tests with coverage
+pnpm run test:ci
 ```
 
-## 📝 Environment Variables
+### Test Structure
 
-See `.env.example` for all available environment variables:
+- Unit tests for controllers
+- Integration tests for routes
+- Database tests with test environment
 
-### Required Variables
-- `MONGO_URI` - MongoDB connection string
-- `JWT_SECRET` - Secret key for JWT tokens
-- `PORT` - Server port (default: 5000)
+## 📊 Monitoring & Logging
 
-### Optional Variables
-- Email configuration for notifications
-- CORS settings for production
-- Rate limiting configuration
-- File upload settings
+### Health Check
 
-## 🚀 Deployment
+- `GET /health` - Server health status
 
-### Production Setup
-1. Set `NODE_ENV=production`
-2. Use strong `JWT_SECRET`
-3. Configure MongoDB Atlas or production database
-4. Set up email service (SendGrid, Mailgun, etc.)
-5. Configure CORS for your frontend domain
+### Logging
 
-### Docker Deployment
-```dockerfile
-FROM node:16-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 5000
-CMD ["npm", "start"]
-```
+- Development: Morgan dev format
+- Production: Combined format
+- Error logging with stack traces
 
-### Environment Variables for Production
+## 🚀 Production Deployment
+
+### Environment Variables
+
 ```env
 NODE_ENV=production
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/microfinance-mis
-JWT_SECRET=your-super-secure-production-secret
-FRONTEND_URL=https://your-frontend-domain.com
-EMAIL_HOST=smtp.sendgrid.net
-EMAIL_USER=apikey
-EMAIL_PASSWORD=your-sendgrid-api-key
+PORT=5000
+MONGODB_URI=mongodb+srv://...
+JWT_SECRET=production-secret-key
+JWT_EXPIRE=30d
+CLIENT_URL=https://your-domain.com
 ```
 
-## 🔍 API Documentation
+### Performance Optimizations
 
-### Response Format
-All API responses follow this format:
-```json
-{
-  "success": true,
-  "data": {},
-  "message": "Optional message",
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 100,
-    "pages": 10
-  }
-}
+- Database indexing on frequently queried fields
+- Query optimization with aggregation pipelines
+- Response compression
+- Rate limiting to prevent abuse
+
+## 🔧 Development Scripts
+
+```bash
+# Development
+pnpm run dev          # Start development server
+pnpm run create-admin # Create default admin user
+
+# Testing
+pnpm test             # Run tests
+pnpm run test:watch   # Watch mode
+pnpm run test:ci      # CI mode
+
+# Code Quality
+pnpm run lint         # ESLint check
+pnpm run lint:fix     # Auto-fix linting issues
+pnpm run format       # Prettier formatting
+pnpm run audit        # Security audit
 ```
 
-### Error Format
-```json
-{
-  "success": false,
-  "message": "Error description",
-  "errors": ["Detailed error messages"]
-}
-```
+## 📝 API Documentation
 
-### Status Codes
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `422` - Validation Error
-- `500` - Internal Server Error
+For detailed API documentation, see `API_DOCUMENTATION.md` in the server directory.
 
-## 🐛 Troubleshooting
+## 🤝 Contributing
 
-### Common Issues
+1. Follow the existing code structure
+2. Add tests for new features
+3. Update documentation
+4. Follow the commit message convention
 
-1. **MongoDB Connection Error**
-   - Check MongoDB is running
-   - Verify `MONGO_URI` in `.env`
-   - Check network connectivity
+## 📄 License
 
-2. **JWT Token Issues**
-   - Verify `JWT_SECRET` is set
-   - Check token expiration
-   - Ensure proper Authorization header format
-
-3. **CORS Errors**
-   - Configure `CORS_ORIGIN` in `.env`
-   - Check frontend URL matches
-
-4. **Email Not Sending**
-   - Verify email configuration
-   - Check email service credentials
-   - Test with email service provider
-
-## 📚 Additional Resources
-
-- [Express.js Documentation](https://expressjs.com/)
-- [MongoDB Documentation](https://docs.mongodb.com/)
-- [Mongoose Documentation](https://mongoosejs.com/)
-- [JWT Documentation](https://jwt.io/)
-- [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
+MIT License - see LICENSE file for details

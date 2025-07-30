@@ -3,7 +3,7 @@ const Guarantor = require('../models/Guarantor');
 const Loan = require('../models/Loan'); // Needed to check loan existence
 const User = require('../models/User'); // Needed to check user existence
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const ErrorResponse = require('../utils/errorResponse'); // Import custom error class
+const { ErrorResponse } = require('../utils'); // Import custom error class
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // @desc    Create a new guarantor entry
