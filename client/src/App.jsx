@@ -1,215 +1,251 @@
 // client\src\App.jsx (REVISED)
 import React from "react";
 import {
-  // Remove BrowserRouter as Router, it's already in main.jsx
+  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { SocketProvider } from "./context/SocketContext";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { Toaster } from "@/components/ui/sonner";
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { Toaster } from "sonner";
+import { store, persistor } from "@/store";
 
-// Import role-based route protection
-import {
-  AdminRoute,
-  StaffRoute, // Assuming StaffRoute is for Officer role
-  LeaderRoute,
-  MemberRoute,
-  ProtectedRoute,
-} from "./components/auth/RoleBasedRoute";
+// Layouts
+import LandingLayout from "@/layouts/LandingLayout";
+import AuthLayout from "@/layouts/AuthLayout";
+import AdminLayout from "@/layouts/AdminLayout";
+import UserLayout from "@/layouts/UserLayout";
 
-// Import layouts
-import DynamicLayout from "./components/layouts/DynamicLayout";
+// Public Pages
+import LandingPage from "@/pages/LandingPage";
 
-// Import modular pages
-import Landing from "./pages/Landing";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import Dashboard from "./pages/Dashboard";
-import Members from "./pages/Members";
-import Loans from "./pages/Loans";
-import Savings from "./pages/Savings";
-import Transactions from "./pages/Transactions";
-import Reports from "./pages/Reports";
-import Notifications from "./pages/Notifications";
-import Settings from "./pages/Settings";
-import Groups from "./pages/Groups";
-import MyGroups from "./pages/MyGroups";
-import Meetings from "./pages/Meetings";
-import Chat from "./pages/Chat";
-import Users from "./pages/Users";
-import LoanAssessment from "./pages/LoanAssessment";
-import GroupContributions from "./pages/GroupContributions";
+// Auth Pages
+import LoginPage from "@/pages/auth/LoginPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
 
-// Import floating chat component
-import FloatingChatButton from "./components/chat/FloatingChatButton";
+// Admin Pages
+import AdminDashboardPage from "@/pages/admin/DashboardPage";
+import AdminUsersPage from "@/pages/admin/UsersPage";
+import AdminLoansPage from "@/pages/admin/LoansPage";
+import AdminSavingsPage from "@/pages/admin/SavingsPage";
+import AdminReportsPage from "@/pages/admin/ReportsPage";
+import AdminMeetingsPage from "@/pages/admin/MeetingsPage";
+import AdminSettingsPage from "@/pages/admin/SettingsPage";
+import AdminProfilePage from "@/pages/admin/ProfilePage";
 
-// Main App Component - Only handles routing and layout
-export default function App() {
+// User Pages
+import UserDashboardPage from "@/pages/user/DashboardPage";
+import UserLoansPage from "@/pages/user/LoansPage";
+import UserSavingsPage from "@/pages/user/SavingsPage";
+import UserGroupPage from "@/pages/user/GroupPage";
+import UserMeetingsPage from "@/pages/user/MeetingsPage";
+import UserReportsPage from "@/pages/user/ReportsPage";
+import UserSettingsPage from "@/pages/user/SettingsPage";
+import UserProfilePage from "@/pages/user/ProfilePage";
+
+// Error Pages
+import NotFoundPage from "@/pages/NotFoundPage";
+
+// Protected Route Component
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const { isAuthenticated, user } = store.getState().auth;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+// Role-based Route Component
+const RoleBasedRoute = ({ adminComponent, userComponent }) => {
+  const { user } = store.getState().auth;
+
+  if (user?.role === "admin") {
+    return adminComponent;
+  }
+
+  return userComponent;
+};
+
+function App() {
   return (
-    // ThemeProvider wraps the entire app to provide theme context
-    // It's placed here as it's a top-level UI concern
-    <ThemeProvider>
-      {/* AuthProvider wraps the app to provide authentication context */}
-      {/* It needs to be high up to provide auth status to ProtectedRoute and SocketProvider */}
-      <AuthProvider>
-        {/* SocketProvider wraps the parts of the app that need real-time functionality */}
-        {/* It typically depends on authentication status, so it's nested inside AuthProvider */}
-        <SocketProvider>
-          {/*
-            Routes define application paths and their corresponding components.
-            BrowserRouter is now in main.jsx, so we only use Routes here.
-          */}
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <Router>
+          <div className="App">
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingLayout />}>
+                <Route index element={<LandingPage />} />
+              </Route>
 
-            {/*
-              Protected routes with role-based access control.
-              The DynamicLayout will render for all authenticated users,
-              and then its children will be the specific pages.
-            */}
-            <Route
-              element={
-                <ProtectedRoute
-                  requiredRoles={["admin", "officer", "leader", "member"]}
-                >
-                  <DynamicLayout />
-                </ProtectedRoute>
-              }
-            >
-              {/* Routes accessible to all authenticated users */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/profile" element={<Settings />} />{" "}
-              {/* Assuming profile maps to settings */}
-              <Route path="/settings" element={<Settings />} />
-              {/* Member-specific routes (accessible to members and above) */}
-              <Route path="/my-groups" element={<MyGroups />} />
-              <Route path="/my-loans" element={<Loans />} />
-              <Route path="/my-savings" element={<Savings />} />
-              <Route path="/my-transactions" element={<Transactions />} />
-              {/* Leader-specific routes (accessible to leaders and above) */}
-              {/* These routes use nested ProtectedRoute for more granular control,
-                  even though the parent already checks for authenticated roles.
-                  This allows for clearer separation of concerns for specific pages. */}
+              {/* Auth Routes */}
+              <Route path="/auth" element={<AuthLayout />}>
+                <Route path="login" element={<LoginPage />} />
+                <Route path="register" element={<RegisterPage />} />
+              </Route>
+
+              {/* Admin Routes */}
               <Route
-                path="/meetings"
+                path="/admin"
                 element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    <Meetings />
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <AdminLayout />
                   </ProtectedRoute>
+                }
+              >
+                <Route
+                  index
+                  element={<Navigate to="/admin/dashboard" replace />}
+                />
+                <Route path="dashboard" element={<AdminDashboardPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="loans" element={<AdminLoansPage />} />
+                <Route path="savings" element={<AdminSavingsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="meetings" element={<AdminMeetingsPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+                <Route path="profile" element={<AdminProfilePage />} />
+              </Route>
+
+              {/* User Routes */}
+              <Route
+                path="/user"
+                element={
+                  <ProtectedRoute allowedRoles={["member", "leader"]}>
+                    <UserLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route
+                  index
+                  element={<Navigate to="/user/dashboard" replace />}
+                />
+                <Route path="dashboard" element={<UserDashboardPage />} />
+                <Route path="loans" element={<UserLoansPage />} />
+                <Route path="savings" element={<UserSavingsPage />} />
+                <Route path="group" element={<UserGroupPage />} />
+                <Route path="meetings" element={<UserMeetingsPage />} />
+                <Route path="reports" element={<UserReportsPage />} />
+                <Route path="settings" element={<UserSettingsPage />} />
+                <Route path="profile" element={<UserProfilePage />} />
+              </Route>
+
+              {/* Legacy Routes - Redirect to appropriate layout */}
+              <Route
+                path="/dashboard"
+                element={
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/dashboard" replace />}
+                    userComponent={<Navigate to="/user/dashboard" replace />}
+                  />
                 }
               />
               <Route
                 path="/loans"
                 element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    <Loans />
-                  </ProtectedRoute>
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/loans" replace />}
+                    userComponent={<Navigate to="/user/loans" replace />}
+                  />
                 }
               />
               <Route
                 path="/savings"
                 element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    <Savings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/transactions"
-                element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    <Transactions />
-                  </ProtectedRoute>
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/savings" replace />}
+                    userComponent={<Navigate to="/user/savings" replace />}
+                  />
                 }
               />
               <Route
                 path="/reports"
                 element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    <Reports />
-                  </ProtectedRoute>
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/reports" replace />}
+                    userComponent={<Navigate to="/user/reports" replace />}
+                  />
                 }
               />
               <Route
-                path="/groups" // Added a route for general group management/viewing
+                path="/meetings"
                 element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    <Groups />
-                  </ProtectedRoute>
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/meetings" replace />}
+                    userComponent={<Navigate to="/user/meetings" replace />}
+                  />
                 }
               />
               <Route
-                path="/group-contributions"
+                path="/settings"
                 element={
-                  <ProtectedRoute
-                    requiredRoles={["admin", "officer", "leader"]}
-                  >
-                    {" "}
-                    {/* Leader can also manage contributions within their group */}
-                    <GroupContributions />
-                  </ProtectedRoute>
-                }
-              />
-              {/* Officer/Admin routes (accessible to officers and admins) */}
-              <Route
-                path="/loan-assessment"
-                element={
-                  <ProtectedRoute requiredRoles={["officer", "admin"]}>
-                    {" "}
-                    {/* Admin can also do loan assessment */}
-                    <LoanAssessment />
-                  </ProtectedRoute>
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/settings" replace />}
+                    userComponent={<Navigate to="/user/settings" replace />}
+                  />
                 }
               />
               <Route
-                path="/notifications"
+                path="/profile"
                 element={
-                  <ProtectedRoute requiredRoles={["admin", "officer"]}>
-                    <Notifications />
-                  </ProtectedRoute>
+                  <RoleBasedRoute
+                    adminComponent={<Navigate to="/admin/profile" replace />}
+                    userComponent={<Navigate to="/user/profile" replace />}
+                  />
                 }
               />
-              {/* Admin-only routes */}
-              <Route
-                path="/users"
-                element={
-                  <ProtectedRoute requiredRoles={["admin"]}>
-                    <Users />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
 
-            {/* Catch-all route for any undefined paths, redirects to landing */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Auth Redirects */}
+              <Route
+                path="/login"
+                element={<Navigate to="/auth/login" replace />}
+              />
+              <Route
+                path="/register"
+                element={<Navigate to="/auth/register" replace />}
+              />
 
-          {/* Floating chat button - only show for authenticated users */}
-          {/* This component should internally check auth status using useAuth */}
-          <FloatingChatButton />
-        </SocketProvider>
-        {/* Toaster component for displaying toast notifications across the app */}
-        <Toaster />
-      </AuthProvider>
-    </ThemeProvider>
+              {/* 404 Page */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+
+            {/* Toast Notifications */}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: "white",
+                  color: "black",
+                },
+                success: {
+                  style: {
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    border: "1px solid #bbf7d0",
+                  },
+                },
+                error: {
+                  style: {
+                    background: "#fef2f2",
+                    color: "#dc2626",
+                    border: "1px solid #fecaca",
+                  },
+                },
+              }}
+            />
+          </div>
+        </Router>
+      </PersistGate>
+    </Provider>
   );
 }
+
+export default App;
