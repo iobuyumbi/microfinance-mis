@@ -258,3 +258,15 @@ exports.getMe = asyncHandler(async (req, res) => {
     },
   });
 });
+
+// @desc    Check public API accessibility (for /auth/status)
+// @route   GET /api/auth/status
+// @access  Public (no authentication required)
+exports.checkPublicAccess = asyncHandler(async (req, res, next) => {
+  res.status(200).json({
+    success: true,
+    message: 'Public authentication endpoint is accessible.',
+    apiStatus: 'online',
+    timestamp: new Date().toISOString(),
+  });
+});

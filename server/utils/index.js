@@ -3,6 +3,7 @@ const sendEmail = require('./sendEmail');
 const blacklist = require('./blacklist');
 const ErrorResponse = require('./errorResponse');
 const settingsHelper = require('./settingsHelper');
+const currencyUtils = require('./currencyUtils');
 
 module.exports = {
   jwt,
@@ -10,4 +11,5 @@ module.exports = {
   blacklist,
   ErrorResponse,
   settingsHelper,
+  currencyUtils,
 };

@@ -171,9 +171,9 @@ exports.updateMeeting = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Mark attendance for a meeting
-// @route   POST /api/meetings/:id/attendance
-// @access  Private (Admin, Officer, or user with 'can_record_attendance' permission)
+// @desc    Mark attendance for a meeting
+// @route   POST /api/meetings/:id/attendance
+// @access  Private (Admin, Officer, or user with 'can_record_attendance' permission)
 exports.markAttendance = asyncHandler(async (req, res, next) => {
   const { id } = req.params; // Meeting ID
   const { userId } = req.body; // User ID to mark attendance for
@@ -185,9 +185,8 @@ exports.markAttendance = asyncHandler(async (req, res, next) => {
     return next(
       new ErrorResponse('Valid User ID is required to mark attendance.', 400)
     );
-  }
+  } // Combine _id from params with req.dataFilter for robust access control
 
-  // Combine _id from params with req.dataFilter for robust access control
   const query = { _id: id, ...(req.dataFilter || {}) };
   const meeting = await Meeting.findOne(query);
 
@@ -198,32 +197,32 @@ exports.markAttendance = asyncHandler(async (req, res, next) => {
         404
       )
     );
-  }
+  } // Ensure the user being marked exists
 
-  // Ensure the user being marked exists (optional but good)
   const userExists = await User.findById(userId);
   if (!userExists) {
     return next(
       new ErrorResponse('User to mark attendance for not found.', 404)
     );
-  }
+  } // Check if user is ALREADY in attendance before pushing to avoid redundant saves and error.
 
-  // Use the instance method defined on the Meeting model (assuming it exists)
-  // This method should handle uniqueness and saving
-  if (!meeting.attendance.includes(userId)) {
-    // Simple check if not using a model method
-    meeting.attendance.push(userId);
-    await meeting.save();
-  } else {
+  const isAlreadyAttended = meeting.attendance.some(
+    attendedUserId => attendedUserId.toString() === userId
+  );
+
+  if (isAlreadyAttended) {
     return next(
       new ErrorResponse(
         'User already marked as attended for this meeting.',
         400
       )
     );
-  }
+  } // Use the instance method defined on the Meeting model
+  // This method handles pushing the userId and saving the document.
 
-  // Populate for response
+  await meeting.markAttendance(userId); // This correctly uses your model method.
+  // Populate for response AFTER saving the meeting
+
   await meeting.populate('group', 'name');
   await meeting.populate('attendance', 'name email');
   await meeting.populate('scheduledBy', 'name email');

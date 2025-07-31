@@ -14,6 +14,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken'); // Assuming JWT for auth
 const User = require('./models/User'); // Your User model
+const healthRoutes = require('./routes/healthRoutes');
 
 // IMPORTANT: Import the specific functions you need directly
 const {
@@ -53,6 +54,9 @@ require('dotenv').config();
 // Initialize express app
 const app = express();
 const server = http.createServer(app);
+
+// Mount health routes (usually before protected routes)
+app.use('/api/health', healthRoutes);
 
 // Initialize Socket.IO
 const io = socketIo(server, {

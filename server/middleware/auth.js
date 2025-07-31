@@ -8,6 +8,7 @@ const UserGroupMembership = require('../models/UserGroupMembership');
 const Account = require('../models/Account'); // NEW: Import Account model
 const Loan = require('../models/Loan'); // Added Loan model import
 const Transaction = require('../models/Transaction'); // Added Transaction model import
+const Meeting = require('../models/Meeting');
 const mongoose = require('mongoose');
 
 // Helper function to log only in development
@@ -622,6 +623,75 @@ exports.authorizeAccountAccess = (idParam = 'id') => {
       success: false,
       message: 'Access denied. You are not authorized to access this account.',
     });
+  });
+};
+
+exports.authorizeMeetingAccess = (permissions = []) => {
+  return asyncHandler(async (req, res, next) => {
+    const { id: meetingId } = req.params; // Get meeting ID from params
+
+    // Basic validation for meetingId
+    if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+      return next(new ErrorResponse('Invalid Meeting ID format.', 400));
+    }
+
+    // Find the meeting and populate its group to get group details for permission check
+    const meeting = await Meeting.findById(meetingId).populate({
+      path: 'group',
+      populate: {
+        path: 'members', // Assuming group members can have roles that define permissions
+        select: 'role _id', // Select only what's needed for role/ID check
+      },
+    });
+
+    if (!meeting) {
+      return next(new ErrorResponse('Meeting not found.', 404));
+    }
+    if (!meeting.group) {
+      return next(
+        new ErrorResponse('Associated group for meeting not found.', 404)
+      );
+    }
+
+    // 1. Admins and Officers have full access
+    if (['admin', 'officer'].includes(req.user.role)) {
+      return next();
+    }
+
+    // 2. Check if the user is a member/leader of THIS specific group
+    const isMemberOfThisGroup = meeting.group.members.some(
+      member => member._id.toString() === req.user.id.toString()
+    );
+
+    if (!isMemberOfThisGroup) {
+      return next(
+        new ErrorResponse("You are not a member of this meeting's group.", 403)
+      );
+    }
+
+    // 3. Further granular permission check for leaders if 'leader' role exists and has specific permissions
+    // This assumes you have a way to define what a 'leader' can do
+    // within their group (e.g., via permissions array on the user or role model).
+    // For simplicity here, if the user is a leader of this group AND the action requires a 'leader' role, allow it.
+    // If your `req.user.role` can be 'leader', this condition handles it.
+    if (permissions.length > 0 && req.user.role === 'leader') {
+      // You can add more granular checks here if 'leader' role has specific permissions
+      // e.g., if(req.user.permissions.includes('can_edit_meeting_info')) { return next(); }
+      // For now, assuming if they are a leader of this group and action is for leaders, it's allowed.
+      // This is where you'd link the `permissions` array passed to the middleware to the user's actual permissions.
+      // For instance, if 'can_edit_meeting_info' is one of the `permissions` required for this route,
+      // you'd check if the `req.user` (as a 'leader' of this group) possesses that permission.
+      // As a fallback/simple approach: if they are a leader of this group and you're here, allow.
+      return next();
+    }
+
+    // If none of the above conditions met, deny access
+    return next(
+      new ErrorResponse(
+        'You are not authorized to perform this action on this meeting.',
+        403
+      )
+    );
   });
 };
 

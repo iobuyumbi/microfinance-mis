@@ -1,20 +1,6 @@
 // server\models\Account.js
 const mongoose = require('mongoose');
-// Function to get currency from Settings (to avoid hardcoding)
-let appSettings = null;
-async function getCurrency() {
-  if (!appSettings) {
-    const Settings =
-      mongoose.models.Settings ||
-      mongoose.model('Settings', require('./Settings').schema);
-    appSettings = await Settings.findOne({ settingsId: 'app_settings' });
-    if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
-    }
-  }
-  return appSettings.general.currency;
-}
+const { getCurrencyFromSettings } = require('../utils/currencyUtils');
 
 const accountSchema = new mongoose.Schema(
   {
@@ -61,7 +47,7 @@ const accountSchema = new mongoose.Schema(
 
 // Virtual for formatted balance (now dynamic)
 accountSchema.virtual('formattedBalance').get(async function () {
-  const currency = await getCurrency();
+  const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,

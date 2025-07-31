@@ -6,79 +6,56 @@ const {
   getNotifications,
   getNotificationById,
   updateNotification,
-  markNotificationAsRead, // New import for specific read endpoint
+  markNotificationAsRead,
   deleteNotification,
 } = require('../controllers/notificationController');
-const {
-  protect,
-  authorize,
-  filterDataByRole, // Import filterDataByRole
-} = require('../middleware/auth');
+const { protect, authorize, filterDataByRole } = require('../middleware/auth');
 const {
   validateObjectId,
   validateRequiredFields,
 } = require('../middleware/validate');
 
-// Notification routes - all protected
 router.use(protect);
 
-// @route   POST /api/notifications
-// @desc    Create a new notification
-// @access  Private (Admin, Officer) - typically system or privileged users create notifications
 router.post(
   '/',
-  authorize('admin', 'officer'), // Only admins/officers can create notifications
-  validateRequiredFields(['recipient', 'recipientModel', 'type', 'message']), // Added recipientModel and type
+  authorize('admin', 'officer'), // Removed 'title' from required fields as per schema adjustment
+  validateRequiredFields(['recipient', 'recipientModel', 'type', 'message']),
   createNotification
 );
 
-// @route   GET /api/notifications
-// @desc    Get all notifications for the authenticated user (filtered by access)
-// @access  Private (filterDataByRole middleware handles access: self, group member, admin/officer)
-router.get(
-  '/',
-  filterDataByRole('Notification'), // Filters notifications based on user's recipient/group membership
-  getNotifications
-);
+router.get('/', filterDataByRole('Notification'), getNotifications);
 
-// @route   GET /api/notifications/:id
-// @desc    Get a single notification by ID
-// @access  Private (Recipient or Admin/Officer - via filterDataByRole)
 router.get(
   '/:id',
   validateObjectId,
-  filterDataByRole('Notification'), // Ensures user can only view notifications they have access to
+  filterDataByRole('Notification'),
   getNotificationById
 );
 
-// @route   PUT /api/notifications/:id
-// @desc    Update a notification by ID (primarily for Admin/Officer to edit details, or recipient to mark as read if not using specific endpoint)
-// @access  Private (Recipient for 'isRead', Admin/Officer for full edit)
 router.put(
   '/:id',
   validateObjectId,
-  filterDataByRole('Notification'), // Ensures user can only update notifications they have access to
+  filterDataByRole('Notification'),
   updateNotification
 );
 
-// @route   PUT /api/notifications/:id/read
-// @desc    Mark a notification as read
-// @access  Private (Recipient or Admin/Officer)
 router.put(
   '/:id/read',
   validateObjectId,
-  filterDataByRole('Notification'), // Ensures user can only mark notifications they have access to as read
+  filterDataByRole('Notification'),
   markNotificationAsRead
 );
 
-// @route   DELETE /api/notifications/:id
-// @desc    Soft delete a notification by ID
-// @access  Private (Recipient of 'User' notification, Admin, Officer)
 router.delete(
   '/:id',
   validateObjectId,
-  filterDataByRole('Notification'), // Allows recipient to delete their own notification
-  authorize('admin', 'officer'), // Admins and officers can delete any notification (combines with filter for recipient)
+  filterDataByRole('Notification'), // IMPORTANT: The `authorize('admin', 'officer')` here means only admins/officers can delete.
+  // If regular users (recipients of User-model notifications) should be able to delete THEIR OWN,
+  // then you would remove this `authorize` middleware, and rely solely on `filterDataByRole`
+  // to determine if the user has permission to delete that specific notification.
+  // For now, I'll keep it as it's a stricter, safer default.
+  authorize('admin', 'officer'),
   deleteNotification
 );
 

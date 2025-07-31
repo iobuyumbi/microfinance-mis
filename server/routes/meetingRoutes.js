@@ -1,4 +1,5 @@
-// server\routes\meetingRoutes.js (REVISED)
+// server\routes\meetingRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const {
@@ -8,13 +9,14 @@ const {
   updateMeeting,
   markAttendance,
   deleteMeeting,
-} = require('../controllers/meetingController'); // Ensure controller is updated
+} = require('../controllers/meetingController');
 const {
   protect,
-  authorize,
-  authorizeGroupPermission, // For group-specific actions
-  filterDataByRole, // For filtering data based on user access
-} = require('../middleware/auth');
+  authorize, // Keep if you have other uses for generic role authorization
+  authorizeGroupPermission, // For specific group-level permissions (e.g., on group creation)
+  filterDataByRole,
+  authorizeMeetingAccess, // <-- Import your new middleware
+} = require('../middleware/auth'); // Ensure this path is correct
 const {
   validateObjectId,
   validateRequiredFields,
@@ -25,69 +27,51 @@ router.use(protect);
 
 // --- Meeting CRUD Operations ---
 
-// @route   POST /api/meetings
-// @desc    Schedule a new meeting
-// @access  Private (Admin, Officer, or Group Leader with 'can_schedule_meetings' permission)
 router.post(
   '/',
   validateRequiredFields(['group', 'date', 'location']),
-  authorizeGroupPermission('can_schedule_meetings', 'group'), // 'group' refers to req.body.group
+  // This middleware should confirm if the user (admin, officer, or group leader)
+  // has permission to schedule meetings *for the specified group*.
+  // `authorizeGroupPermission` is good if it checks req.body.group.
+  authorizeGroupPermission('can_schedule_meetings', 'group'),
   scheduleMeeting
 );
 
-// @route   GET /api/meetings
-// @desc    Get all meetings (filtered by user's access)
-// @access  Private (Admin/Officer see all, others see meetings for groups they are members of)
 router.get(
   '/',
-  filterDataByRole('Meeting'), // Apply data filtering for Meeting model
+  filterDataByRole('Meeting'), // Filters meetings based on user's groups
   getAllMeetings
 );
 
-// @route   GET /api/meetings/:id
-// @desc    Get a single meeting by ID
-// @access  Private (Admin/Officer/Group Member - via filterDataByRole)
 router.get(
   '/:id',
   validateObjectId,
-  filterDataByRole('Meeting'), // Ensure user can only view meetings they are authorized for
+  filterDataByRole('Meeting'), // Filters single meeting if user has access to its group
   getMeetingById
 );
 
-// @route   PUT /api/meetings/:id
-// @desc    Update meeting details
-// @access  Private (Admin, Officer, or Group Leader with 'can_edit_meeting_info' permission)
 router.put(
   '/:id',
   validateObjectId,
-  // Note: 'name' is not a required field for update here, but `validateRequiredFields` might be too strict.
-  // The controller handles which fields are actually updated.
-  authorizeGroupPermission('can_edit_group_info', 'id'), // Assuming 'id' refers to the meeting's group ID for permission check
-  // This requires a custom `authorizeMeetingAccess` or similar
-  // if the meeting ID is used to derive group ID for permission.
-  // For now, let's use a simpler authorize.
-  authorize('admin', 'officer', 'leader'), // Leaders can update meetings for their groups
+  // Use the new middleware for robust meeting-specific authorization
+  authorizeMeetingAccess(['can_edit_meeting_info']), // Define what permissions are needed for update
   updateMeeting
 );
 
-// @route   DELETE /api/meetings/:id
-// @desc    Soft delete (cancel) a meeting
-// @access  Private (Admin, Officer, or Group Leader with 'can_delete_meetings' permission)
 router.delete(
   '/:id',
   validateObjectId,
-  authorize('admin', 'officer', 'leader'), // Leaders can delete meetings for their groups
+  // Use the new middleware for robust meeting-specific authorization
+  authorizeMeetingAccess(['can_delete_meetings']), // Define what permissions are needed for delete
   deleteMeeting
 );
 
-// @route   POST /api/meetings/:id/attendance
-// @desc    Mark attendance for a meeting
-// @access  Private (Admin, Officer, or Group Leader with 'can_record_attendance' permission)
 router.post(
   '/:id/attendance',
   validateObjectId, // Meeting ID
   validateRequiredFields(['userId']), // User ID to mark attendance for
-  authorizeGroupPermission('can_record_attendance', 'id'), // 'id' refers to the meeting ID, middleware needs to resolve group
+  // This middleware should resolve the meeting's group and check permissions for that group
+  authorizeMeetingAccess(['can_record_attendance']), // Define permission for recording attendance
   markAttendance
 );
 
