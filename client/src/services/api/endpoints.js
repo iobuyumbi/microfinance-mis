@@ -12,6 +12,7 @@ export const ENDPOINTS = {
     FORGOT_PASSWORD: "/auth/forgot-password",
     RESET_PASSWORD: "/auth/reset-password",
     VERIFY_EMAIL: "/auth/verify-email",
+    STATUS: "/auth/status",
   },
 
   // Users
@@ -22,6 +23,15 @@ export const ENDPOINTS = {
     UPDATE_PROFILE: "/users/profile",
     CHANGE_PASSWORD: "/users/change-password",
     UPLOAD_AVATAR: "/users/avatar",
+    GROUPS: (userId) => `/users/${userId}/groups`,
+    GROUP_MEMBERS: (groupId) => `/groups/${groupId}/members`,
+    GROUP_MEMBER_ROLE: (groupId, memberId) =>
+      `/groups/${groupId}/members/${memberId}/role`,
+    GROUP_MEMBER_STATUS: (groupId, memberId) =>
+      `/groups/${groupId}/members/${memberId}/status`,
+    GROUP_MEMBER: (groupId, memberId) =>
+      `/groups/${groupId}/members/${memberId}`,
+    FINANCIAL_SUMMARY: (userId) => `/users/${userId}/financial-summary`,
   },
 
   // Groups
@@ -34,6 +44,10 @@ export const ENDPOINTS = {
       `/groups/${groupId}/members/${memberId}`,
     ROLES: (id) => `/groups/${id}/roles`,
     SETTINGS: (id) => `/groups/${id}/settings`,
+    MEMBER: (groupId, userId) => `/groups/${groupId}/members/${userId}`,
+    MEMBER_ROLE: (groupId, userId) =>
+      `/groups/${groupId}/members/${userId}/role`,
+    JOIN: (groupId) => `/groups/${groupId}/join`,
   },
 
   // Loans
@@ -47,6 +61,7 @@ export const ENDPOINTS = {
     REPAYMENT_SCHEDULE: (id) => `/loans/${id}/repayment-schedule`,
     PAYMENTS: (id) => `/loans/${id}/payments`,
     ADD_PAYMENT: (id) => `/loans/${id}/payments`,
+    STATS: "/loans/stats",
   },
 
   // Savings
@@ -97,6 +112,11 @@ export const ENDPOINTS = {
     MEMBERS: "/reports/members",
     GROUPS: "/reports/groups",
     EXPORT: (type) => `/reports/${type}/export`,
+    RECENT_ACTIVITY: "/reports/recent-activity",
+    UPCOMING_REPAYMENTS: "/reports/upcoming-repayments",
+    FINANCIAL_SUMMARY: "/reports/financial-summary",
+    GROUP_SAVINGS_PERFORMANCE: "/reports/group-savings-performance",
+    ACTIVE_LOAN_DEFAULTERS: "/reports/active-loan-defaulters",
   },
 
   // Notifications
@@ -140,6 +160,14 @@ export const ENDPOINTS = {
     BY_ID: (id) => `/contributions/${id}`,
     BY_GROUP: (groupId) => `/contributions?group=${groupId}`,
     BY_MEMBER: (memberId) => `/contributions?member=${memberId}`,
+    SUMMARY: (groupId) =>
+      `/contributions/groups/${groupId}/contributions/summary`,
+    BULK_IMPORT: (groupId) =>
+      `/contributions/groups/${groupId}/contributions/bulk`,
+    EXPORT: (groupId, format) =>
+      `/contributions/groups/${groupId}/contributions/export?format=${format}`,
+    MEMBER_HISTORY: (memberId) =>
+      `/contributions/members/${memberId}/contributions`,
   },
 
   // Repayments
@@ -148,12 +176,22 @@ export const ENDPOINTS = {
     BY_ID: (id) => `/repayments/${id}`,
     BY_LOAN: (loanId) => `/repayments?loan=${loanId}`,
     SCHEDULE: (loanId) => `/repayments/${loanId}/schedule`,
+    VOID: (id) => `/repayments/${id}/void`,
   },
 
   // Health
   HEALTH: {
     BASE: "/health",
     STATUS: "/health/status",
+  },
+
+  // Loan Assessments
+  LOAN_ASSESSMENTS: {
+    BASE: "/loan-assessments",
+    BY_ID: (id) => `/loan-assessments/${id}`,
+    STATUS: (id) => `/loan-assessments/${id}/status`,
+    STATS: "/loan-assessments/stats",
+    QUICK: "/loan-assessments/quick",
   },
 };
 

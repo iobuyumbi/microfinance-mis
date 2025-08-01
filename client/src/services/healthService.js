@@ -1,11 +1,11 @@
 // src/services/healthService.js
-import api from "./api";
+import { api } from "./api/client";
+import { ENDPOINTS } from "./api/endpoints";
 
 export const healthService = {
-  // Check if the backend server is running
   checkHealth: async () => {
     try {
-      const response = await api.get("/health");
+      const response = await api.get(ENDPOINTS.HEALTH.BASE);
       return {
         status: "healthy",
         data: response.data,
@@ -20,10 +20,9 @@ export const healthService = {
     }
   },
 
-  // Check if the API is accessible without authentication
   checkPublicAccess: async () => {
     try {
-      const response = await api.get("/auth/status");
+      const response = await api.get(ENDPOINTS.AUTH.STATUS);
       return {
         status: "accessible",
         data: response.data,
@@ -38,7 +37,6 @@ export const healthService = {
     }
   },
 
-  // Test authentication endpoint
   testAuth: async () => {
     try {
       const token = localStorage.getItem("token");
@@ -50,7 +48,7 @@ export const healthService = {
         };
       }
 
-      const response = await api.get("/auth/me");
+      const response = await api.get(ENDPOINTS.AUTH.ME);
       return {
         status: "authenticated",
         data: response.data,

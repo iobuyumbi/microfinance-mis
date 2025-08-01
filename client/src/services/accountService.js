@@ -1,19 +1,14 @@
-import api from './api';
-import { handleRequest } from './handleRequest';
+import { api } from "./api/client";
+import { ENDPOINTS } from "./api/endpoints";
 
 export const accountService = {
-  getAll: (params) =>
-    handleRequest(() => api.get('/accounts', { params }), 'Failed to fetch accounts'),
+  getAll: (params) => api.get(ENDPOINTS.ACCOUNTS.BASE, { params }),
 
-  getById: (id) =>
-    handleRequest(() => api.get(`/accounts/${id}`), `Failed to fetch account with ID ${id}`),
+  getById: (id) => api.get(ENDPOINTS.ACCOUNTS.BY_ID(id)),
 
-  create: (data) =>
-    handleRequest(() => api.post('/accounts', data), 'Failed to create account'),
+  create: (data) => api.post(ENDPOINTS.ACCOUNTS.BASE, data),
 
-  update: (id, data) =>
-    handleRequest(() => api.put(`/accounts/${id}`, data), `Failed to update account with ID ${id}`),
+  update: (id, data) => api.put(ENDPOINTS.ACCOUNTS.BY_ID(id), data),
 
-  remove: (id) =>
-    handleRequest(() => api.delete(`/accounts/${id}`), `Failed to delete account with ID ${id}`),
+  remove: (id) => api.delete(ENDPOINTS.ACCOUNTS.BY_ID(id)),
 };

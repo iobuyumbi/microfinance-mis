@@ -1,28 +1,21 @@
-import api from "./api";
-import { handleRequest } from "./handleRequest";
+import { api } from "./api/client";
+import { ENDPOINTS } from "./api/endpoints";
 
 export const loanAssessmentService = {
-  // Create a new loan assessment
   createAssessment: (assessmentData) =>
-    handleRequest(() => api.post("/loan-assessments", assessmentData)),
+    api.post(ENDPOINTS.LOAN_ASSESSMENTS.BASE, assessmentData),
 
-  // Get all assessments (filtered by role)
   getAssessments: (params) =>
-    handleRequest(() => api.get("/loan-assessments", { params })),
+    api.get(ENDPOINTS.LOAN_ASSESSMENTS.BASE, { params }),
 
-  // Get assessment by ID
-  getAssessmentById: (id) =>
-    handleRequest(() => api.get(`/loan-assessments/${id}`)),
+  getAssessmentById: (id) => api.get(ENDPOINTS.LOAN_ASSESSMENTS.BY_ID(id)),
 
-  // Update assessment status
   updateAssessmentStatus: (id, statusData) =>
-    handleRequest(() => api.put(`/loan-assessments/${id}/status`, statusData)),
+    api.put(ENDPOINTS.LOAN_ASSESSMENTS.STATUS(id), statusData),
 
-  // Get assessment statistics
   getAssessmentStats: (params) =>
-    handleRequest(() => api.get("/loan-assessments/stats", { params })),
+    api.get(ENDPOINTS.LOAN_ASSESSMENTS.STATS, { params }),
 
-  // Quick assessment (real-time calculation)
   quickAssessment: (params) =>
-    handleRequest(() => api.get("/loan-assessments/quick", { params })),
+    api.get(ENDPOINTS.LOAN_ASSESSMENTS.QUICK, { params }),
 };

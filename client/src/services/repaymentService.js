@@ -1,37 +1,12 @@
-// src/services/repaymentService.js (REVISED)
-import api from "./api";
-import { handleRequest } from "./handleRequest";
+import { api } from "./api/client";
+import { ENDPOINTS } from "./api/endpoints";
 
 export const repaymentService = {
-  getAll: (params) =>
-    handleRequest(
-      () => api.get("/repayments", { params }),
-      "Failed to fetch repayments"
-    ),
+  getAll: (params) => api.get(ENDPOINTS.REPAYMENTS.BASE, { params }),
 
-  getById: (id) =>
-    handleRequest(
-      () => api.get(`/repayments/${id}`),
-      `Repayment with ID ${id} not found`
-    ),
+  getById: (id) => api.get(ENDPOINTS.REPAYMENTS.BY_ID(id)),
 
-  create: (data) =>
-    handleRequest(
-      () => api.post("/repayments", data),
-      "Failed to create repayment"
-    ),
+  create: (data) => api.post(ENDPOINTS.REPAYMENTS.BASE, data),
 
-  // NEW METHOD: For voiding a repayment
-  void: (
-    id,
-    reasonData // reasonData should contain { reason: "..." }
-  ) =>
-    handleRequest(
-      () => api.put(`/repayments/${id}/void`, reasonData),
-      `Failed to void repayment ${id}`
-    ),
-
-  // REMOVED/REPLACED:
-  // update: (id, data) => handleRequest(() => api.put(`/repayments/${id}`, data), `Failed to update repayment ${id}`),
-  // remove: (id) => handleRequest(() => api.delete(`/repayments/${id}`), `Failed to delete repayment ${id}`),
+  void: (id, reasonData) => api.put(ENDPOINTS.REPAYMENTS.VOID(id), reasonData),
 };
