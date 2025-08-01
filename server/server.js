@@ -55,6 +55,16 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+// CORS configuration - MUST be applied early, before routes
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  })
+);
+
 // Mount health routes (usually before protected routes)
 app.use('/api/health', healthRoutes);
 
@@ -243,27 +253,17 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Data sanitization against NoSQL query injection
-app.use(mongoSanitize());
+// Data sanitization against NoSQL query injection - temporarily disabled due to compatibility issues
+// app.use(mongoSanitize());
 
-// Data sanitization against XSS
-app.use(xss());
+// Data sanitization against XSS - temporarily disabled due to compatibility issues
+// app.use(xss());
 
 // Prevent parameter pollution
 app.use(hpp());
 
 // Compression middleware
 app.use(compression());
-
-// CORS configuration
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  })
-);
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {

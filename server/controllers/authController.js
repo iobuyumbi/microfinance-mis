@@ -43,7 +43,7 @@ exports.register = asyncHandler(async (req, res, next) => {
     // For now, we'll proceed but log, as email sending might be flaky.
   }
 
-  const token = generateToken(user._id);
+  const token = jwt.generateToken(user);
 
   // Return a more comprehensive user object for the client
   res.status(201).json({
@@ -57,8 +57,6 @@ exports.register = asyncHandler(async (req, res, next) => {
       email: user.email,
       role: user.role,
       status: user.status,
-      groupRoles: user.groupRoles, // Include group roles
-      permissions: user.permissions, // Include global permissions
       // Do NOT include password or sensitive hash
     },
   });
@@ -93,7 +91,7 @@ exports.login = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const token = generateToken(user._id);
+  const token = jwt.generateToken(user);
 
   // Return a more comprehensive user object for the client
   res.status(200).json({
@@ -106,8 +104,6 @@ exports.login = asyncHandler(async (req, res, next) => {
       email: user.email,
       role: user.role,
       status: user.status,
-      groupRoles: user.groupRoles, // Include group roles
-      permissions: user.permissions, // Include global permissions
       // Do NOT include password or sensitive hash
     },
   });
@@ -124,7 +120,7 @@ exports.logout = asyncHandler((req, res, next) => {
     : null;
 
   if (token) {
-    blacklist.add(token);
+    blacklist.addToBlacklist(token);
   } else {
     // If no token is provided but logout is attempted, might be an issue
     return next(new ErrorResponse('No token provided for logout.', 400));
@@ -232,12 +228,8 @@ exports.getMe = asyncHandler(async (req, res) => {
   // req.user is populated by the protect middleware
   const user = req.user;
 
-  // We can also fetch the user again to ensure all latest data is included,
-  // and populate groupRoles if needed, though protect middleware already fetches it.
-  // For simplicity, directly using req.user is fine if it's kept up-to-date.
-  const fullUser = await User.findById(user._id)
-    .select('-password') // Ensure password is never sent
-    .populate('groupRoles.groupId', 'name'); // Populate group names
+  // We can also fetch the user again to ensure all latest data is included
+  const fullUser = await User.findById(user._id).select('-password'); // Ensure password is never sent
 
   if (!fullUser) {
     // This case should ideally not happen if protect middleware works correctly
@@ -252,8 +244,6 @@ exports.getMe = asyncHandler(async (req, res) => {
       email: fullUser.email,
       role: fullUser.role,
       status: fullUser.status,
-      groupRoles: fullUser.groupRoles,
-      permissions: fullUser.permissions,
       // Add any other user-specific fields you want the client to have
     },
   });

@@ -71,10 +71,14 @@ const LoginPage = () => {
 
     try {
       const result = await dispatch(login(formData)).unwrap();
-      if (result.user.role === "admin") {
-        navigate("/admin/dashboard");
+      if (result && result.user && result.user.role) {
+        if (result.user.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/user/dashboard");
+        }
       } else {
-        navigate("/user/dashboard");
+        console.error("Login failed: Invalid response structure");
       }
     } catch (error) {
       // Error is handled by the Redux slice

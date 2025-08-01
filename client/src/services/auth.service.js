@@ -14,9 +14,9 @@ class AuthService {
       const response = await api.post(ENDPOINTS.AUTH.LOGIN, credentials);
 
       // Store token and user data
-      if (response.success && response.data) {
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+      if (response.success && response.token && response.user) {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("user", JSON.stringify(response.user));
       }
 
       return response;
@@ -35,9 +35,9 @@ class AuthService {
       const response = await api.post(ENDPOINTS.AUTH.REGISTER, userData);
 
       // Store token and user data
-      if (response.success && response.data) {
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+      if (response.success && response.token && response.user) {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("user", JSON.stringify(response.user));
       }
 
       return response;
@@ -74,7 +74,7 @@ class AuthService {
   async getCurrentUser() {
     try {
       const response = await api.get(ENDPOINTS.AUTH.ME);
-      return response;
+      return response.data; // Return the user data from the data field
     } catch (error) {
       throw error;
     }
@@ -88,8 +88,8 @@ class AuthService {
     try {
       const response = await api.post(ENDPOINTS.AUTH.REFRESH);
 
-      if (response.success && response.data?.token) {
-        localStorage.setItem("token", response.data.token);
+      if (response.success && response.token) {
+        localStorage.setItem("token", response.token);
       }
 
       return response;

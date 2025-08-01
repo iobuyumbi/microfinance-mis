@@ -8,7 +8,7 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
-      return response.data;
+      return response; // Return the entire response
     } catch (error) {
       return rejectWithValue(error.message || "Login failed");
     }
@@ -20,7 +20,7 @@ export const register = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await authService.register(userData);
-      return response.data;
+      return response; // Return the entire response
     } catch (error) {
       return rejectWithValue(error.message || "Registration failed");
     }
@@ -46,7 +46,7 @@ export const getCurrentUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await authService.getCurrentUser();
-      return response.data;
+      return response; // Return the response directly
     } catch (error) {
       return rejectWithValue(error.message || "Failed to get user data");
     }
@@ -58,7 +58,7 @@ export const refreshToken = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await authService.refreshToken();
-      return response.data;
+      return response; // Return the response directly
     } catch (error) {
       return rejectWithValue(error.message || "Token refresh failed");
     }
@@ -139,11 +139,28 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
-        state.error = null;
-        toast.success("Login successful!");
+        console.log("Login payload:", action.payload); // Debug log
+
+        // Handle the response structure properly
+        const responseData = action.payload;
+
+        // Check if we have the expected data structure
+        if (responseData && responseData.user && responseData.token) {
+          state.user = responseData.user;
+          state.token = responseData.token;
+          state.isAuthenticated = true;
+          state.error = null;
+
+          // Store auth data in localStorage
+          localStorage.setItem("token", responseData.token);
+          localStorage.setItem("user", JSON.stringify(responseData.user));
+
+          toast.success("Login successful!");
+        } else {
+          console.error("Invalid login response structure:", responseData);
+          state.error = "Invalid response from server";
+          toast.error("Login failed: Invalid response from server");
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -162,6 +179,11 @@ const authSlice = createSlice({
         state.token = action.payload.token;
         state.isAuthenticated = true;
         state.error = null;
+        // Store auth data in localStorage
+        if (action.payload.token && action.payload.user) {
+          localStorage.setItem("token", action.payload.token);
+          localStorage.setItem("user", JSON.stringify(action.payload.user));
+        }
         toast.success("Registration successful!");
       })
       .addCase(register.rejected, (state, action) => {
