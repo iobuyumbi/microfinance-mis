@@ -1,145 +1,67 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "sonner";
+import { userService } from "@/services/userService";
 
 // Async thunks
 export const fetchUsers = createAsyncThunk(
   "user/fetchUsers",
-  async (_, { getState, rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/users`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to fetch users");
-      }
-
-      return data;
+      const response = await userService.getAll(params);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to fetch users");
     }
   }
 );
 
 export const fetchUserById = createAsyncThunk(
   "user/fetchUserById",
-  async (userId, { getState, rejectWithValue }) => {
+  async (userId, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/users/${userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to fetch user");
-      }
-
-      return data;
+      const response = await userService.getById(userId);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to fetch user");
     }
   }
 );
 
 export const createUser = createAsyncThunk(
   "user/createUser",
-  async (userData, { getState, rejectWithValue }) => {
+  async (userData, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/users`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(userData),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to create user");
-      }
-
-      return data;
+      const response = await userService.create(userData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to create user");
     }
   }
 );
 
 export const updateUser = createAsyncThunk(
   "user/updateUser",
-  async ({ userId, userData }, { getState, rejectWithValue }) => {
+  async ({ userId, userData }, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/users/${userId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(userData),
-        }
+      const response = await userService.updateUserRoleAndStatus(
+        userId,
+        userData
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to update user");
-      }
-
-      return data;
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to update user");
     }
   }
 );
 
 export const deleteUser = createAsyncThunk(
   "user/deleteUser",
-  async (userId, { getState, rejectWithValue }) => {
+  async (userId, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/users/${userId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to delete user");
-      }
-
+      await userService.deleteUser(userId);
       return userId;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to delete user");
     }
   }
 );

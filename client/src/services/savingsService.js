@@ -1,59 +1,29 @@
 // client\src\services\savingsService.js (REVISED)
-import api from "./api";
-import { handleRequest } from "./handleRequest";
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 
 export const savingsService = {
   getAll: (params) =>
-    handleRequest(
-      () => api.get("/savings", { params }),
-      "Failed to fetch savings"
-    ),
+    api.get(ENDPOINTS.SAVINGS.BASE, { params }),
 
   getById: (id) =>
-    handleRequest(
-      () => api.get(`/savings/${id}`),
-      "Failed to fetch saving by ID"
-    ),
+    api.get(ENDPOINTS.SAVINGS.BY_ID(id)),
 
   create: (data) =>
-    handleRequest(() => api.post("/savings", data), "Failed to create saving"),
+    api.post(ENDPOINTS.SAVINGS.BASE, data),
 
   update: (id, data) =>
-    handleRequest(
-      () => api.put(`/savings/${id}`, data),
-      "Failed to update saving"
-    ),
+    api.put(ENDPOINTS.SAVINGS.BY_ID(id), data),
 
   remove: (id) =>
-    handleRequest(
-      () => api.delete(`/savings/${id}`),
-      "Failed to delete saving"
-    ),
+    api.delete(ENDPOINTS.SAVINGS.BY_ID(id)),
 
-  // --- NEW METHODS FOR TRANSACTION-RELATED SAVINGS OPERATIONS ---
-  recordDeposit: (
-    data // data should contain { accountId, amount, paymentMethod, description }
-  ) =>
-    handleRequest(
-      () => api.post("/savings/deposit", data),
-      "Failed to record deposit"
-    ),
+  recordDeposit: (data) =>
+    api.post(ENDPOINTS.SAVINGS.DEPOSIT, data),
 
-  recordWithdrawal: (
-    data // data should contain { accountId, amount, paymentMethod, description }
-  ) =>
-    handleRequest(
-      () => api.post("/savings/withdraw", data),
-      "Failed to record withdrawal"
-    ),
+  recordWithdrawal: (data) =>
+    api.post(ENDPOINTS.SAVINGS.WITHDRAW, data),
 
-  getAccountTransactions: (
-    id,
-    params // id is savings account ID, params for filters if any
-  ) =>
-    handleRequest(
-      () => api.get(`/savings/${id}/transactions`, { params }),
-      "Failed to fetch account transactions"
-    ),
-  // --- END NEW METHODS ---
+  getAccountTransactions: (id, params) =>
+    api.get(ENDPOINTS.SAVINGS.TRANSACTIONS(id), { params }),
 };

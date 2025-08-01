@@ -1,145 +1,64 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { toast } from "sonner";
+import { loanService } from "@/services/loanService";
 
 // Async thunks
 export const fetchLoans = createAsyncThunk(
   "loan/fetchLoans",
-  async (_, { getState, rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/loans`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to fetch loans");
-      }
-
-      return data;
+      const response = await loanService.getAll(params);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to fetch loans");
     }
   }
 );
 
 export const fetchLoanById = createAsyncThunk(
   "loan/fetchLoanById",
-  async (loanId, { getState, rejectWithValue }) => {
+  async (loanId, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/loans/${loanId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to fetch loan");
-      }
-
-      return data;
+      const response = await loanService.getById(loanId);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to fetch loan");
     }
   }
 );
 
 export const createLoan = createAsyncThunk(
   "loan/createLoan",
-  async (loanData, { getState, rejectWithValue }) => {
+  async (loanData, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/loans`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(loanData),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to create loan");
-      }
-
-      return data;
+      const response = await loanService.create(loanData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to create loan");
     }
   }
 );
 
 export const updateLoan = createAsyncThunk(
   "loan/updateLoan",
-  async ({ loanId, loanData }, { getState, rejectWithValue }) => {
+  async ({ loanId, loanData }, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/loans/${loanId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(loanData),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to update loan");
-      }
-
-      return data;
+      const response = await loanService.update(loanId, loanData);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to update loan");
     }
   }
 );
 
 export const deleteLoan = createAsyncThunk(
   "loan/deleteLoan",
-  async (loanId, { getState, rejectWithValue }) => {
+  async (loanId, { rejectWithValue }) => {
     try {
-      const { token } = getState().auth;
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/loans/${loanId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return rejectWithValue(data.message || "Failed to delete loan");
-      }
-
+      await loanService.remove(loanId);
       return loanId;
     } catch (error) {
-      return rejectWithValue(error.message || "Network error");
+      return rejectWithValue(error.message || "Failed to delete loan");
     }
   }
 );

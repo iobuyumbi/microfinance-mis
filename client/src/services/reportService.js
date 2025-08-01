@@ -1,92 +1,50 @@
 // src/services/reportService.js
-import api from "./api"; // Assuming 'api' is your configured Axios instance
-import { handleRequest } from "./handleRequest"; // Assuming this path is correct
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 
 export const reportService = {
-  getDashboardStats: (
-    params // Added params here, as it's common for stats endpoints
-  ) =>
-    handleRequest(
-      () => api.get("/reports/dashboard", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch dashboard statistics"
-    ),
+  getDashboardStats: (params) =>
+    api.get(ENDPOINTS.REPORTS.DASHBOARD, { params }),
 
   getFinancialSummary: (params) =>
-    handleRequest(
-      () => api.get("/reports/financial-summary", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch financial summary"
-    ),
+    api.get(ENDPOINTS.REPORTS.FINANCIAL_SUMMARY, { params }),
 
   getUpcomingRepayments: (params) =>
-    handleRequest(
-      () => api.get("/reports/upcoming-repayments", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch upcoming repayments"
-    ),
+    api.get(ENDPOINTS.REPORTS.UPCOMING_REPAYMENTS, { params }),
 
   getDefaulters: (params) =>
-    handleRequest(
-      () => api.get("/reports/defaulters", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch defaulters report"
-    ),
+    api.get(ENDPOINTS.REPORTS.DEFAULTERS, { params }),
 
   getTotalLoans: (params) =>
-    handleRequest(
-      () => api.get("/reports/total-loans", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch total loan data"
-    ),
+    api.get(ENDPOINTS.REPORTS.TOTAL_LOANS, { params }),
 
   getGroupSavings: (params) =>
-    handleRequest(
-      () => api.get("/reports/group-savings", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch group savings"
-    ),
+    api.get(ENDPOINTS.REPORTS.GROUP_SAVINGS, { params }),
 
   getLoanReports: (params) =>
-    handleRequest(
-      () => api.get("/loans", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch loan reports"
-    ),
+    api.get(ENDPOINTS.LOANS.BASE, { params }),
 
   getLoanPortfolioHealth: () =>
-    handleRequest(
-      () => api.get("/reports/loan-portfolio-health"), // Correct: Wrap in an arrow function
-      "Failed to fetch loan portfolio health"
-    ),
+    api.get(ENDPOINTS.REPORTS.LOAN_PORTFOLIO_HEALTH),
 
   getMemberReports: (params) =>
-    handleRequest(
-      () => api.get("/reports/members", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch member reports"
-    ),
+    api.get(ENDPOINTS.REPORTS.MEMBERS, { params }),
 
   getMemberStats: () =>
-    handleRequest(
-      () => api.get("/reports/member-stats"), // Correct: Wrap in an arrow function
-      "Failed to fetch member statistics"
-    ),
+    api.get(ENDPOINTS.REPORTS.MEMBER_STATS),
 
   getSavingsReports: (params) =>
-    handleRequest(
-      () => api.get("/savings", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch savings reports"
-    ),
+    api.get(ENDPOINTS.SAVINGS.BASE, { params }),
 
   getSavingsStats: () =>
-    handleRequest(
-      () => api.get("/reports/savings-stats"), // Correct: Wrap in an arrow function
-      "Failed to fetch savings statistics"
-    ),
+    api.get(ENDPOINTS.REPORTS.SAVINGS_STATS),
 
   getTransactionReports: (params) =>
-    handleRequest(
-      () => api.get("/transactions", { params }), // Correct: Wrap in an arrow function
-      "Failed to fetch transaction reports"
-    ),
+    api.get(ENDPOINTS.TRANSACTIONS.BASE, { params }),
 
   exportReport: (type, format, params) =>
-    // This one is correct as it does not use handleRequest and directly returns the axios promise
-    api.get(`/reports/export/${type}/${format}`, {
+    api.get(ENDPOINTS.REPORTS.EXPORT(type, format), {
       params,
-      responseType: "blob", // binary file download – no handleRequest
+      responseType: "blob",
     }),
 };

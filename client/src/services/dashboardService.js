@@ -1,28 +1,18 @@
-import api from './api';
-import { handleRequest } from './handleRequest';
+import { api } from "./api/client";
+import { ENDPOINTS } from "./api/endpoints";
 
 export const dashboardService = {
-  // Get comprehensive dashboard statistics
-  getStats: () =>
-    handleRequest(() => api.get('/reports/dashboard'), 'Unable to load dashboard statistics'),
+  getStats: () => api.get(ENDPOINTS.REPORTS.DASHBOARD),
 
-  // Get recent activity for dashboard
-  getRecentActivity: () =>
-    handleRequest(() => api.get('/reports/recent-activity'), 'Unable to load recent activity'),
+  getRecentActivity: () => api.get(ENDPOINTS.REPORTS.RECENT_ACTIVITY),
 
-  // Get upcoming payments
-  getUpcomingPayments: () =>
-    handleRequest(() => api.get('/reports/upcoming-repayments'), 'Unable to load upcoming payments'),
+  getUpcomingPayments: () => api.get(ENDPOINTS.REPORTS.UPCOMING_REPAYMENTS),
 
-  // Get financial summary for dashboard
   getFinancialSummary: (params = {}) =>
-    handleRequest(() => api.get('/reports/financial-summary', { params }), 'Unable to load financial summary'),
+    api.get(ENDPOINTS.REPORTS.FINANCIAL_SUMMARY, { params }),
 
-  // Get group performance data
   getGroupPerformance: () =>
-    handleRequest(() => api.get('/reports/group-savings-performance'), 'Unable to load group performance'),
+    api.get(ENDPOINTS.REPORTS.GROUP_SAVINGS_PERFORMANCE),
 
-  // Get loan defaulters
-  getLoanDefaulters: () =>
-    handleRequest(() => api.get('/reports/active-loan-defaulters'), 'Unable to load loan defaulters'),
+  getLoanDefaulters: () => api.get(ENDPOINTS.REPORTS.ACTIVE_LOAN_DEFAULTERS),
 };

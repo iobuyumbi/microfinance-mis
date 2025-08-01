@@ -1,19 +1,19 @@
-import api from './api';
-import { handleRequest } from './handleRequest';
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 
 export const transactionService = {
   getAll: (params) =>
-    handleRequest(() => api.get('/transactions', { params }), 'Unable to load transactions'),
+    api.get(ENDPOINTS.TRANSACTIONS.BASE, { params }),
 
   getById: (id) =>
-    handleRequest(() => api.get(`/transactions/${id}`), 'Transaction not found'),
+    api.get(ENDPOINTS.TRANSACTIONS.BY_ID(id)),
 
   create: (data) =>
-    handleRequest(() => api.post('/transactions', data), 'Failed to create transaction'),
+    api.post(ENDPOINTS.TRANSACTIONS.BASE, data),
 
   update: (id, data) =>
-    handleRequest(() => api.put(`/transactions/${id}`, data), 'Failed to update transaction'),
+    api.put(ENDPOINTS.TRANSACTIONS.BY_ID(id), data),
 
   remove: (id) =>
-    handleRequest(() => api.delete(`/transactions/${id}`), 'Failed to delete transaction'),
+    api.delete(ENDPOINTS.TRANSACTIONS.BY_ID(id)),
 };

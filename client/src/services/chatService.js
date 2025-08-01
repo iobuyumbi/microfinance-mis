@@ -1,31 +1,25 @@
-import api from "./api";
-import { handleRequest } from "./handleRequest";
+import { api } from './api/client';
+import { ENDPOINTS } from './api/endpoints';
 
 export const chatService = {
-  // Get available chat channels
-  getChatChannels: () => handleRequest(() => api.get("/chat/channels")),
+  getChatChannels: () => 
+    api.get(ENDPOINTS.CHAT.CHANNELS),
 
-  // Get chat messages
   getChatMessages: (params) =>
-    handleRequest(() => api.get("/chat/messages", { params })),
+    api.get(ENDPOINTS.CHAT.MESSAGES, { params }),
 
-  // Send a new message
   sendMessage: (messageData) =>
-    handleRequest(() => api.post("/chat/messages", messageData)),
+    api.post(ENDPOINTS.CHAT.MESSAGES, messageData),
 
-  // Edit a message
   editMessage: (messageId, messageData) =>
-    handleRequest(() => api.put(`/chat/messages/${messageId}`, messageData)),
+    api.put(ENDPOINTS.CHAT.MESSAGE(messageId), messageData),
 
-  // Delete a message
   deleteMessage: (messageId) =>
-    handleRequest(() => api.delete(`/chat/messages/${messageId}`)),
+    api.delete(ENDPOINTS.CHAT.MESSAGE(messageId)),
 
-  // Mark messages as read
   markAsRead: (readData) =>
-    handleRequest(() => api.post("/chat/messages/read", readData)),
+    api.post(ENDPOINTS.CHAT.MARK_READ, readData),
 
-  // Get chat statistics
   getChatStats: (params) =>
-    handleRequest(() => api.get("/chat/stats", { params })),
+    api.get(ENDPOINTS.CHAT.STATS, { params }),
 };
