@@ -1,364 +1,197 @@
-// client\src\App.jsx (COMPREHENSIVE)
-import React from "react";
+// client/src/App.jsx
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Provider } from "react-redux";
-import { PersistGate } from "redux-persist/integration/react";
 import { Toaster } from "sonner";
-import { store, persistor } from "@/store";
+import { ErrorBoundary } from "react-error-boundary";
+import { useAuth } from "@/context/AuthContext"; // Our new Auth Context hook
 
-// Layouts
-import LandingLayout from "@/layouts/LandingLayout";
-import AuthLayout from "@/layouts/AuthLayout";
-import AdminLayout from "@/layouts/AdminLayout";
-import OfficerLayout from "@/layouts/OfficerLayout";
-import UserLayout from "@/layouts/UserLayout";
+// Use React.lazy for code splitting to improve initial load time.
+const LandingLayout = lazy(() => import("@/layouts/LandingLayout"));
+const AuthLayout = lazy(() => import("@/layouts/AuthLayout"));
+const AdminLayout = lazy(() => import("@/layouts/AdminLayout"));
+const OfficerLayout = lazy(() => import("@/layouts/OfficerLayout"));
+const UserLayout = lazy(() => import("@/layouts/UserLayout"));
+const LoadingSpinner = lazy(() => import("@/components/common/LoadingSpinner"));
 
 // Public Pages
-import LandingPage from "@/pages/LandingPage";
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
+const AboutPage = lazy(() => import("@/pages/AboutPage"));
+const ContactPage = lazy(() => import("@/pages/ContactPage"));
 
 // Auth Pages
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(
+  () => import("@/pages/auth/ForgotPasswordPage")
+);
+const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
 
-// Admin Pages
-import AdminDashboardPage from "@/pages/admin/DashboardPage";
-import AdminUsersPage from "@/pages/admin/UsersPage";
-import AdminLoansPage from "@/pages/admin/LoansPage";
-import AdminSavingsPage from "@/pages/admin/SavingsPage";
-import AdminReportsPage from "@/pages/admin/ReportsPage";
-import AdminMeetingsPage from "@/pages/admin/MeetingsPage";
-import AdminSettingsPage from "@/pages/admin/SettingsPage";
-import AdminProfilePage from "@/pages/admin/ProfilePage";
-import AdminAccountsPage from "@/pages/admin/AccountsPage";
-import AdminContributionsPage from "@/pages/admin/ContributionsPage";
-import AdminRepaymentsPage from "@/pages/admin/RepaymentsPage";
-import AdminGuarantorsPage from "@/pages/admin/GuarantorsPage";
-import AdminLoanAssessmentsPage from "@/pages/admin/LoanAssessmentsPage";
-import AdminChatPage from "@/pages/admin/ChatPage";
-import AdminTransactionsPage from "@/pages/admin/TransactionsPage";
-import AdminGroupsPage from "@/pages/admin/GroupsPage";
-import AdminNotificationsPage from "@/pages/admin/NotificationsPage";
+// Main Application Pages
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const LoansPage = lazy(() => import("@/pages/LoansPage"));
+const SavingsPage = lazy(() => import("@/pages/SavingsPage"));
+const MembersPage = lazy(() => import("@/pages/MembersPage"));
+const TransactionsPage = lazy(() => import("@/pages/TransactionsPage"));
+const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
+const AdminUsersPage = lazy(() => import("@/pages/admin/UsersPage"));
+const ChatPage = lazy(() => import("@/pages/ChatPage"));
+const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
+const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
-// Officer Pages
-import OfficerDashboardPage from "@/pages/officer/DashboardPage";
-import OfficerLoanApplicationsPage from "@/pages/officer/LoanApplicationsPage";
-import OfficerLoanAssessmentsPage from "@/pages/officer/LoanAssessmentsPage";
-import OfficerGuarantorsPage from "@/pages/officer/GuarantorsPage";
-import OfficerRepaymentsPage from "@/pages/officer/RepaymentsPage";
-import OfficerAccountsPage from "@/pages/officer/AccountsPage";
-import OfficerContributionsPage from "@/pages/officer/ContributionsPage";
-import OfficerChatPage from "@/pages/officer/ChatPage";
-import OfficerReportsPage from "@/pages/officer/ReportsPage";
-import OfficerMeetingsPage from "@/pages/officer/MeetingsPage";
-import OfficerSettingsPage from "@/pages/officer/SettingsPage";
-import OfficerProfilePage from "@/pages/officer/ProfilePage";
-import OfficerTransactionsPage from "@/pages/officer/TransactionsPage";
-import OfficerGroupsPage from "@/pages/officer/GroupsPage";
-import OfficerNotificationsPage from "@/pages/officer/NotificationsPage";
+// ErrorBoundary Fallback component
+const ErrorFallback = ({ error, resetErrorBoundary }) => {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center h-screen bg-gray-100 text-red-600"
+    >
+      <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
+      <p className="text-lg mb-4">{error.message}</p>
+      <button
+        onClick={resetErrorBoundary}
+        className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
+};
 
-// User Pages
-import UserDashboardPage from "@/pages/user/DashboardPage";
-import UserLoansPage from "@/pages/user/LoansPage";
-import UserSavingsPage from "@/pages/user/SavingsPage";
-import UserGroupPage from "@/pages/user/GroupPage";
-import UserMeetingsPage from "@/pages/user/MeetingsPage";
-import UserReportsPage from "@/pages/user/ReportsPage";
-import UserSettingsPage from "@/pages/user/SettingsPage";
-import UserProfilePage from "@/pages/user/ProfilePage";
-import UserAccountsPage from "@/pages/user/AccountsPage";
-import UserContributionsPage from "@/pages/user/ContributionsPage";
-import UserRepaymentsPage from "@/pages/user/RepaymentsPage";
-import UserTransactionsPage from "@/pages/user/TransactionsPage";
-import UserChatPage from "@/pages/user/ChatPage";
-import UserNotificationsPage from "@/pages/user/NotificationsPage";
-
-// Error Pages
-import NotFoundPage from "@/pages/NotFoundPage";
-
-// Protected Route Component
+// This component uses our new useAuth hook to protect routes.
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { isAuthenticated, user } = store.getState().auth;
+  const { isAuthenticated, user, loading } = useAuth();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return <LoadingSpinner />; // Show a loading spinner while the auth state is being checked
   }
 
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  // Check if the user's role is in the list of allowed roles
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />;
+    // Redirect to a dashboard or a forbidden page if the role is not allowed
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 };
 
-// Role-based Route Component
-const RoleBasedRoute = ({
-  adminComponent,
-  officerComponent,
-  userComponent,
-}) => {
-  const { user } = store.getState().auth;
+// This is the new, single layout component that dynamically renders the correct layout
+// based on the user's role.
+const AppLayout = () => {
+  const { user } = useAuth();
+  const role = user?.role;
 
-  if (user?.role === "admin") {
-    return adminComponent;
+  switch (role) {
+    case "admin":
+      return <AdminLayout />;
+    case "officer":
+      return <OfficerLayout />;
+    case "leader":
+    case "member":
+    default:
+      return <UserLayout />;
   }
-
-  if (user?.role === "officer") {
-    return officerComponent;
-  }
-
-  return userComponent;
 };
 
 function App() {
   return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
+    // Wrap the entire app in an ErrorBoundary to catch any rendering errors
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      {/* Suspense is required for lazy-loaded components. 
+        It shows a fallback component (like a loading spinner) while the lazy component is loading.
+      */}
+      <Suspense fallback={<LoadingSpinner />}>
         <div className="App">
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingLayout />}>
               <Route index element={<LandingPage />} />
+              <Route path="about" element={<AboutPage />} />
+              <Route path="contact" element={<ContactPage />} />
             </Route>
 
             {/* Auth Routes */}
             <Route path="/auth" element={<AuthLayout />}>
               <Route path="login" element={<LoginPage />} />
               <Route path="register" element={<RegisterPage />} />
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+              <Route
+                path="reset-password/:token"
+                element={<ResetPasswordPage />}
+              />
             </Route>
 
-            {/* Admin Routes */}
+            {/* This is the magic! A single ProtectedRoute for all authenticated pages.
+              The AppLayout component then handles rendering the correct layout based on the user's role.
+            */}
             <Route
-              path="/admin"
+              path="/"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <AdminLayout />
+                <ProtectedRoute>
+                  <AppLayout />
                 </ProtectedRoute>
               }
             >
+              {/* Common pages for all authenticated users, rendered within AppLayout */}
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="loans" element={<LoansPage />} />
+              <Route path="savings" element={<SavingsPage />} />
+              <Route path="members" element={<MembersPage />} />
+              <Route path="transactions" element={<TransactionsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="chat" element={<ChatPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+
+              {/* Admin-specific pages with role-based protection */}
               <Route
-                index
-                element={<Navigate to="/admin/dashboard" replace />}
+                path="admin/users"
+                element={
+                  <ProtectedRoute allowedRoles={["admin"]}>
+                    <AdminUsersPage />
+                  </ProtectedRoute>
+                }
               />
-              <Route path="dashboard" element={<AdminDashboardPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="loans" element={<AdminLoansPage />} />
-              <Route path="savings" element={<AdminSavingsPage />} />
-              <Route path="reports" element={<AdminReportsPage />} />
-              <Route path="meetings" element={<AdminMeetingsPage />} />
-              <Route path="settings" element={<AdminSettingsPage />} />
-              <Route path="profile" element={<AdminProfilePage />} />
-              <Route path="accounts" element={<AdminAccountsPage />} />
-              <Route
-                path="contributions"
-                element={<AdminContributionsPage />}
-              />
-              <Route path="repayments" element={<AdminRepaymentsPage />} />
-              <Route path="guarantors" element={<AdminGuarantorsPage />} />
-              <Route
-                path="loan-assessments"
-                element={<AdminLoanAssessmentsPage />}
-              />
-              <Route path="chat" element={<AdminChatPage />} />
-              <Route path="transactions" element={<AdminTransactionsPage />} />
-              <Route path="groups" element={<AdminGroupsPage />} />
-              <Route
-                path="notifications"
-                element={<AdminNotificationsPage />}
-              />
+              {/* We've simplified the routing for admin pages. You can add more here. */}
+
+              {/* Redirect authenticated users from root to their dashboard */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
 
-            {/* Officer Routes */}
-            <Route
-              path="/officer"
-              element={
-                <ProtectedRoute allowedRoles={["officer"]}>
-                  <OfficerLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route
-                index
-                element={<Navigate to="/officer/dashboard" replace />}
-              />
-              <Route path="dashboard" element={<OfficerDashboardPage />} />
-              <Route
-                path="loan-applications"
-                element={<OfficerLoanApplicationsPage />}
-              />
-              <Route
-                path="loan-assessments"
-                element={<OfficerLoanAssessmentsPage />}
-              />
-              <Route path="guarantors" element={<OfficerGuarantorsPage />} />
-              <Route path="repayments" element={<OfficerRepaymentsPage />} />
-              <Route path="accounts" element={<OfficerAccountsPage />} />
-              <Route
-                path="contributions"
-                element={<OfficerContributionsPage />}
-              />
-              <Route path="chat" element={<OfficerChatPage />} />
-              <Route path="reports" element={<OfficerReportsPage />} />
-              <Route path="meetings" element={<OfficerMeetingsPage />} />
-              <Route path="settings" element={<OfficerSettingsPage />} />
-              <Route path="profile" element={<OfficerProfilePage />} />
-              <Route
-                path="transactions"
-                element={<OfficerTransactionsPage />}
-              />
-              <Route path="groups" element={<OfficerGroupsPage />} />
-              <Route
-                path="notifications"
-                element={<OfficerNotificationsPage />}
-              />
-            </Route>
-
-            {/* User Routes */}
-            <Route
-              path="/user"
-              element={
-                <ProtectedRoute allowedRoles={["member", "leader"]}>
-                  <UserLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route
-                index
-                element={<Navigate to="/user/dashboard" replace />}
-              />
-              <Route path="dashboard" element={<UserDashboardPage />} />
-              <Route path="loans" element={<UserLoansPage />} />
-              <Route path="savings" element={<UserSavingsPage />} />
-              <Route path="group" element={<UserGroupPage />} />
-              <Route path="meetings" element={<UserMeetingsPage />} />
-              <Route path="reports" element={<UserReportsPage />} />
-              <Route path="settings" element={<UserSettingsPage />} />
-              <Route path="profile" element={<UserProfilePage />} />
-              <Route path="accounts" element={<UserAccountsPage />} />
-              <Route path="contributions" element={<UserContributionsPage />} />
-              <Route path="repayments" element={<UserRepaymentsPage />} />
-              <Route path="transactions" element={<UserTransactionsPage />} />
-              <Route path="chat" element={<UserChatPage />} />
-              <Route path="notifications" element={<UserNotificationsPage />} />
-            </Route>
-
-            {/* Legacy Routes - Redirect to appropriate layout */}
-            <Route
-              path="/dashboard"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/dashboard" replace />}
-                  officerComponent={
-                    <Navigate to="/officer/dashboard" replace />
-                  }
-                  userComponent={<Navigate to="/user/dashboard" replace />}
-                />
-              }
-            />
-            <Route
-              path="/loans"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/loans" replace />}
-                  officerComponent={
-                    <Navigate to="/officer/loan-applications" replace />
-                  }
-                  userComponent={<Navigate to="/user/loans" replace />}
-                />
-              }
-            />
-            <Route
-              path="/savings"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/savings" replace />}
-                  officerComponent={<Navigate to="/officer/accounts" replace />}
-                  userComponent={<Navigate to="/user/savings" replace />}
-                />
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/reports" replace />}
-                  officerComponent={<Navigate to="/officer/reports" replace />}
-                  userComponent={<Navigate to="/user/reports" replace />}
-                />
-              }
-            />
-            <Route
-              path="/meetings"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/meetings" replace />}
-                  officerComponent={<Navigate to="/officer/meetings" replace />}
-                  userComponent={<Navigate to="/user/meetings" replace />}
-                />
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/settings" replace />}
-                  officerComponent={<Navigate to="/officer/settings" replace />}
-                  userComponent={<Navigate to="/user/settings" replace />}
-                />
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <RoleBasedRoute
-                  adminComponent={<Navigate to="/admin/profile" replace />}
-                  officerComponent={<Navigate to="/officer/profile" replace />}
-                  userComponent={<Navigate to="/user/profile" replace />}
-                />
-              }
-            />
-
-            {/* Auth Redirects */}
-            <Route
-              path="/login"
-              element={<Navigate to="/auth/login" replace />}
-            />
-            <Route
-              path="/register"
-              element={<Navigate to="/auth/register" replace />}
-            />
-
-            {/* 404 Page */}
+            {/* 404 Page - Catch all other routes */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-
-          {/* Toast Notifications */}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: "white",
-                color: "black",
-              },
-              success: {
-                style: {
-                  background: "#f0fdf4",
-                  color: "#166534",
-                  border: "1px solid #bbf7d0",
-                },
-              },
-              error: {
-                style: {
-                  background: "#fef2f2",
-                  color: "#dc2626",
-                  border: "1px solid #fecaca",
-                },
-              },
-            }}
-          />
         </div>
-      </PersistGate>
-    </Provider>
+      </Suspense>
+
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          // Your existing toaster options
+          duration: 4000,
+          style: { background: "white", color: "black" },
+          success: {
+            style: {
+              background: "#f0fdf4",
+              color: "#166534",
+              border: "1px solid #bbf7d0",
+            },
+          },
+          error: {
+            style: {
+              background: "#fef2f2",
+              color: "#dc2626",
+              border: "1px solid #fecaca",
+            },
+          },
+        }}
+      />
+    </ErrorBoundary>
   );
 }
 

@@ -1,5 +1,11 @@
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const OfficerProfilePage = () => {
@@ -23,7 +29,9 @@ const OfficerProfilePage = () => {
             </div>
             <div>
               <p className="text-sm font-medium">Email</p>
-              <p className="text-sm text-muted-foreground">officer@microfinance.com</p>
+              <p className="text-sm text-muted-foreground">
+                officer@microfinance.com
+              </p>
             </div>
             <div>
               <p className="text-sm font-medium">Role</p>
@@ -40,4 +48,4 @@ const OfficerProfilePage = () => {
   );
 };
 
-export default OfficerProfilePage; 
+export default OfficerProfilePage;
