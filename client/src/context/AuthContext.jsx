@@ -1,4 +1,4 @@
-// src/context/AuthContext.jsx (REVISED)
+// client/src/context/AuthContext.jsx
 import React, {
   createContext,
   useContext,
@@ -6,36 +6,50 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { authService } from "../services/authService";
-import { userService } from "../services/userService";
+import { authService } from "../services/authService"; // Service for auth API calls (login, getMe)
+import { userService } from "../services/userService"; // Service for user-related API calls (getUserGroups)
 import { toast } from "sonner";
-import socketService from "../lib/socket"; // Import your socketService singleton
+import socketService from "../lib/socket"; // Your Socket.IO singleton instance
+import { useNavigate } from "react-router-dom";
 
+// 1. Create a React Context to hold our authentication state.
 const AuthContext = createContext(null);
 
+// 2. The AuthProvider component is a wrapper that provides the context value to its children.
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
+    // Attempt to get user data from localStorage on initial render.
     const storedUser = localStorage.getItem("user");
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [loading, setLoading] = useState(true);
-  const [groups, setGroups] = useState([]); // Add groups state
+  const [groups, setGroups] = useState([]); // State to store the user's groups
+  const navigate = useNavigate();
 
+  // 3. The logout function:
+  //    - It's wrapped in useCallback to prevent unnecessary re-creations.
+  //    - It clears local storage, resets state, and disconnects the socket.
   const logout = useCallback(() => {
-    authService.logout(); // Call backend logout (if it exists and clears server-side session/cookies)
+    // Calling a backend logout endpoint can be useful for clearing server-side sessions.
+    // authService.logout();
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
     setGroups([]); // Clear groups on logout
 
     // --- SOCKET.IO INTEGRATION: Disconnect socket on logout ---
+    // A clean disconnect is crucial for real-time applications.
     socketService.disconnect();
     // -----------------------------------------------------------
 
     toast.info("Logged out successfully.");
-  }, []);
+    navigate("/auth/login"); // Redirect to login page after logout
+  }, [navigate]);
 
-  // Function to fetch user's groups
+  // 4. Function to fetch user's groups:
+  //    - Uses the userService to make an API call.
+  //    - Includes robust error handling and a check for invalid tokens.
   const fetchUserGroups = useCallback(
     async (userId) => {
       if (!userId) {
@@ -58,25 +72,28 @@ export const AuthProvider = ({ children }) => {
         setGroups(userGroups);
       } catch (err) {
         console.error("Failed to fetch user groups in AuthContext:", err);
-        // Ensure error handling aligns with your API's error structure
-        if (err.response?.status === 401 || err.message.includes("403")) {
-          // Use err.response?.status for Axios errors
+        // If the API returns a 401/403, it means the token is invalid.
+        // We should log the user out to force a new login.
+        if (err.response?.status === 401 || err.response?.status === 403) {
           setGroups([]);
           toast.error("Access to groups denied. Please re-login.");
-          logout(); // Automatically log out if groups fetch fails due to auth
+          logout();
         }
       }
     },
-    [logout]
-  ); // Include logout in dependency array
+    [logout] // `logout` is a dependency, as it's called within this function.
+  );
 
+  // 5. Function to fetch the authenticated user's details:
+  //    - This is called on initial load or after login to get fresh user data.
+  //    - It handles connecting the socket and fetching user groups on success.
   const getMe = useCallback(async () => {
     try {
       const res = await authService.getMe();
-      const fetchedUser = res.user || res.data || res; // Be explicit about expected response structure
+      // Ensure we get a consistent user object from the response.
+      const fetchedUser = res.user || res.data || res;
 
       if (fetchedUser && fetchedUser._id) {
-        // Ensure user object has an _id for group fetching
         setUser(fetchedUser);
         localStorage.setItem("user", JSON.stringify(fetchedUser));
 
@@ -87,7 +104,7 @@ export const AuthProvider = ({ children }) => {
         }
         // -------------------------------------------------------------------
 
-        await fetchUserGroups(fetchedUser._id); // Use _id which is typical for MongoDB/Mongoose
+        await fetchUserGroups(fetchedUser._id); // Fetch groups after getting user data
         return fetchedUser;
       } else {
         throw new Error(
@@ -96,48 +113,21 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error("Error fetching authenticated user:", error);
-      // More specific error checks for logout trigger
+      // Log out if there's an authentication error with the token.
       if (
         error.response?.status === 401 ||
         error.response?.status === 403 ||
-        error.message === "Session expired. Please login again." // From api.js interceptor
+        error.message === "Session expired. Please login again."
       ) {
         toast.error("Session expired or invalid. Please login again.");
         logout();
       }
-      throw error; // Re-throw to propagate the error if needed by components
+      throw error;
     }
   }, [logout, fetchUserGroups]);
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-
-      if (token) {
-        try {
-          await getMe(); // This will connect the socket on success
-        } catch (error) {
-          // getMe already handles logout on auth errors, so no explicit logout here
-          console.log(
-            "Initialization failed, user might be logged out by getMe error."
-          );
-        }
-      } else {
-        setUser(null);
-        setGroups([]);
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
-        // --- SOCKET.IO INTEGRATION: Ensure socket is disconnected if no token ---
-        socketService.disconnect();
-        // -----------------------------------------------------------------------
-      }
-      setLoading(false);
-    };
-
-    initializeAuth();
-  }, [getMe]); // getMe is a useCallback, so it's stable.
-
+  // 6. The login function:
+  //    - Takes credentials, calls the backend, saves token/user, and connects socket.
   const login = useCallback(
     async (credentials) => {
       setLoading(true);
@@ -160,17 +150,48 @@ export const AuthProvider = ({ children }) => {
         setGroups([]);
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        // --- SOCKET.IO INTEGRATION: Ensure socket is disconnected on login failure ---
         socketService.disconnect();
-        // ---------------------------------------------------------------------------
         throw err;
       } finally {
         setLoading(false);
       }
     },
-    [fetchUserGroups] // fetchUserGroups is a useCallback, so it's stable.
+    [fetchUserGroups] // `fetchUserGroups` is a dependency
   );
 
+  // 7. The main useEffect hook:
+  //    - Runs once on component mount.
+  //    - Checks for a token and calls `getMe` if a token exists to validate the session.
+  useEffect(() => {
+    const initializeAuth = async () => {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+
+      if (token) {
+        try {
+          await getMe();
+        } catch (error) {
+          // getMe already handles logout, so no explicit logout here.
+          console.log(
+            "Initialization failed, user might be logged out by getMe error."
+          );
+        }
+      } else {
+        setUser(null);
+        setGroups([]);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        // --- SOCKET.IO INTEGRATION: Disconnect if no token ---
+        socketService.disconnect();
+        // ---------------------------------------------------
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+  }, [getMe]); // `getMe` is a dependency
+
+  // 8. The value object to be passed to the context's consumers.
   const value = {
     user,
     groups, // Expose groups here
@@ -178,13 +199,14 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     isAuthenticated: !!user,
-    // Provide a way to manually re-fetch user details and groups if needed (e.g., after profile update)
+    // Provide a way to manually re-fetch user details and groups.
     refreshUser: getMe,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// 9. A custom hook for easy access to the context.
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
