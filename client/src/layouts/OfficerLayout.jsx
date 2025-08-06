@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
   Users,
@@ -21,8 +21,6 @@ import {
   UserCheck,
   ClipboardList,
 } from "lucide-react";
-import { logout } from "@/store/slices/authSlice";
-import { toggleSidebar, openModal } from "@/store/slices/uiSlice";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -38,11 +36,9 @@ import { getClassName } from "@/utils/uiUtils";
 const OfficerLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
-
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
-  const { sidebar, notifications } = useSelector((state) => state.ui);
-  const { unreadCount } = useSelector((state) => state.notification);
+  const { user, isAuthenticated, logout } = useAuth();
+  const [sidebar, setSidebar] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -64,7 +60,7 @@ const OfficerLayout = () => {
   }, [isAuthenticated, user, navigate]);
 
   const handleLogout = () => {
-    dispatch(logout());
+    logout();
     navigate("/login");
   };
 

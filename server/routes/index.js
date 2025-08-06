@@ -1,38 +1,18 @@
-// Routes index file - exports all route modules
+// server/routes/index.js
+const express = require('express');
+const router = express.Router();
 
-const authRoutes = require('./authRoutes');
-const userRoutes = require('./userRoutes');
+// Modular route imports
+const memberRoutes = require('./memberRoutes');
 const groupRoutes = require('./groupRoutes');
-const loanRoutes = require('./loanRoutes');
-const savingsRoutes = require('./savingsRoutes');
-const transactionRoutes = require('./transactionRoutes');
-const meetingRoutes = require('./meetingRoutes');
-const notificationRoutes = require('./notificationRoutes');
-const reportRoutes = require('./reportRoutes');
-const settingsRoutes = require('./settingsRoutes');
-const accountRoutes = require('./accountRoutes');
+const groupMembershipRoutes = require('./groupMembershipRoutes');
 
-const guarantorRoutes = require('./guarantorRoutes');
-const repaymentRoutes = require('./repaymentRoutes');
-const chatRoutes = require('./chatRoutes');
-const loanAssessmentRoutes = require('./loanAssessmentRoutes');
-const contributionRoutes = require('./contributionRoutes');
+// --- API Route Mounts ---
+// All member-related endpoints
+router.use('/members', memberRoutes);
+// All group-related endpoints
+router.use('/groups', groupRoutes);
+// All group membership endpoints (nested under /members for clarity)
+router.use('/members', groupMembershipRoutes);
 
-module.exports = {
-  authRoutes,
-  userRoutes,
-  groupRoutes,
-  loanRoutes,
-  savingsRoutes,
-  transactionRoutes,
-  meetingRoutes,
-  notificationRoutes,
-  reportRoutes,
-  settingsRoutes,
-  accountRoutes,
-  guarantorRoutes,
-  repaymentRoutes,
-  chatRoutes,
-  loanAssessmentRoutes,
-  contributionRoutes,
-};
+module.exports = router;

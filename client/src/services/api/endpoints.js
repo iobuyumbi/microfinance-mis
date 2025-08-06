@@ -15,7 +15,7 @@ export const ENDPOINTS = {
     STATUS: "/auth/status",
   },
 
-  // Users
+  // Users (Global User Accounts)
   USERS: {
     BASE: "/users",
     PROFILE: "/users/profile",
@@ -23,31 +23,31 @@ export const ENDPOINTS = {
     UPDATE_PROFILE: "/users/profile",
     CHANGE_PASSWORD: "/users/change-password",
     UPLOAD_AVATAR: "/users/avatar",
-    GROUPS: (userId) => `/users/${userId}/groups`,
-    GROUP_MEMBERS: (groupId) => `/groups/${groupId}/members`,
-    GROUP_MEMBER_ROLE: (groupId, memberId) =>
-      `/groups/${groupId}/members/${memberId}/role`,
-    GROUP_MEMBER_STATUS: (groupId, memberId) =>
-      `/groups/${groupId}/members/${memberId}/status`,
-    GROUP_MEMBER: (groupId, memberId) =>
-      `/groups/${groupId}/members/${memberId}`,
+    // Removed group/membership related endpoints from here, as they are now in MEMBERS/GROUPS
     FINANCIAL_SUMMARY: (userId) => `/users/${userId}/financial-summary`,
   },
 
-  // Groups
+  // Members (Specific for member-related actions, especially cross-entity ones)
+  // These routes are handled by memberController on the backend.
+  MEMBERS: {
+    BASE: "/members", // For getAllMembers, createMember
+    BY_ID: (id) => `/members/${id}`, // For getMemberById, updateMember, deleteMember
+    ADD_TO_GROUP: (memberId, groupId) =>
+      `/members/${memberId}/groups/${groupId}`,
+    REMOVE_FROM_GROUP: (memberId, groupId) =>
+      `/members/${memberId}/groups/${groupId}`,
+    UPDATE_ROLE_IN_GROUP: (memberId, groupId) =>
+      `/members/${memberId}/groups/${groupId}/role`,
+  },
+
+  // Groups (Group Management)
+  // These routes are also handled by memberController on the backend.
   GROUPS: {
-    BASE: "/groups",
-    BY_ID: (id) => `/groups/${id}`,
-    MEMBERS: (id) => `/groups/${id}/members`,
-    ADD_MEMBER: (id) => `/groups/${id}/members`,
-    REMOVE_MEMBER: (groupId, memberId) =>
-      `/groups/${groupId}/members/${memberId}`,
-    ROLES: (id) => `/groups/${id}/roles`,
-    SETTINGS: (id) => `/groups/${id}/settings`,
-    MEMBER: (groupId, userId) => `/groups/${groupId}/members/${userId}`,
-    MEMBER_ROLE: (groupId, userId) =>
-      `/groups/${groupId}/members/${userId}/role`,
-    JOIN: (groupId) => `/groups/${groupId}/join`,
+    BASE: "/groups", // For getAllGroups, createGroup
+    BY_ID: (id) => `/groups/${id}`, // For getGroupById, updateGroup, deleteGroup
+    MEMBERS: (groupId) => `/groups/${groupId}/members`, // For getGroupMembers
+    JOIN: (groupId) => `/groups/${groupId}/join`, // For joinGroup
+    // Removed other group-member specific routes as they are now under MEMBERS
   },
 
   // Loans

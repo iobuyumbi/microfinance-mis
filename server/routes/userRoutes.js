@@ -8,14 +8,17 @@ const {
   updateUserRoleStatus,
   deleteUser,
   getUserGroups,
-  getGroupMembers,
-  updateGroupMemberRole,
-  updateGroupMemberStatus,
-  addMemberToGroup,
-  removeMemberFromGroup,
   getUserFinancialSummary,
   createUser, // Import the createUser controller function
 } = require('../controllers/userController');
+
+// Import group-related functions from groupMembershipController
+const {
+  getGroupMembers,
+  updateMemberRoleInGroup,
+  addMemberToGroup,
+  removeMemberFromGroup,
+} = require('../controllers/groupMembershipController');
 const {
   protect,
   authorize,
@@ -91,14 +94,7 @@ router.put(
   '/groups/:groupId/members/:memberId/role',
   validateObjectId,
   authorizeGroupPermission('can_manage_members', 'groupId'),
-  updateGroupMemberRole
-);
-
-router.put(
-  '/groups/:groupId/members/:memberId/status',
-  validateObjectId,
-  authorizeGroupPermission('can_manage_members', 'groupId'),
-  updateGroupMemberStatus
+  updateMemberRoleInGroup
 );
 
 router.post(

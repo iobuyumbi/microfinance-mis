@@ -1,56 +1,156 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { FileText, Download, Calendar, TrendingUp, DollarSign, Users } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import {
+  FileText,
+  Download,
+  Calendar,
+  TrendingUp,
+  DollarSign,
+  Users,
+  Loader2,
+} from "lucide-react";
 import { formatCurrency } from "@/utils";
+import { reportService } from "@/services/reportService";
+import { toast } from "sonner";
 
 const AdminReportsPage = () => {
   const [reportType, setReportType] = useState("financial");
   const [timeRange, setTimeRange] = useState("month");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [loanData, setLoanData] = useState([]);
+  const [savingsData, setSavingsData] = useState([]);
+  const [memberStats, setMemberStats] = useState([]);
 
-  // Mock data for charts
-  const loanData = [
-    { month: "Jan", disbursed: 500000, collected: 450000 },
-    { month: "Feb", disbursed: 600000, collected: 520000 },
-    { month: "Mar", disbursed: 450000, collected: 480000 },
-    { month: "Apr", disbursed: 700000, collected: 650000 },
-    { month: "May", disbursed: 550000, collected: 580000 },
-    { month: "Jun", disbursed: 800000, collected: 720000 }
-  ];
-
-  const savingsData = [
-    { month: "Jan", deposits: 300000, withdrawals: 150000 },
-    { month: "Feb", deposits: 350000, withdrawals: 180000 },
-    { month: "Mar", deposits: 400000, withdrawals: 200000 },
-    { month: "Apr", deposits: 450000, withdrawals: 220000 },
-    { month: "May", deposits: 500000, withdrawals: 250000 },
-    { month: "Jun", deposits: 550000, withdrawals: 280000 }
-  ];
-
-  const memberStats = [
-    { name: "Active Members", value: 150, color: "#10b981" },
-    { name: "New Members", value: 25, color: "#3b82f6" },
-    { name: "Inactive Members", value: 10, color: "#ef4444" }
-  ];
-
-  const summaryStats = {
-    totalLoans: 1250000,
-    activeLoans: 850000,
-    totalSavings: 2100000,
-    totalMembers: 185,
-    monthlyGrowth: 12.5,
-    repaymentRate: 94.2
+  // Fetch dashboard stats
+  const fetchDashboardStats = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await reportService.getDashboardStats({ timeRange });
+      setDashboardStats(res.data);
+    } catch (err) {
+      setError("Failed to load dashboard stats");
+      toast.error("Failed to load dashboard stats");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Fetch loan data
+  const fetchLoanData = async () => {
+    try {
+      const res = await reportService.getLoanReports({ timeRange });
+      setLoanData(res.data || []);
+    } catch (err) {
+      console.error("Failed to load loan data:", err);
+    }
+  };
+
+  // Fetch savings data
+  const fetchSavingsData = async () => {
+    try {
+      const res = await reportService.getSavingsReports({ timeRange });
+      setSavingsData(res.data || []);
+    } catch (err) {
+      console.error("Failed to load savings data:", err);
+    }
+  };
+
+  // Fetch member stats
+  const fetchMemberStats = async () => {
+    try {
+      const res = await reportService.getMemberStats();
+      setMemberStats(res.data || []);
+    } catch (err) {
+      console.error("Failed to load member stats:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardStats();
+    fetchLoanData();
+    fetchSavingsData();
+    fetchMemberStats();
+  }, [timeRange]);
+
+  // Handle export
+  const handleExport = async () => {
+    try {
+      const res = await reportService.exportReport(reportType, "pdf", {
+        timeRange,
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${reportType}-report-${timeRange}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Report exported successfully");
+    } catch (error) {
+      toast.error("Failed to export report");
+    }
+  };
+
+  if (loading && !dashboardStats) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading reports...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={fetchDashboardStats}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-          <p className="text-muted-foreground">Financial reports and performance analytics</p>
+          <p className="text-muted-foreground">
+            Financial reports and performance analytics
+          </p>
         </div>
         <div className="flex gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -64,7 +164,7 @@ const AdminReportsPage = () => {
               <SelectItem value="year">This Year</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -79,9 +179,15 @@ const AdminReportsPage = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summaryStats.totalLoans)}</div>
+            <div className="text-2xl font-bold">
+              {dashboardStats
+                ? formatCurrency(dashboardStats.totalLoans)
+                : "Loading..."}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {summaryStats.activeLoans ? `${formatCurrency(summaryStats.activeLoans)} active` : "No active loans"}
+              {dashboardStats
+                ? `${formatCurrency(dashboardStats.activeLoans)} active`
+                : "Loading active loans"}
             </p>
           </CardContent>
         </Card>
@@ -92,9 +198,15 @@ const AdminReportsPage = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(summaryStats.totalSavings)}</div>
+            <div className="text-2xl font-bold">
+              {dashboardStats
+                ? formatCurrency(dashboardStats.totalSavings)
+                : "Loading..."}
+            </div>
             <p className="text-xs text-muted-foreground">
-              +{summaryStats.monthlyGrowth}% from last month
+              {dashboardStats
+                ? `+${dashboardStats.monthlyGrowth}% from last month`
+                : "Loading growth data"}
             </p>
           </CardContent>
         </Card>
@@ -105,7 +217,9 @@ const AdminReportsPage = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.totalMembers}</div>
+            <div className="text-2xl font-bold">
+              {dashboardStats ? dashboardStats.totalMembers : "Loading..."}
+            </div>
             <p className="text-xs text-muted-foreground">
               Active microfinance members
             </p>
@@ -114,11 +228,17 @@ const AdminReportsPage = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Repayment Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Repayment Rate
+            </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summaryStats.repaymentRate}%</div>
+            <div className="text-2xl font-bold">
+              {dashboardStats
+                ? `${dashboardStats.repaymentRate}%`
+                : "Loading..."}
+            </div>
             <p className="text-xs text-muted-foreground">
               On-time loan repayments
             </p>
@@ -131,7 +251,9 @@ const AdminReportsPage = () => {
         <Card>
           <CardHeader>
             <CardTitle>Loan Performance</CardTitle>
-            <CardDescription>Monthly loan disbursements vs collections</CardDescription>
+            <CardDescription>
+              Monthly loan disbursements vs collections
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -159,8 +281,18 @@ const AdminReportsPage = () => {
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Line type="monotone" dataKey="deposits" stroke="#10b981" name="Deposits" />
-                <Line type="monotone" dataKey="withdrawals" stroke="#ef4444" name="Withdrawals" />
+                <Line
+                  type="monotone"
+                  dataKey="deposits"
+                  stroke="#10b981"
+                  name="Deposits"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="withdrawals"
+                  stroke="#ef4444"
+                  name="Withdrawals"
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -182,7 +314,9 @@ const AdminReportsPage = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -201,4 +335,4 @@ const AdminReportsPage = () => {
   );
 };
 
-export default AdminReportsPage; 
+export default AdminReportsPage;

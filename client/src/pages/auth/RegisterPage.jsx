@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin } from "lucide-react";
-import { register } from "@/store/slices/authSlice";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +27,8 @@ import {
 } from "@/utils/validation";
 
 const RegisterPage = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { register, loading, error } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -132,14 +130,15 @@ const RegisterPage = () => {
 
     try {
       const { confirmPassword, ...registrationData } = formData;
-      const result = await dispatch(register(registrationData)).unwrap();
-      if (result.user.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/user/dashboard");
+      const result = await register(registrationData);
+      if (result.success) {
+        if (result.user.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
-      // Error is handled by the Redux slice
       console.error("Registration failed:", error);
     }
   };
@@ -176,7 +175,7 @@ const RegisterPage = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   className={`pl-10 ${errors.name ? "border-red-500" : ""}`}
-                  disabled={isLoading}
+                  disabled={loading}
                 />
               </div>
               {errors.name && (
@@ -196,7 +195,7 @@ const RegisterPage = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
-                  disabled={isLoading}
+                  disabled={loading}
                 />
               </div>
               {errors.email && (
@@ -218,7 +217,7 @@ const RegisterPage = () => {
                   value={formData.phone}
                   onChange={handleInputChange}
                   className={`pl-10 ${errors.phone ? "border-red-500" : ""}`}
-                  disabled={isLoading}
+                  disabled={loading}
                 />
               </div>
               {errors.phone && (
@@ -259,7 +258,7 @@ const RegisterPage = () => {
                 value={formData.address}
                 onChange={handleInputChange}
                 className={`pl-10 ${errors.address ? "border-red-500" : ""}`}
-                disabled={isLoading}
+                disabled={loading}
               />
             </div>
             {errors.address && (
@@ -280,13 +279,13 @@ const RegisterPage = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   className={`pl-10 pr-10 ${errors.password ? "border-red-500" : ""}`}
-                  disabled={isLoading}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -324,13 +323,13 @@ const RegisterPage = () => {
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   className={`pl-10 pr-10 ${errors.confirmPassword ? "border-red-500" : ""}`}
-                  disabled={isLoading}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -351,8 +350,8 @@ const RegisterPage = () => {
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Create Account"}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Creating account..." : "Create Account"}
           </Button>
         </form>
 

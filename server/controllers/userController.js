@@ -1,15 +1,18 @@
-// server\controllers\userController.js (REVISED - ADDED createUser)
+// server/controllers/userController.js
 const User = require('../models/User');
 const Group = require('../models/Group');
 const Account = require('../models/Account'); // For savings/balances
 const Transaction = require('../models/Transaction'); // For all financial movements
 const Loan = require('../models/Loan'); // Ensure Loan model is imported for financial summary
+const UserGroupMembership = require('../models/UserGroupMembership'); // Import for direct membership queries
 
-const { asyncHandler } = require('../middleware');
+const asyncHandler = require('../middleware/asyncHandler');
 const { ErrorResponse, settingsHelper } = require('../utils');
 const mongoose = require('mongoose');
 
-// --- NEW CONTROLLER: Create a new user ---
+// Helper function to validate ObjectId
+const isValidObjectId = id => mongoose.Types.ObjectId.isValid(id);
+
 // @desc    Create a new user (by Admin, Officer, or Leader)
 // @route   POST /api/users
 // @access  Private (Admin, Officer, Leader)
@@ -18,12 +21,11 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     name,
     email,
     password,
-    role,
+    role, // Role provided in the request body
     phone,
     address,
     gender,
-    dateOfBirth,
-    nationalId,
+    nationalID, // Corrected from nationalId to nationalID
   } = req.body;
 
   // Basic validation for required fields, though handled by middleware for initial check
@@ -33,8 +35,8 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Validate the role provided
-  const validRoles = ['member', 'leader', 'officer', 'admin'];
+  // Validate the role provided against the User model's enum
+  const validRoles = ['member', 'leader', 'officer', 'admin', 'user']; // 'user' is also a valid initial role
   if (!validRoles.includes(role)) {
     return next(
       new ErrorResponse(
@@ -56,6 +58,9 @@ exports.createUser = asyncHandler(async (req, res, next) => {
   session.startTransaction();
 
   try {
+    // Determine isMember status based on the role
+    const isMember = ['member', 'leader', 'officer', 'admin'].includes(role);
+
     // Create the user
     const newUser = await User.create(
       [
@@ -67,10 +72,10 @@ exports.createUser = asyncHandler(async (req, res, next) => {
           phone,
           address,
           gender,
-          dateOfBirth,
-          nationalId,
+          nationalID, // Use nationalID as per model
           status: 'active', // Default status for newly created users
-          createdBy: req.user.id, // Record who created this user
+          isMember: isMember, // Set isMember based on role
+          // createdBy: req.user.id, // Uncomment if you have this field in User model
         },
       ],
       { session }
@@ -91,7 +96,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
           balance: 0,
           currency: currency,
           status: 'active',
-          createdBy: req.user.id, // Record who created this account
+          // createdBy: req.user.id, // Uncomment if you have this field in Account model
         },
       ],
       { session }
@@ -132,17 +137,17 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 // @route   GET /api/users
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAllUsers = asyncHandler(async (req, res, next) => {
-  // req.dataFilter is set by the filterDataByRole middleware (e.g., { _id: req.user.id } for member, { 'groupRoles.groupId': { $in: [group1Id, group2Id] } } for leader)
+  // req.dataFilter is set by the filterDataByRole middleware
+  // This endpoint should primarily return User documents based on global roles/status.
+  // For group-specific member lists, use the memberController.getMembers endpoint with groupId.
   const query = req.dataFilter || {};
 
   const users = await User.find(query)
     .select('-password -__v') // Exclude password hash and version key
-    .populate('groupRoles.groupId', 'name'); // Populate group name for each role
+    .sort({ createdAt: -1 });
 
   res.status(200).json({ success: true, count: users.length, data: users });
 });
-
-// ... (rest of your existing userController.js content) ...
 
 // @desc    Get a single user by ID
 // @route   GET /api/users/:id
@@ -150,19 +155,29 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
 exports.getUserById = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidObjectId(id)) {
     return next(new ErrorResponse('Invalid user ID format.', 400));
   }
 
-  const user = await User.findById(id)
-    .select('-password -__v') // Exclude password hash and version key
-    .populate('groupRoles.groupId', 'name');
+  // Use req.dataFilter for access control (e.g., a member can only see their own profile)
+  const query = { _id: id, ...(req.dataFilter || {}) };
+
+  const user = await User.findOne(query).select('-password -__v'); // Exclude password hash and version key
 
   if (!user) {
-    return next(new ErrorResponse('User not found.', 404));
+    return next(
+      new ErrorResponse('User not found or you do not have access.', 404)
+    );
   }
 
-  res.status(200).json({ success: true, data: user });
+  // If you need group memberships here, you'd fetch them separately:
+  const memberships = await UserGroupMembership.find({
+    user: user._id,
+  }).populate('group', 'name location leader'); // Populate group details
+
+  res
+    .status(200)
+    .json({ success: true, data: { ...user.toObject(), memberships } });
 });
 
 // @desc    Update authenticated user's profile
@@ -176,7 +191,8 @@ exports.updateUserProfile = asyncHandler(async (req, res, next) => {
     'role',
     'status',
     'password',
-    'groupRoles',
+    'isMember', // isMember should be managed by role changes or memberController
+    'memberId', // memberId should be managed by admin/officer if needed
     'createdAt',
     'updatedAt',
     'deleted',
@@ -218,9 +234,9 @@ exports.updateUserProfile = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin, Officer) - authorizeRoles middleware handles this
 exports.updateUserRoleStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { role, status } = req.body; // Both are optional due to route change
+  const { role, status, isMember } = req.body; // isMember can also be passed, but derived from role
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidObjectId(id)) {
     return next(new ErrorResponse('Invalid user ID format.', 400));
   }
 
@@ -231,9 +247,8 @@ exports.updateUserRoleStatus = asyncHandler(async (req, res, next) => {
   }
 
   // Prevent a user from changing their own role/status via this endpoint if they are admin/officer
-  // This forces admins/officers to use another admin/officer to modify their own sensitive fields.
   if (
-    req.user.id === id &&
+    req.user.id.toString() === id.toString() &&
     (req.user.role === 'admin' || req.user.role === 'officer')
   ) {
     return next(
@@ -246,11 +261,13 @@ exports.updateUserRoleStatus = asyncHandler(async (req, res, next) => {
 
   // Validate inputs if provided
   if (role) {
-    const validGlobalRoles = ['admin', 'officer', 'leader', 'member'];
+    const validGlobalRoles = ['admin', 'officer', 'leader', 'member', 'user'];
     if (!validGlobalRoles.includes(role)) {
       return next(new ErrorResponse('Invalid global role provided.', 400));
     }
     user.role = role;
+    // Automatically update isMember based on the new role
+    user.isMember = ['member', 'leader', 'officer', 'admin'].includes(role);
   }
 
   if (status) {
@@ -259,13 +276,20 @@ exports.updateUserRoleStatus = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse('Invalid global status provided.', 400));
     }
     user.status = status;
+    // If status becomes inactive or suspended, also set isMember to false
+    if (status === 'inactive' || status === 'suspended') {
+      user.isMember = false;
+    }
+  } else if (typeof isMember === 'boolean') {
+    // Allow direct setting of isMember if status is not provided, but role is not changing
+    user.isMember = isMember;
   }
 
-  // Ensure at least one of role or status was provided to update
-  if (!role && !status) {
+  // Ensure at least one of role, status, or isMember was provided to update
+  if (!role && !status && typeof isMember !== 'boolean') {
     return next(
       new ErrorResponse(
-        'At least one of "role" or "status" is required for update.',
+        'At least one of "role", "status", or "isMember" is required for update.',
         400
       )
     );
@@ -290,7 +314,7 @@ exports.updateUserRoleStatus = asyncHandler(async (req, res, next) => {
 exports.deleteUser = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
+  if (!isValidObjectId(id)) {
     return next(new ErrorResponse('Invalid user ID format.', 400));
   }
 
@@ -301,7 +325,7 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
   }
 
   // Prevent deleting self for admin (and prevent deleting the initial admin account if possible)
-  if (user._id.toString() === req.user.id) {
+  if (user._id.toString() === req.user.id.toString()) {
     return next(
       new ErrorResponse(
         'You cannot delete your own account via this endpoint.',
@@ -311,27 +335,32 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
   }
 
   // Implement soft delete instead of hard delete for auditability
-  // Start a transaction for atomicity if related financial data needs to be marked
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    user.deleted = true;
+    user.deleted = true; // Assuming you add a 'deleted' boolean field to your User model
     user.deletedAt = new Date();
     user.deletedBy = req.user.id; // Record who soft-deleted it
     user.status = 'suspended'; // Also change global status to suspended
+    user.isMember = false; // No longer an active member
     // Optional: Invalidate user's active tokens if they are still logged in
 
     await user.save({ session });
 
-    // Optionally, mark associated accounts/transactions as inactive/related to a deleted user
+    // Mark associated accounts as inactive
     await Account.updateMany(
       { owner: id, ownerModel: 'User' },
       { status: 'inactive' },
       { session }
     );
-    // Transactions usually remain for audit, but could be marked with a flag if needed
-    // await Transaction.updateMany({ member: id }, { /* set a flag like isAssociatedWithDeletedUser: true */ }, { session });
+
+    // Mark all active group memberships as inactive
+    await UserGroupMembership.updateMany(
+      { user: id, status: 'active' },
+      { status: 'inactive', leftDate: Date.now() },
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();
@@ -347,485 +376,31 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
   }
 });
 
-// @desc    Get user's groups
-// @route   GET /api/users/:id/groups
-// @access  Private (authorizeOwnerOrAdmin middleware handles access)
-exports.getUserGroups = asyncHandler(async (req, res, next) => {
-  const { id } = req.params; // userId from route parameter
-  // authorizeOwnerOrAdmin('id') handles if req.user.id === id or req.user.role is admin/officer
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return next(new ErrorResponse('Invalid user ID format.', 400));
-  }
-
-  // Find groups where the user is either a member or the creator
-  const groups = await Group.find({
-    $or: [{ members: id }, { createdBy: id }],
-  })
-    .populate('members', 'name email role status')
-    .populate('createdBy', 'name email');
-
-  res.status(200).json({
-    success: true,
-    count: groups.length,
-    data: groups,
-  });
-});
-
-// @desc    Get group members with proper access control
-// @route   GET /api/groups/:groupId/members
-// @access  Private (authorizeGroupAccess middleware handles permission)
-exports.getGroupMembers = asyncHandler(async (req, res, next) => {
-  const { groupId } = req.params;
-
-  if (!mongoose.Types.ObjectId.isValid(groupId)) {
-    return next(new ErrorResponse('Invalid group ID format.', 400));
-  }
-
-  const group = await Group.findById(groupId).select('members createdBy');
-  if (!group) {
-    return next(new ErrorResponse('Group not found.', 404));
-  }
-
-  // Get group members with their global and group-specific roles
-  const members = await User.find({
-    _id: { $in: group.members },
-  }).select('name email role status groupRoles');
-
-  const filteredMembers = members.map(member => {
-    const memberObj = member.toObject(); // Convert to plain object for modification
-    const groupRoleEntry = memberObj.groupRoles.find(
-      gr => gr.groupId.toString() === groupId
-    );
-
-    return {
-      _id: memberObj._id,
-      name: memberObj.name,
-      email: memberObj.email,
-      globalRole: memberObj.role,
-      globalStatus: memberObj.status,
-      groupRole: groupRoleEntry ? groupRoleEntry.role : 'member', // Default to 'member' if no explicit role
-      groupStatus: groupRoleEntry ? groupRoleEntry.status : 'active', // Default to 'active'
-    };
-  });
-
-  res.status(200).json({
-    success: true,
-    count: filteredMembers.length,
-    data: filteredMembers,
-  });
-});
-
-// @desc    Update group member's group-specific role and permissions
-// @route   PUT /api/groups/:groupId/members/:memberId/role
-// @access  Private (Admin, Officer, or Group Leader with 'can_manage_members')
-exports.updateGroupMemberRole = asyncHandler(async (req, res, next) => {
-  const { groupId, memberId } = req.params;
-  const { role, permissions } = req.body;
-
-  if (
-    !mongoose.Types.ObjectId.isValid(groupId) ||
-    !mongoose.Types.ObjectId.isValid(memberId)
-  ) {
-    return next(new ErrorResponse('Invalid Group or Member ID format.', 400));
-  }
-
-  if (!role && !permissions) {
-    return next(
-      new ErrorResponse('Role or permissions are required for update.', 400)
-    );
-  }
-
-  const validGroupRoles = ['member', 'secretary', 'treasurer', 'chairman']; // Define valid group-specific roles
-  if (role && !validGroupRoles.includes(role)) {
-    return next(
-      new ErrorResponse(
-        `Invalid group role. Must be one of: ${validGroupRoles.join(', ')}.`,
-        400
-      )
-    );
-  }
-  // TODO: Add validation for permissions array if permissions are predefined
-  if (
-    permissions &&
-    (!Array.isArray(permissions) ||
-      !permissions.every(p => typeof p === 'string'))
-  ) {
-    return next(
-      new ErrorResponse('Permissions must be an array of strings.', 400)
-    );
-  }
-
-  const user = await User.findById(memberId);
-  if (!user) {
-    return next(new ErrorResponse('Member not found.', 404));
-  }
-
-  const group = await Group.findById(groupId).select('members');
-  if (!group) {
-    return next(new ErrorResponse('Group not found.', 404));
-  }
-  // Check if the user is actually a member of the group
-  if (!group.members.includes(user._id)) {
-    return next(new ErrorResponse('User is not a member of this group.', 400));
-  }
-
-  // Access control handled by authorizeGroupPermission middleware on the route
-
-  const existingRoleIndex = user.groupRoles.findIndex(
-    gr => gr.groupId.toString() === groupId
-  );
-
-  if (existingRoleIndex >= 0) {
-    if (role) user.groupRoles[existingRoleIndex].role = role;
-    if (permissions)
-      user.groupRoles[existingRoleIndex].permissions = permissions;
-  } else {
-    // This case indicates the user is a member of the group, but has no groupRole entry.
-    // It should add one.
-    user.groupRoles.push({
-      groupId: new mongoose.Types.ObjectId(groupId),
-      role: role || 'member', // Default to 'member' if role not provided
-      permissions: permissions || [],
-      status: 'active', // Default status for new role entry
-    });
-  }
-
-  await user.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'Member role/permissions updated successfully',
-    data: user.toObject({
-      virtuals: true,
-      getters: true,
-      exclude: ['password', '__v'],
-    }), // Return user with updated roles
-  });
-});
-
-// @desc    Update group member's group-specific status
-// @route   PUT /api/groups/:groupId/members/:memberId/status
-// @access  Private (Admin, Officer, or Group Leader with 'can_manage_members')
-exports.updateGroupMemberStatus = asyncHandler(async (req, res, next) => {
-  const { groupId, memberId } = req.params;
-  const { status } = req.body;
-
-  if (
-    !mongoose.Types.ObjectId.isValid(groupId) ||
-    !mongoose.Types.ObjectId.isValid(memberId)
-  ) {
-    return next(new ErrorResponse('Invalid Group or Member ID format.', 400));
-  }
-
-  if (!status) {
-    return next(new ErrorResponse('Status is required for update.', 400));
-  }
-
-  const validGroupStatuses = ['active', 'inactive', 'suspended'];
-  if (!validGroupStatuses.includes(status)) {
-    return next(
-      new ErrorResponse(
-        `Invalid status provided. Must be one of: ${validGroupStatuses.join(', ')}.`,
-        400
-      )
-    );
-  }
-
-  const user = await User.findById(memberId);
-  if (!user) {
-    return next(new ErrorResponse('Member not found.', 404));
-  }
-
-  const group = await Group.findById(groupId).select('members');
-  if (!group) {
-    return next(new ErrorResponse('Group not found.', 404));
-  }
-  // Check if the user is actually a member of the group
-  if (!group.members.includes(user._id)) {
-    return next(new ErrorResponse('User is not a member of this group.', 400));
-  }
-
-  // Access control handled by authorizeGroupPermission middleware on the route
-
-  const groupRoleIndex = user.groupRoles.findIndex(
-    gr => gr.groupId.toString() === groupId
-  );
-
-  if (groupRoleIndex >= 0) {
-    user.groupRoles[groupRoleIndex].status = status;
-  } else {
-    // This case means the user is a member of the group (per group.members),
-    // but somehow lacks a groupRole entry. Add a default one.
-    user.groupRoles.push({
-      groupId: new mongoose.Types.ObjectId(groupId),
-      role: 'member', // Default role
-      permissions: [],
-      status: status, // Use provided status
-    });
-  }
-
-  await user.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'Member status updated successfully',
-    data: user.toObject({
-      virtuals: true,
-      getters: true,
-      exclude: ['password', '__v'],
-    }),
-  });
-});
-
-// @desc    Add member to group
-// @route   POST /api/groups/:groupId/members
-// @access  Private (Admin, Officer, or Group Leader with 'can_manage_members')
-exports.addMemberToGroup = asyncHandler(async (req, res, next) => {
-  const { groupId } = req.params;
-  const { email, memberId } = req.body; // Can accept either email or memberId
-
-  if (!mongoose.Types.ObjectId.isValid(groupId)) {
-    return next(new ErrorResponse('Invalid group ID format.', 400));
-  }
-
-  if (!email && !memberId) {
-    return next(new ErrorResponse('Member email or ID is required.', 400));
-  }
-
-  const group = await Group.findById(groupId);
-  if (!group) {
-    return next(new ErrorResponse('Group not found.', 404));
-  }
-
-  let user;
-  if (email) {
-    user = await User.findOne({ email });
-    if (!user) {
-      return next(new ErrorResponse('User with this email not found.', 404));
-    }
-  } else {
-    // memberId is provided
-    if (!mongoose.Types.ObjectId.isValid(memberId)) {
-      return next(new ErrorResponse('Invalid member ID format.', 400));
-    }
-    user = await User.findById(memberId);
-    if (!user) {
-      return next(new ErrorResponse('User with this ID not found.', 404));
-    }
-  }
-
-  // Check if user is already a member
-  if (group.members.includes(user._id)) {
-    return next(
-      new ErrorResponse('User is already a member of this group.', 400)
-    );
-  }
-
-  // Access control handled by authorizeGroupPermission middleware on the route
-
-  // Start a session for atomicity (group members array and user's groupRoles)
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    // Add user to group's members array
-    group.members.push(user._id);
-    await group.save({ session });
-
-    // Add default 'member' group role to user if they don't have one for this group
-    // If they were previously removed, their groupRole entry might still exist but with status 'inactive'/'suspended'
-    const existingRoleIndex = user.groupRoles.findIndex(
-      gr => gr.groupId.toString() === groupId
-    );
-
-    if (existingRoleIndex === -1) {
-      // New entry for this group
-      user.groupRoles.push({
-        groupId: new mongoose.Types.ObjectId(groupId),
-        role: 'member', // Default role upon joining
-        permissions: [],
-        status: 'active', // Default status
-      });
-    } else {
-      // Update existing entry (e.g., if re-adding a user)
-      user.groupRoles[existingRoleIndex].status = 'active';
-      user.groupRoles[existingRoleIndex].role = 'member'; // Reset role to default member
-      user.groupRoles[existingRoleIndex].permissions = []; // Reset permissions
-    }
-    await user.save({ session });
-
-    // Optionally, create a default savings account for the user if they don't have one for this group
-    // This assumes each member should have a 'savings' account tied to them within the group context.
-    // If accounts are global per user, this might be handled elsewhere.
-    // For simplicity, let's assume a user's primary savings account is global, created on user creation.
-    // If a new account is needed *per group*, then uncomment and adjust below:
-    // const existingAccount = await Account.findOne({ owner: user._id, ownerModel: 'User', type: 'savings', group: groupId }).session(session);
-    // if (!existingAccount) {
-    //     await Account.create([{
-    //         owner: user._id,
-    //         ownerModel: 'User',
-    //         type: 'savings',
-    //         group: groupId, // Link account to specific group if it's a group-specific account
-    //         accountName: `${user.name}'s Savings (${group.name})`,
-    //         balance: 0,
-    //         currency: await getCurrency(),
-    //     }], { session });
-    // }
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({
-      success: true,
-      message: 'Member added successfully to group.',
-      data: {
-        groupId: group._id,
-        memberId: user._id,
-        memberName: user.name,
-        memberEmail: user.email,
-      },
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('Error adding member to group:', error);
-    next(
-      new ErrorResponse('Failed to add member to group. ' + error.message, 500)
-    );
-  }
-});
-
-// @desc    Remove member from group
-// @route   DELETE /api/groups/:groupId/members/:memberId
-// @access  Private (Admin, Officer, or Group Leader with 'can_manage_members')
-exports.removeMemberFromGroup = asyncHandler(async (req, res, next) => {
-  const { groupId, memberId } = req.params;
-
-  if (
-    !mongoose.Types.ObjectId.isValid(groupId) ||
-    !mongoose.Types.ObjectId.isValid(memberId)
-  ) {
-    return next(new ErrorResponse('Invalid Group or Member ID format.', 400));
-  }
-
-  const group = await Group.findById(groupId);
-  if (!group) {
-    return next(new ErrorResponse('Group not found.', 404));
-  }
-
-  // Access control handled by authorizeGroupPermission middleware on the route
-
-  // Check if the user is actually a member of the group
-  const initialMemberCount = group.members.length;
-  group.members = group.members.filter(id => id.toString() !== memberId);
-  if (group.members.length === initialMemberCount) {
-    return next(new ErrorResponse('User is not a member of this group.', 400));
-  }
-
-  // Start a session for atomicity
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    await group.save({ session });
-
-    // Change group role status to inactive/removed instead of deleting the entry
-    // This preserves history for auditability
-    const user = await User.findById(memberId).session(session);
-    if (user) {
-      const groupRoleIndex = user.groupRoles.findIndex(
-        gr => gr.groupId.toString() === groupId
-      );
-      if (groupRoleIndex >= 0) {
-        user.groupRoles[groupRoleIndex].status = 'inactive'; // Mark as inactive/removed from group
-        // Optionally, clear permissions if they are group-specific
-        // user.groupRoles[groupRoleIndex].permissions = [];
-      }
-      await user.save({ session });
-    }
-
-    // Optional: Perform financial checks
-    // If the user has an outstanding loan balance for this group, prevent removal
-    // Or if the user has funds in a group-specific account, require withdrawal first
-    const userAccountsInGroup = await Account.find({
-      owner: memberId,
-      ownerModel: 'User',
-      group: groupId,
-    }).session(session);
-    const hasBalanceInGroupAccounts = userAccountsInGroup.some(
-      acc => acc.balance > 0
-    );
-    const outstandingLoansInGroup = await Loan.find({
-      borrower: memberId,
-      group: groupId,
-      currentBalance: { $gt: 0 },
-    }).session(session);
-
-    if (hasBalanceInGroupAccounts) {
-      return next(
-        new ErrorResponse(
-          'User has funds in group-specific accounts. Funds must be withdrawn before removal.',
-          400
-        )
-      );
-    }
-    if (outstandingLoansInGroup.length > 0) {
-      return next(
-        new ErrorResponse(
-          'User has outstanding loans in this group. Loans must be settled before removal.',
-          400
-        )
-      );
-    }
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({
-      success: true,
-      message: 'Member removed successfully from group.',
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('Error removing member from group:', error);
-    next(
-      new ErrorResponse(
-        'Failed to remove member from group. ' + error.message,
-        500
-      )
-    );
-  }
-});
-
 // @desc    Get user's financial summary
-// @route   GET /api/users/:id/financial-summary (not :userId but :id due to route definition)
-// @route   GET /api/users/me/financial-summary
+// @route   GET /api/users/:id/financial-summary (or /api/users/me/financial-summary)
 // @access  Private (authorizeOwnerOrAdmin middleware handles access)
 exports.getUserFinancialSummary = asyncHandler(async (req, res, next) => {
-  const userId = req.params.id === 'me' ? req.user.id : req.params.id; // Corrected to :id
+  const userId = req.params.id === 'me' ? req.user.id : req.params.id;
 
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
+  if (!isValidObjectId(userId)) {
     return next(new ErrorResponse('Invalid user ID format.', 400));
   }
 
   const currency = await settingsHelper.getCurrency();
 
   // Get user's primary savings account balance
-  // Assuming 'savings' is the type for individual member savings
   const userSavingsAccount = await Account.findOne({
     owner: userId,
     ownerModel: 'User',
     type: 'savings',
-    status: 'active', // Only consider active accounts
+    status: 'active',
   });
   const totalSavings = userSavingsAccount ? userSavingsAccount.balance : 0;
 
   // Get loans associated with the user as borrower
   const userLoans = await Loan.find({
     borrower: userId,
-    status: { $in: ['approved', 'pending', 'active', 'overdue', 'completed'] }, // Include relevant loan statuses
+    status: { $in: ['approved', 'pending', 'active', 'overdue', 'completed'] },
   });
 
   let totalLoansApproved = 0;
@@ -844,52 +419,58 @@ exports.getUserFinancialSummary = asyncHandler(async (req, res, next) => {
     } else if (loan.status === 'pending') {
       totalLoansPending += loan.amountRequested || 0;
     } else if (loan.status === 'completed') {
-      // For completed loans, you might want to show the original approved amount or total repaid
-      totalLoansPaid += loan.amountApproved || 0; // Or calculate from repayments if stored
+      totalLoansPaid += loan.amountApproved || 0;
     }
   });
 
   // Get user's transactions (deposits, withdrawals, loan repayments)
   const userTransactions = await Transaction.find({
-    member: userId,
-    deleted: false, // Ensure not soft-deleted
-    status: 'completed', // Only show completed transactions in summary
+    member: userId, // Assuming 'member' field in Transaction refers to User ID
+    deleted: false,
+    status: 'completed',
   })
     .sort({ createdAt: -1 })
     .limit(10); // Last 10 transactions for history
 
-  // Populate and format recent transactions
+  // Populate and format recent transactions (assuming Transaction model has formattedAmount virtual)
   const formattedTransactions = await Promise.all(
     userTransactions.map(async tx => {
       const obj = tx.toObject({ virtuals: true });
-      obj.formattedAmount = await obj.formattedAmount;
+      // If formattedAmount is a virtual that needs async calculation (e.g., fetching currency)
+      // ensure it's awaited if necessary, otherwise it's just a direct property.
+      // For now, assuming it's a direct property or handled by toObject({ virtuals: true })
       return obj;
     })
   );
 
-  // Get groups the user is a member of or created
-  const groups = await Group.find({
-    $or: [{ members: userId }, { createdBy: userId }],
-    status: 'active', // Only consider active groups
-  }).select('name members createdBy');
+  // Get groups the user is an active member of (via UserGroupMembership)
+  const userActiveMemberships = await UserGroupMembership.find({
+    user: userId,
+    status: 'active',
+  }).populate('group', 'name members totalSavings totalLoansOutstanding'); // Populate relevant group fields
 
-  // Summarize group financial data (for groups where user is member/leader)
+  // Summarize group financial data for groups where user is an active member
   const groupSummaries = await Promise.all(
-    groups.map(async group => {
-      const groupSavingsAccount = await Account.findOne({
+    userActiveMemberships.map(async membership => {
+      const group = membership.group;
+      if (!group) return null; // Handle cases where group might be dissolved or not found
+
+      // Fetch group's main account balance if it exists
+      const groupAccount = await Account.findOne({
         owner: group._id,
         ownerModel: 'Group',
-        type: 'group_savings',
+        type: { $in: ['loan_fund', 'savings', 'operating_fund'] }, // Consider various group account types
         status: 'active',
       });
+
+      let groupTotalSavings = groupAccount ? groupAccount.balance : 0;
+
+      // Fetch loans associated with this specific group
       const groupLoans = await Loan.find({
         group: group._id,
         status: { $in: ['approved', 'active', 'overdue', 'completed'] },
       });
 
-      let groupTotalSavings = groupSavingsAccount
-        ? groupSavingsAccount.balance
-        : 0;
       let groupTotalLoansApproved = 0;
       let groupTotalOutstandingLoans = 0;
       let groupTotalLoansPaid = 0;
@@ -910,7 +491,7 @@ exports.getUserFinancialSummary = asyncHandler(async (req, res, next) => {
       return {
         groupId: group._id,
         groupName: group.name,
-        groupMembersCount: group.members.length,
+        groupMembersCount: group.members ? group.members.length : 0, // Use the populated members array count
         totalGroupSavings: groupTotalSavings,
         formattedTotalGroupSavings: `${currency} ${groupTotalSavings.toFixed(2)}`,
         totalGroupLoansApproved: groupTotalLoansApproved,
@@ -940,7 +521,49 @@ exports.getUserFinancialSummary = asyncHandler(async (req, res, next) => {
         formattedTotalPaid: `${currency} ${totalLoansPaid.toFixed(2)}`,
       },
       recentTransactions: formattedTransactions,
-      groupFinancialOverview: groupSummaries,
+      groupFinancialOverview: groupSummaries.filter(Boolean), // Filter out any null entries
     },
+  });
+});
+
+// @desc    Get groups for a specific user
+// @route   GET /api/users/:id/groups
+// @access  Private (owner or admin)
+exports.getUserGroups = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  if (!isValidObjectId(id)) {
+    return next(new ErrorResponse('Invalid user ID format.', 400));
+  }
+
+  // Find active memberships for this user
+  const memberships = await UserGroupMembership.find({
+    user: id,
+    status: 'active',
+  })
+    .populate(
+      'group',
+      'name description location status membersCount totalSavings totalLoansOutstanding'
+    )
+    .populate('user', 'name email role');
+
+  const groups = memberships.map(membership => ({
+    groupId: membership.group._id,
+    groupName: membership.group.name,
+    groupDescription: membership.group.description,
+    groupLocation: membership.group.location,
+    groupStatus: membership.group.status,
+    membersCount: membership.group.membersCount,
+    totalSavings: membership.group.totalSavings,
+    totalLoansOutstanding: membership.group.totalLoansOutstanding,
+    userRoleInGroup: membership.roleInGroup,
+    joinedDate: membership.joinedDate,
+    membershipId: membership._id,
+  }));
+
+  res.status(200).json({
+    success: true,
+    count: groups.length,
+    data: groups,
   });
 });

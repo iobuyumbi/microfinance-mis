@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
   Handshake,
@@ -17,8 +17,6 @@ import {
   ChevronDown,
   Home,
 } from "lucide-react";
-import { logout } from "@/store/slices/authSlice";
-import { toggleSidebar, openModal } from "@/store/slices/uiSlice";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -34,11 +32,9 @@ import { getClassName } from "@/utils/uiUtils";
 const UserLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
-
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
-  const { sidebar } = useSelector((state) => state.ui);
-  const { unreadCount } = useSelector((state) => state.notification);
+  const { user, isAuthenticated, logout } = useAuth();
+  const [sidebar, setSidebar] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -60,7 +56,7 @@ const UserLayout = () => {
   }, [isAuthenticated, user, navigate]);
 
   const handleLogout = () => {
-    dispatch(logout());
+    logout();
     navigate("/login");
   };
 
@@ -116,10 +112,10 @@ const UserLayout = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar overlay */}
-      {sidebar.isOpen && isMobile && (
+      {sidebar && isMobile && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => dispatch(toggleSidebar())}
+          onClick={() => setSidebar(false)}
         />
       )}
 
@@ -127,7 +123,7 @@ const UserLayout = () => {
       <div
         className={getClassName(
           "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
-          sidebar.isOpen ? "translate-x-0" : "-translate-x-full"
+          sidebar ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
@@ -145,7 +141,7 @@ const UserLayout = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => dispatch(toggleSidebar())}
+                onClick={() => setSidebar(false)}
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -201,7 +197,7 @@ const UserLayout = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => dispatch(toggleSidebar())}
+                  onClick={() => setSidebar(true)}
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
@@ -222,7 +218,7 @@ const UserLayout = () => {
                 variant="ghost"
                 size="sm"
                 className="relative"
-                onClick={() => dispatch(openModal("notifications"))}
+                onClick={() => navigate("/notifications")}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (

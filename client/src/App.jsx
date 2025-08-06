@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "react-error-boundary";
 import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
 
 // Lazy load layouts
 const LandingLayout = lazy(() => import("@/layouts/LandingLayout"));
@@ -26,19 +27,16 @@ const ForgotPasswordPage = lazy(
 );
 const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
 
-// Dynamic Pages
-const DynamicDashboardPage = lazy(() => import("@/pages/DynamicDashboardPage"));
-const DynamicLoansPage = lazy(() => import("@/pages/DynamicLoansPage"));
-const DynamicLoanAssessmentPage = lazy(
-  () => import("@/pages/DynamicLoanAssessmentPage")
-); // New dynamic page
+// Modular Route Components
+const DashboardRoutes = lazy(() => import("@/routes/DashboardRoutes"));
+const GroupRoutes = lazy(() => import("@/routes/GroupRoutes"));
+const MemberRoutes = lazy(() => import("@/routes/MemberRoutes"));
+const LoanRoutes = lazy(() => import("@/routes/LoanRoutes"));
 
 // Other main application pages
-const SavingsPage = lazy(() => import("@/pages/SavingsPage"));
-const MembersPage = lazy(() => import("@/pages/MembersPage"));
 const TransactionsPage = lazy(() => import("@/pages/TransactionsPage"));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
-const AdminUsersPage = lazy(() => import("@/pages/admin/UsersPage")); // Example of a specific admin page
+const AdminUsersPage = lazy(() => import("@/pages/admin/UsersPage"));
 const ChatPage = lazy(() => import("@/pages/ChatPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
@@ -132,22 +130,19 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              {/* Dynamic Pages */}
-              <Route path="dashboard" element={<DynamicDashboardPage />} />
-              <Route path="loans" element={<DynamicLoansPage />} />
-              <Route
-                path="loan-assessments"
-                element={<DynamicLoanAssessmentPage />}
-              />{" "}
-              {/* New route */}
+              {/* Modular Route Components */}
+              <Route path="dashboard/*" element={<DashboardRoutes />} />
+              <Route path="groups/*" element={<GroupRoutes />} />
+              <Route path="members/*" element={<MemberRoutes />} />
+              <Route path="loans/*" element={<LoanRoutes />} />
+
               {/* Other common authenticated pages */}
-              <Route path="savings" element={<SavingsPage />} />
-              <Route path="members" element={<MembersPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="chat" element={<ChatPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
+
               {/* Admin-specific pages with role-based protection */}
               <Route
                 path="admin/users"
@@ -157,7 +152,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* Add other role-specific routes as needed */}
+
               {/* Redirect authenticated users from root to their dashboard */}
               <Route index element={<Navigate to="/dashboard" replace />} />
             </Route>

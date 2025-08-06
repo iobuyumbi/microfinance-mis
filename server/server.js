@@ -1,6 +1,14 @@
 // Microfinance MIS - Main Server Entry
 
+// Load environment variables first
+require('dotenv').config();
+
+// Core dependencies
 const express = require('express');
+const http = require('http');
+const path = require('path');
+
+// Security and middleware
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -9,44 +17,47 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
 const morgan = require('morgan');
-const path = require('path');
-const http = require('http');
-const socketIo = require('socket.io');
-const jwt = require('jsonwebtoken'); // Assuming JWT for auth
-const User = require('./models/User'); // Your User model
-const healthRoutes = require('./routes/healthRoutes');
 
-// IMPORTANT: Import the specific functions you need directly
+// Socket.IO and authentication
+const socketIo = require('socket.io');
+const jwt = require('jsonwebtoken');
+
+// Models
+const User = require('./models/User');
+
+// Configuration
+const { connectDB } = require('./config');
+const configureSocket = require('./config/socket');
+
+// Middleware
+const { errorHandler, notFound } = require('./middleware');
+
+// Controllers
 const {
   checkGroupAccess,
   createAndSaveChatMessage,
 } = require('./controllers/chatController');
 
-// Import configurations
-const { connectDB } = require('./config');
-
-// Import middleware
-const { errorHandler, notFound } = require('./middleware');
-
 // Import all routes
-const {
-  authRoutes,
-  userRoutes,
-  groupRoutes,
-  loanRoutes,
-  savingsRoutes,
-  transactionRoutes,
-  meetingRoutes,
-  notificationRoutes,
-  reportRoutes,
-  settingsRoutes,
-  accountRoutes,
-  guarantorRoutes,
-  repaymentRoutes,
-  chatRoutes,
-  loanAssessmentRoutes,
-  contributionRoutes,
-} = require('./routes');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const groupRoutes = require('./routes/groupRoutes');
+const memberRoutes = require('./routes/memberRoutes');
+const groupMembershipRoutes = require('./routes/groupMembershipRoutes');
+const loanRoutes = require('./routes/loanRoutes');
+const savingsRoutes = require('./routes/savingsRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+const meetingRoutes = require('./routes/meetingRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
+const accountRoutes = require('./routes/accountRoutes');
+const guarantorRoutes = require('./routes/guarantorRoutes');
+const repaymentRoutes = require('./routes/repaymentRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const loanAssessmentRoutes = require('./routes/loanAssessmentRoutes');
+const contributionRoutes = require('./routes/contributionRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 
 // Load environment variables
 require('dotenv').config();
@@ -68,16 +79,8 @@ app.use(
 // Mount health routes (usually before protected routes)
 app.use('/api/health', healthRoutes);
 
-// Initialize Socket.IO
-const io = socketIo(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST', 'PUT'], // Added PUT for general API, adjust as needed
-    credentials: true,
-  },
-});
-
-// Make io accessible in your Express controllers
+// Initialize Socket.IO using modularized config
+const io = configureSocket(server);
 app.set('io', io);
 
 // Socket.IO Authentication Middleware (APPLIED ONCE BEFORE CONNECTION HANDLER)
@@ -171,7 +174,7 @@ io.on('connection', socket => {
         // Example:
         // const participantIds = chatId.split('_'); // Assuming chatId is like 'user1id_user2id'
         // if (!participantIds.includes(socket.user.id.toString())) {
-        //    throw new Error('Not authorized to send direct message to this chat.');
+        //      throw new Error('Not authorized to send direct message to this chat.');
         // }
       } else {
         throw new Error('Invalid chat type specified.');
@@ -287,6 +290,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/members', memberRoutes);
+app.use('/api/members', groupMembershipRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/savings', savingsRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -328,7 +333,6 @@ process.on('unhandledRejection', (err, promise) => {
   server.close(() => process.exit(1));
 });
 
-// Uncaught exceptions
 process.on('uncaughtException', err => {
   console.log(`Error: ${err.message}`);
   process.exit(1);

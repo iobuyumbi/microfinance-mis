@@ -1,7 +1,7 @@
-// server\models\Group.js
+// server/models/Group.js
 const mongoose = require('mongoose');
 
-const groupSchema = new mongoose.Schema(
+const GroupSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -15,6 +15,11 @@ const groupSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'Description cannot exceed 500 characters'],
     },
+    location: {
+      // Added from your previous model
+      type: String,
+      required: [true, 'Please add a location for the group'],
+    },
     leader: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -22,22 +27,30 @@ const groupSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'pending', 'deleted'],
-      default: 'pending',
+      // Merged statuses: 'dissolved' used for soft delete of groups
+      enum: ['active', 'inactive', 'pending', 'dissolved'],
+      default: 'active', // Default to active, or pending if group creation requires approval
     },
     formationDate: {
+      // Using your naming
       type: Date,
       default: Date.now,
     },
-    // Members array for quick lookup of members in a group
-    // Members will also have a UserGroupMembership record
+    // Members array for quick lookup of members in a group.
+    // This array will be managed by the UserGroupMembership post-save/remove hooks.
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
       },
     ],
-    // Group financial details (can be stored here or in a separate GroupAccount)
+    // Count of active members in the group (managed by UserGroupMembership hooks)
+    membersCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    // Group financial details (from your previous model)
     totalSavings: {
       type: Number,
       default: 0,
@@ -48,56 +61,42 @@ const groupSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
-    // Group-specific loan/savings rules (can also be pulled from Settings but allows group overrides)
+    // Group-specific loan/savings rules (from your previous model)
     minMemberSavingsForLoan: { type: Number, default: 200 },
     maxLoanRatioToGroupSavings: { type: Number, default: 0.3 },
-    // Reference to a custom group account
+    // Reference to a custom group account (from your previous model)
     account: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Account',
       unique: true, // Each group should have one account
       sparse: true,
     },
-    deletedAt: Date, // Add for soft delete audit
+    deletedAt: Date, // For soft delete audit
     deletedBy: {
-      // Add for soft delete audit
+      // For soft delete audit
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
   },
   {
-    timestamps: true,
+    timestamps: true, // Keep your existing timestamps
+    toJSON: { virtuals: true }, // Enable virtuals
+    toObject: { virtuals: true }, // Enable virtuals
   }
 );
 
 // Index for efficient querying
-groupSchema.index({ leader: 1 });
-groupSchema.index({ status: 1 });
-// Note: name field already has unique: true which creates an index automatically
+GroupSchema.index({ leader: 1 });
+GroupSchema.index({ status: 1 });
+// The 'name' field already has unique: true which creates an index automatically
 
-module.exports = mongoose.model('Group', groupSchema);
-// ========== INSTANCE METHODS ========== //
+// Virtual for fetching detailed group memberships (if needed, though members array is direct)
+// This virtual is less critical now that `members` array is direct, but can be used for full membership objects
+GroupSchema.virtual('groupMemberships', {
+  ref: 'UserGroupMembership',
+  localField: '_id',
+  foreignField: 'group',
+  justOne: false,
+});
 
-// // Add a member (limit to 30 members)
-// groupSchema.methods.addMember = async function (userId) {
-//   if (this.members.includes(userId)) return this;
-//   if (this.members.length >= 30) {
-//     throw new Error('Group member limit reached (30 members max).');
-//   }
-//   this.members.push(userId);
-//   return await this.save();
-// };
-
-// // Remove a member
-// groupSchema.methods.removeMember = async function (userId) {
-//   this.members = this.members.filter(id => id.toString() !== userId.toString());
-//   return await this.save();
-// };
-
-// // Get average savings per member
-// groupSchema.methods.getAverageSavingsPerMember = function () {
-//   const count = this.members.length || 1;
-//   return this.totalSavings / count;
-// };
-
-// module.exports = mongoose.model('Group', groupSchema);
+module.exports = mongoose.model('Group', GroupSchema);

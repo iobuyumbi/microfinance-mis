@@ -1,19 +1,36 @@
+// client/src/pages/user/SavingsPage.jsx
 import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { PiggyBank, Plus, TrendingUp, Download } from "lucide-react";
-import { formatCurrency, formatDate } from "@/utils";
+import { formatCurrency, formatDate } from "@/utils/formatters"; // Assuming formatters.js is in utils
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 const UserSavingsPage = () => {
+  const { user } = useAuth(); // Use useAuth hook for user data
+
   const [savingsAccount] = useState({
     accountNumber: "SAV-2024-001",
     balance: 25000,
     totalDeposits: 30000,
     totalWithdrawals: 5000,
     interestEarned: 1200,
-    lastTransaction: "2024-01-15"
+    lastTransaction: "2024-01-15",
   });
 
   const [transactions] = useState([
@@ -23,7 +40,7 @@ const UserSavingsPage = () => {
       amount: 5000,
       date: "2024-01-15",
       description: "Monthly deposit",
-      balance: 25000
+      balance: 25000,
     },
     {
       id: "2",
@@ -31,7 +48,7 @@ const UserSavingsPage = () => {
       amount: 2000,
       date: "2024-01-10",
       description: "Emergency withdrawal",
-      balance: 20000
+      balance: 20000,
     },
     {
       id: "3",
@@ -39,15 +56,15 @@ const UserSavingsPage = () => {
       amount: 3000,
       date: "2024-01-05",
       description: "Monthly deposit",
-      balance: 22000
-    }
+      balance: 22000,
+    },
   ]);
 
   const getTransactionBadge = (type) => {
     const colors = {
       deposit: "bg-green-100 text-green-800",
       withdrawal: "bg-red-100 text-red-800",
-      interest: "bg-blue-100 text-blue-800"
+      interest: "bg-blue-100 text-blue-800",
     };
     return <Badge className={colors[type]}>{type}</Badge>;
   };
@@ -75,11 +92,15 @@ const UserSavingsPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Current Balance
+            </CardTitle>
             <PiggyBank className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(savingsAccount.balance)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(savingsAccount.balance)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Account: {savingsAccount.accountNumber}
             </p>
@@ -88,24 +109,30 @@ const UserSavingsPage = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Deposits</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Deposits
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(savingsAccount.totalDeposits)}</div>
-            <p className="text-xs text-muted-foreground">
-              Lifetime deposits
-            </p>
+            <div className="text-2xl font-bold">
+              {formatCurrency(savingsAccount.totalDeposits)}
+            </div>
+            <p className="text-xs text-muted-foreground">Lifetime deposits</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Withdrawals</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Withdrawals
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(savingsAccount.totalWithdrawals)}</div>
+            <div className="text-2xl font-bold">
+              {formatCurrency(savingsAccount.totalWithdrawals)}
+            </div>
             <p className="text-xs text-muted-foreground">
               Lifetime withdrawals
             </p>
@@ -114,14 +141,16 @@ const UserSavingsPage = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Interest Earned</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Interest Earned
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(savingsAccount.interestEarned)}</div>
-            <p className="text-xs text-muted-foreground">
-              This year
-            </p>
+            <div className="text-2xl font-bold">
+              {formatCurrency(savingsAccount.interestEarned)}
+            </div>
+            <p className="text-xs text-muted-foreground">This year</p>
           </CardContent>
         </Card>
       </div>
@@ -149,8 +178,15 @@ const UserSavingsPage = () => {
                   <TableCell>{formatDate(transaction.date)}</TableCell>
                   <TableCell>{getTransactionBadge(transaction.type)}</TableCell>
                   <TableCell>{transaction.description}</TableCell>
-                  <TableCell className={transaction.type === 'withdrawal' ? 'text-red-600' : 'text-green-600'}>
-                    {transaction.type === 'withdrawal' ? '-' : '+'}{formatCurrency(transaction.amount)}
+                  <TableCell
+                    className={
+                      transaction.type === "withdrawal"
+                        ? "text-red-600"
+                        : "text-green-600"
+                    }
+                  >
+                    {transaction.type === "withdrawal" ? "-" : "+"}
+                    {formatCurrency(transaction.amount)}
                   </TableCell>
                   <TableCell>{formatCurrency(transaction.balance)}</TableCell>
                 </TableRow>
@@ -163,4 +199,4 @@ const UserSavingsPage = () => {
   );
 };
 
-export default UserSavingsPage; 
+export default UserSavingsPage;
