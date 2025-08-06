@@ -1,5 +1,5 @@
+// client/src/pages/officer/DashboardPage.jsx
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
 import {
   ClipboardList,
   UserCheck,
@@ -29,12 +29,12 @@ import {
   formatDate,
   formatRelativeTime,
 } from "@/utils/formatters";
-import { getStatusColor } from "@/utils/uiUtils";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 const OfficerDashboardPage = () => {
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useAuth(); // Use useAuth hook for user data
 
-  // Mock data - replace with actual Redux state
+  // Mock data - replace with actual API calls using useApi hook
   const [officerStats, setOfficerStats] = useState({
     pendingApplications: 15,
     completedAssessments: 8,

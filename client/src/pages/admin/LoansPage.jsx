@@ -1,12 +1,29 @@
+// client/src/pages/admin/LoansPage.jsx
 import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Handshake, Plus, Eye, Edit, Trash2 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/utils";
+import { formatCurrency, formatDate } from "@/utils/formatters"; // Assuming formatters.js is in utils
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 const AdminLoansPage = () => {
+  const { user } = useAuth(); // Use useAuth hook for user data
+
   const [loans] = useState([
     {
       id: "1",
@@ -15,7 +32,7 @@ const AdminLoansPage = () => {
       amount: 50000,
       status: "active",
       appliedDate: "2024-01-15",
-      nextPayment: "2024-02-20"
+      nextPayment: "2024-02-20",
     },
     {
       id: "2",
@@ -24,15 +41,24 @@ const AdminLoansPage = () => {
       amount: 75000,
       status: "pending",
       appliedDate: "2024-01-18",
-      nextPayment: null
-    }
+      nextPayment: null,
+    },
+    {
+      id: "3",
+      loanNumber: "LN-2024-003",
+      borrower: "Alice Johnson",
+      amount: 120000,
+      status: "overdue",
+      appliedDate: "2024-01-01",
+      nextPayment: "2024-02-01",
+    },
   ]);
 
   const getStatusBadge = (status) => {
     const colors = {
       active: "bg-green-100 text-green-800",
       pending: "bg-yellow-100 text-yellow-800",
-      overdue: "bg-red-100 text-red-800"
+      overdue: "bg-red-100 text-red-800",
     };
     return <Badge className={colors[status]}>{status}</Badge>;
   };
@@ -42,7 +68,9 @@ const AdminLoansPage = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Loan Management</h1>
-          <p className="text-muted-foreground">Manage all loans and track repayments</p>
+          <p className="text-muted-foreground">
+            Manage all loans and track repayments
+          </p>
         </div>
         <Button>
           <Plus className="w-4 h-4 mr-2" />
@@ -71,7 +99,9 @@ const AdminLoansPage = () => {
             <TableBody>
               {loans.map((loan) => (
                 <TableRow key={loan.id}>
-                  <TableCell className="font-medium">{loan.loanNumber}</TableCell>
+                  <TableCell className="font-medium">
+                    {loan.loanNumber}
+                  </TableCell>
                   <TableCell>{loan.borrower}</TableCell>
                   <TableCell>{formatCurrency(loan.amount)}</TableCell>
                   <TableCell>{getStatusBadge(loan.status)}</TableCell>
@@ -102,4 +132,4 @@ const AdminLoansPage = () => {
   );
 };
 
-export default AdminLoansPage; 
+export default AdminLoansPage;

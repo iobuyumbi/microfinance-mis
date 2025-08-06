@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import {
   Menu,
   X,
@@ -14,11 +13,18 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getInitials } from "@/utils/userUtils";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 const LandingLayout = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isAuthenticated, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -223,24 +229,30 @@ const LandingLayout = () => {
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Everything you need to manage your microfinance operations
-              efficiently and effectively.
+              efﬁciently and effectively.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
-              <div
+              <Card
                 key={index}
-                className="text-center p-6 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                className="text-center p-6 shadow-lg hover:shadow-xl transition-shadow duration-300"
               >
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <feature.icon className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600">{feature.description}</p>
-              </div>
+                <CardHeader>
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <feature.icon className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-xl font-semibold text-gray-900 mb-2">
+                    {feature.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-gray-600">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -268,18 +280,20 @@ const LandingLayout = () => {
                 ))}
               </div>
             </div>
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="text-center">
+            <Card className="p-8 shadow-lg">
+              <CardHeader>
                 <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
                   <span className="text-white font-bold text-2xl">MF</span>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                <CardTitle className="text-2xl font-bold text-gray-900 mb-4">
                   Ready to Get Started?
-                </h3>
-                <p className="text-gray-600 mb-6">
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-gray-600 mb-6">
                   Join thousands of microfinance institutions that trust our
                   system to manage their operations.
-                </p>
+                </CardDescription>
                 <Button
                   size="lg"
                   onClick={() => navigate("/register")}
@@ -287,8 +301,8 @@ const LandingLayout = () => {
                 >
                   Start Your Free Trial
                 </Button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

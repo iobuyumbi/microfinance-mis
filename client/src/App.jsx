@@ -3,9 +3,9 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "react-error-boundary";
-import { useAuth } from "@/context/AuthContext"; // Our new Auth Context hook
+import { useAuth } from "@/context/AuthContext";
 
-// Use React.lazy for code splitting to improve initial load time.
+// Lazy load layouts
 const LandingLayout = lazy(() => import("@/layouts/LandingLayout"));
 const AuthLayout = lazy(() => import("@/layouts/AuthLayout"));
 const AdminLayout = lazy(() => import("@/layouts/AdminLayout"));
@@ -26,14 +26,19 @@ const ForgotPasswordPage = lazy(
 );
 const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
 
-// Main Application Pages
-const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
-const LoansPage = lazy(() => import("@/pages/LoansPage"));
+// Dynamic Pages
+const DynamicDashboardPage = lazy(() => import("@/pages/DynamicDashboardPage"));
+const DynamicLoansPage = lazy(() => import("@/pages/DynamicLoansPage"));
+const DynamicLoanAssessmentPage = lazy(
+  () => import("@/pages/DynamicLoanAssessmentPage")
+); // New dynamic page
+
+// Other main application pages
 const SavingsPage = lazy(() => import("@/pages/SavingsPage"));
 const MembersPage = lazy(() => import("@/pages/MembersPage"));
 const TransactionsPage = lazy(() => import("@/pages/TransactionsPage"));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage"));
-const AdminUsersPage = lazy(() => import("@/pages/admin/UsersPage"));
+const AdminUsersPage = lazy(() => import("@/pages/admin/UsersPage")); // Example of a specific admin page
 const ChatPage = lazy(() => import("@/pages/ChatPage"));
 const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
@@ -48,39 +53,36 @@ const ErrorFallback = ({ error, resetErrorBoundary }) => {
     >
       <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
       <p className="text-lg mb-4">{error.message}</p>
-      <button
+      <Button
         onClick={resetErrorBoundary}
         className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
       >
         Try again
-      </button>
+      </Button>
     </div>
   );
 };
 
-// This component uses our new useAuth hook to protect routes.
+// Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
-    return <LoadingSpinner />; // Show a loading spinner while the auth state is being checked
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  // Check if the user's role is in the list of allowed roles
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    // Redirect to a dashboard or a forbidden page if the role is not allowed
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />; // Redirect to a dashboard or a forbidden page
   }
 
   return children;
 };
 
-// This is the new, single layout component that dynamically renders the correct layout
-// based on the user's role.
+// AppLayout component
 const AppLayout = () => {
   const { user } = useAuth();
   const role = user?.role;
@@ -99,11 +101,7 @@ const AppLayout = () => {
 
 function App() {
   return (
-    // Wrap the entire app in an ErrorBoundary to catch any rendering errors
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      {/* Suspense is required for lazy-loaded components. 
-        It shows a fallback component (like a loading spinner) while the lazy component is loading.
-      */}
       <Suspense fallback={<LoadingSpinner />}>
         <div className="App">
           <Routes>
@@ -125,9 +123,7 @@ function App() {
               />
             </Route>
 
-            {/* This is the magic! A single ProtectedRoute for all authenticated pages.
-              The AppLayout component then handles rendering the correct layout based on the user's role.
-            */}
+            {/* Protected routes that use AppLayout */}
             <Route
               path="/"
               element={
@@ -136,9 +132,15 @@ function App() {
                 </ProtectedRoute>
               }
             >
-              {/* Common pages for all authenticated users, rendered within AppLayout */}
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="loans" element={<LoansPage />} />
+              {/* Dynamic Pages */}
+              <Route path="dashboard" element={<DynamicDashboardPage />} />
+              <Route path="loans" element={<DynamicLoansPage />} />
+              <Route
+                path="loan-assessments"
+                element={<DynamicLoanAssessmentPage />}
+              />{" "}
+              {/* New route */}
+              {/* Other common authenticated pages */}
               <Route path="savings" element={<SavingsPage />} />
               <Route path="members" element={<MembersPage />} />
               <Route path="transactions" element={<TransactionsPage />} />
@@ -146,7 +148,6 @@ function App() {
               <Route path="chat" element={<ChatPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
-
               {/* Admin-specific pages with role-based protection */}
               <Route
                 path="admin/users"
@@ -156,10 +157,9 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* We've simplified the routing for admin pages. You can add more here. */}
-
+              {/* Add other role-specific routes as needed */}
               {/* Redirect authenticated users from root to their dashboard */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route index element={<Navigate to="/dashboard" replace />} />
             </Route>
 
             {/* 404 Page - Catch all other routes */}
@@ -168,11 +168,10 @@ function App() {
         </div>
       </Suspense>
 
-      {/* Toast Notifications */}
+      {/* Sonner Toaster component for displaying notifications */}
       <Toaster
         position="top-right"
         toastOptions={{
-          // Your existing toaster options
           duration: 4000,
           style: { background: "white", color: "black" },
           success: {

@@ -1,5 +1,5 @@
+// client/src/pages/user/DashboardPage.jsx
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
 import {
   Handshake,
   PiggyBank,
@@ -26,12 +26,12 @@ import {
   formatDate,
   formatRelativeTime,
 } from "@/utils/formatters";
-import { getStatusColor } from "@/utils/uiUtils";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 const UserDashboardPage = () => {
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useAuth(); // Use useAuth hook for user data
 
-  // Mock data - replace with actual Redux state
+  // Mock data - replace with actual API calls using useApi hook
   const [userStats, setUserStats] = useState({
     totalSavings: 125000,
     activeLoan: 50000,

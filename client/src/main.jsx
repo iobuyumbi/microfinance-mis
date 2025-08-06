@@ -3,15 +3,16 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Provider } from "react-redux"; // Import Provider for Redux
-import { PersistGate } from "redux-persist/integration/react"; // Import PersistGate for Redux Persist
+import { Provider } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
 
-import { store, persistor } from "@/store"; // Redux store and persistor
-import { AuthProvider } from "@/context/AuthContext"; // Your new Auth Context
-import { NotificationProvider } from "@/context/NotificationContext"; // Your new Notification Context
+import { store, persistor } from "@/store";
+import { AuthProvider } from "@/context/AuthContext";
+import { SocketProvider } from "@/context/SocketContext"; // Import the SocketProvider
 
 import "./index.css";
 import App from "./App.jsx";
+import { Toaster } from "sonner"; // Import the Toaster component
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -29,28 +30,21 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    {/* 1. Redux Provider: This makes your Redux store available to your entire app.
-      PersistGate ensures your app doesn't render until the Redux state is rehydrated from storage. 
-    */}
+    {/* Redux and Redux Persist setup */}
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        {/* 2. BrowserRouter: This is the foundation for all your routing.
-         */}
+        {/* React Router for navigation */}
         <BrowserRouter>
-          {/* 3. QueryClientProvider: This makes the React Query cache available, 
-            allowing you to fetch, cache, and update server data easily. 
-          */}
+          {/* React Query for data fetching */}
           <QueryClientProvider client={queryClient}>
-            {/* 4. AuthProvider: This is our new context for handling user authentication. 
-              It provides the user object, login/logout functions, and authentication state. 
-            */}
+            {/* The core authentication context for user data */}
             <AuthProvider>
-              {/* 5. NotificationProvider: This context will be used to show global toast notifications. 
-                It's a great place to handle success or error messages from API calls. 
-              */}
-              <NotificationProvider>
+              {/* The socket context for all real-time communication */}
+              <SocketProvider>
                 <App />
-              </NotificationProvider>
+                {/* Sonner Toaster component for displaying notifications */}
+                <Toaster />
+              </SocketProvider>
             </AuthProvider>
           </QueryClientProvider>
         </BrowserRouter>

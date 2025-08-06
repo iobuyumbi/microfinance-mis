@@ -1,3 +1,4 @@
+// client/src/pages/user/LoansPage.jsx
 import React from "react";
 import {
   Card,
@@ -7,8 +8,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Handshake } from "lucide-react";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 const UserLoansPage = () => {
+  const { user } = useAuth(); // Use useAuth hook for user data
+
   return (
     <div className="space-y-6">
       <div>

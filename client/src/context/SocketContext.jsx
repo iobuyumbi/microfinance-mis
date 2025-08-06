@@ -1,4 +1,4 @@
-// src/context/SocketContext.jsx (REVISED)
+// client/src/context/SocketContext.jsx
 import React, {
   createContext,
   useContext,
@@ -6,13 +6,15 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import socketService from "@/lib/socket";
 import { useAuth } from "./AuthContext";
 import { toast } from "sonner";
 
+// Create a context for the socket state and functions.
 const SocketContext = createContext();
 
+// Custom hook to access the SocketContext.
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {
@@ -21,21 +23,26 @@ export const useSocket = () => {
   return context;
 };
 
+// The provider component that wraps the application.
 export const SocketProvider = ({ children }) => {
-  const { user, token } = useAuth();
-  const navigate = useNavigate(); // Initialize useNavigate hook
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  // Connect to socket when user is authenticated
+  // --- Main useEffect for socket lifecycle management ---
+  // Connects or disconnects the socket based on the user's authentication state.
   useEffect(() => {
+    // Retrieve the token directly from localStorage, as AuthContext is responsible for setting it.
+    const token = localStorage.getItem("token");
+
     if (user && token) {
-      // Connect if not already connected or re-connect if forceNew was true
+      // Connect to the socket with the user's authentication token.
       socketService.connect(token);
 
-      // Set up connection status listener
+      // Listener for general connection status.
       const unsubscribeConnection = socketService.on(
         "connection_status",
         ({ connected, reason }) => {
@@ -43,7 +50,6 @@ export const SocketProvider = ({ children }) => {
           if (connected) {
             toast.success("Connected to real-time updates");
           } else {
-            // You might want to be more specific with error messages based on 'reason'
             toast.error(
               `Disconnected from real-time updates: ${reason || "Unknown reason"}`
             );
@@ -51,32 +57,25 @@ export const SocketProvider = ({ children }) => {
         }
       );
 
-      // Set up notification listener
+      // Listener for incoming notifications.
       const unsubscribeNotifications = socketService.on(
         "notification",
         (notification) => {
-          // Ensure notification is an object and has a message
-          if (typeof notification !== "object" || !notification.message) {
+          if (!notification || !notification.message) {
             console.warn("Received malformed notification:", notification);
             return;
           }
           setNotifications((prev) => [notification, ...prev]);
 
-          // Show toast notification
           const toastOptions = {
             duration: 5000,
             action: {
               label: "View",
-              onClick: () => {
-                // Navigate to notifications page using useNavigate
-                navigate("/notifications");
-              },
+              onClick: () => navigate("/notifications"),
             },
-            // Add closeButton for better UX
             closeButton: true,
           };
 
-          // Determine toast type based on notification.type
           switch (notification.type) {
             case "success":
               toast.success(notification.message, toastOptions);
@@ -93,12 +92,11 @@ export const SocketProvider = ({ children }) => {
         }
       );
 
-      // Set up online users listener
+      // Listener for users coming online.
       const unsubscribeUserOnline = socketService.on(
         "user_online",
         (userData) => {
           if (!userData || !userData.id) {
-            // Basic validation
             console.warn("Received malformed user_online data:", userData);
             return;
           }
@@ -109,11 +107,11 @@ export const SocketProvider = ({ children }) => {
         }
       );
 
+      // Listener for users going offline.
       const unsubscribeUserOffline = socketService.on(
         "user_offline",
         (userData) => {
           if (!userData || !userData.id) {
-            // Basic validation
             console.warn("Received malformed user_offline data:", userData);
             return;
           }
@@ -121,7 +119,7 @@ export const SocketProvider = ({ children }) => {
         }
       );
 
-      // Set up system alerts
+      // Listener for global system alerts.
       const unsubscribeSystemAlert = socketService.on(
         "system_alert",
         (alert) => {
@@ -137,7 +135,8 @@ export const SocketProvider = ({ children }) => {
         }
       );
 
-      // Cleanup function for useEffect
+      // The cleanup function for the useEffect hook.
+      // This runs when the component unmounts or dependencies change.
       return () => {
         console.log("Cleaning up global socket listeners...");
         unsubscribeConnection();
@@ -147,21 +146,20 @@ export const SocketProvider = ({ children }) => {
         unsubscribeSystemAlert();
       };
     } else {
-      // If user logs out or token is invalid, ensure disconnection and state reset
+      // If the user logs out or the token is invalid, ensure the socket is disconnected.
       socketService.disconnect();
       setIsConnected(false);
       setOnlineUsers([]);
       setNotifications([]);
       console.log("Socket disconnected due to no user/token.");
     }
-  }, [user, token, navigate]); // Add navigate to dependency array
+  }, [user, navigate]); // The useEffect dependencies. It re-runs if `user` or `navigate` changes.
 
-  // Real-time data update handlers
+  // Callable function to subscribe to dynamic data updates from components.
   const subscribeToDataUpdates = useCallback((callbacks) => {
     const unsubscribers = [];
 
-    // All these `on` methods now return an unsubscribe function.
-    // Ensure `socketService.on` always returns a cleanup function as per socket.js
+    // The socket.js `on` method returns an unsubscribe function, which is perfect for this pattern.
     if (callbacks.onMemberUpdate) {
       unsubscribers.push(
         socketService.on("member_updated", callbacks.onMemberUpdate)
@@ -188,18 +186,17 @@ export const SocketProvider = ({ children }) => {
       );
     }
 
-    // Return cleanup function
+    // Return a single cleanup function that unsubscribes all listeners.
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
   }, []);
 
-  // Send real-time updates
+  // Functions to send events to the server.
   const sendUpdate = useCallback((event, data) => {
     socketService.send(event, data);
   }, []);
 
-  // Join/leave rooms for targeted updates
   const joinRoom = useCallback((room) => {
     socketService.joinRoom(room);
   }, []);
@@ -208,48 +205,15 @@ export const SocketProvider = ({ children }) => {
     socketService.leaveRoom(room);
   }, []);
 
-  // Typing indicators
-  const startTyping = useCallback((room) => {
-    socketService.startTyping(room);
-  }, []);
-
-  const stopTyping = useCallback((room) => {
-    socketService.stopTyping(room);
-  }, []);
-
-  // Update user status
-  const updateStatus = useCallback((status) => {
-    socketService.updateStatus(status);
-  }, []);
-
-  // Clear notifications
-  const clearNotifications = useCallback(() => {
-    setNotifications([]);
-  }, []);
-
-  // Mark notification as read
-  const markNotificationAsRead = useCallback((notificationId) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
-    );
-  }, []);
-
+  // The value object to be provided to consuming components.
   const value = {
     isConnected,
     onlineUsers,
     notifications,
-    // Functions to interact with the socket service
-    subscribeToDataUpdates,
     sendUpdate,
     joinRoom,
     leaveRoom,
-    startTyping,
-    stopTyping,
-    updateStatus,
-    clearNotifications,
-    markNotificationAsRead,
-    // Expose the socketService itself if direct access is ever needed (though generally discouraged)
-    socket: socketService,
+    subscribeToDataUpdates,
   };
 
   return (

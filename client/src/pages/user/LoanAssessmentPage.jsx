@@ -1,4 +1,4 @@
-// client/src/pages/officer/LoanAssessmentPage.jsx
+// client/src/pages/user/LoanAssessmentPage.jsx
 import React from "react";
 import {
   Card,
@@ -7,18 +7,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { UserCheck, Clock, CheckCircle } from "lucide-react";
+import { FileText, CheckCircle, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-const OfficerLoanAssessmentPage = () => {
+const UserLoanAssessmentPage = () => {
   const { user } = useAuth(); // Use useAuth hook for user data
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Loan Assessments</h1>
+        <h1 className="text-3xl font-bold text-gray-900">
+          My Loan Assessment Status
+        </h1>
         <p className="text-gray-600">
-          Conduct and manage loan assessments for applicants.
+          Track the status of your loan applications and assessments.
         </p>
       </div>
 
@@ -30,20 +32,20 @@ const OfficerLoanAssessmentPage = () => {
               Pending Assessments
             </CardTitle>
             <CardDescription>
-              Loan applications awaiting your assessment.
+              Your loan applications currently under review.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-500">
-              This section lists all loan applications that require your
-              assessment. You can review the application details, conduct
-              interviews, and perform credit checks here.
+              This section shows the status of your loan applications that are
+              currently being assessed by a loan officer. You can see the
+              current stage of the process.
             </p>
             <ul className="mt-2 text-gray-500 list-disc list-inside space-y-1">
-              <li>View applicant details</li>
-              <li>Access submitted documents</li>
-              <li>Initiate assessment process</li>
-              <li>Submit assessment reports</li>
+              <li>View application submission date</li>
+              <li>See current assessment stage</li>
+              <li>Check for required additional documents</li>
+              <li>Receive updates on assessment progress</li>
             </ul>
           </CardContent>
         </Card>
@@ -55,19 +57,19 @@ const OfficerLoanAssessmentPage = () => {
               Completed Assessments
             </CardTitle>
             <CardDescription>
-              Your recently completed loan assessments.
+              Your loan applications that have been assessed.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-500">
-              Review the history of loan assessments you have completed. This
-              provides an overview of your past work and decisions.
+              Here you can find the results of your past loan assessments,
+              including approval or rejection status and any relevant feedback.
             </p>
             <ul className="mt-2 text-gray-500 list-disc list-inside space-y-1">
-              <li>View completed assessment reports</li>
-              <li>Track assessment outcomes</li>
-              <li>Access archived assessment data</li>
-              <li>Review performance metrics</li>
+              <li>View final assessment decision</li>
+              <li>Access assessment report (if applicable)</li>
+              <li>Review loan terms for approved applications</li>
+              <li>Understand reasons for rejection (if applicable)</li>
             </ul>
           </CardContent>
         </Card>
@@ -76,4 +78,4 @@ const OfficerLoanAssessmentPage = () => {
   );
 };
 
-export default OfficerLoanAssessmentPage;
+export default UserLoanAssessmentPage;

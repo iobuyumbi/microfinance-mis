@@ -1,5 +1,5 @@
+// client/src/pages/admin/DashboardPage.jsx
 import React from "react";
-import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -11,8 +11,6 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  ArrowUpRight,
-  ArrowDownRight,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -26,21 +24,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useApi } from "@/hooks/useApi";
-import { dashboardService } from "@/services/dashboardService";
+import { useApi } from "@/hooks/useApi"; // This hook will be defined in the next step
+import { dashboardService } from "@/services/dashboardService"; // Assuming this service exists
 import {
   formatCurrency,
   formatDate,
   formatRelativeTime,
 } from "@/utils/formatters";
-import { getInitials, getRoleDisplayName } from "@/utils/userUtils";
-import { getStatusColor } from "@/utils/uiUtils";
+import { getInitials } from "@/utils/userUtils"; // getRoleDisplayName was not in your provided userUtils
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useAuth(); // Use useAuth hook for user data
 
   // API hooks for dashboard data
+  // These will use the useApi hook, which wraps React Query
   const {
     data: stats,
     loading: statsLoading,
