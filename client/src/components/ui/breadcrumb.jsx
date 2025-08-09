@@ -47,7 +47,7 @@ function BreadcrumbLink({
   return (
     <Comp
       data-slot="breadcrumb-link"
-      className={cn("hover:text-foreground transition-colors", className)}
+      className={cn("hover:text-[hsl(var(--foreground))] transition-colors", className)}
       {...props} />
   );
 }
@@ -62,7 +62,7 @@ function BreadcrumbPage({
       role="link"
       aria-disabled="true"
       aria-current="page"
-      className={cn("text-foreground font-normal", className)}
+      className={cn("text-[hsl(var(--foreground))] font-normal", className)}
       {...props} />
   );
 }

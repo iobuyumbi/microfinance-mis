@@ -12,7 +12,7 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2
       compression:
-        specifier: ^1.8.1
+        specifier: ^1.7.4
         version: 1.8.1
       cors:
         specifier: ^2.8.5
@@ -27,10 +27,10 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       express-rate-limit:
-        specifier: ^7.5.1
+        specifier: ^7.1.5
         version: 7.5.1(express@5.1.0)
       helmet:
-        specifier: ^7.2.0
+        specifier: ^7.1.0
         version: 7.2.0
       hpp:
         specifier: ^0.2.3

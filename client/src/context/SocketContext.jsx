@@ -1,20 +1,9 @@
-// client/src/context/SocketContext.jsx
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
-import { useNavigate } from "react-router-dom";
-import socketService from "@/lib/socket";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { toast } from "sonner";
+import { io } from "socket.io-client";
 
-// Create a context for the socket state and functions.
 const SocketContext = createContext();
 
-// Custom hook to access the SocketContext.
 export const useSocket = () => {
   const context = useContext(SocketContext);
   if (!context) {
@@ -23,197 +12,107 @@ export const useSocket = () => {
   return context;
 };
 
-// The provider component that wraps the application.
 export const SocketProvider = ({ children }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
+  const { user, isAuthenticated } = useAuth();
+  const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
-  // --- Main useEffect for socket lifecycle management ---
-  // Connects or disconnects the socket based on the user's authentication state.
   useEffect(() => {
-    // Retrieve the token directly from localStorage, as AuthContext is responsible for setting it.
-    const token = localStorage.getItem("token");
+    if (isAuthenticated && user) {
+      // Prefer dedicated socket URL, else derive from API and strip trailing /api
+      const rawUrl =
+        import.meta.env.VITE_SOCKET_URL ||
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:5000";
+      const serverUrl = rawUrl.replace(/\/?api\/?$/, "");
 
-    if (user && token) {
-      // Connect to the socket with the user's authentication token.
-      socketService.connect(token);
+      const newSocket = io(serverUrl, {
+        auth: {
+          token: localStorage.getItem("token"),
+        },
+        transports: ["websocket", "polling"],
+        timeout: 20000,
+        forceNew: true,
+        autoConnect: true,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+      });
 
-      // Listener for general connection status.
-      const unsubscribeConnection = socketService.on(
-        "connection_status",
-        ({ connected, reason }) => {
-          setIsConnected(connected);
-          if (connected) {
-            toast.success("Connected to real-time updates");
-          } else {
-            toast.error(
-              `Disconnected from real-time updates: ${reason || "Unknown reason"}`
-            );
-          }
-        }
-      );
+      newSocket.on("connect", () => {
+        console.log("Socket connected");
+        setIsConnected(true);
+      });
 
-      // Listener for incoming notifications.
-      const unsubscribeNotifications = socketService.on(
-        "notification",
-        (notification) => {
-          if (!notification || !notification.message) {
-            console.warn("Received malformed notification:", notification);
-            return;
-          }
-          setNotifications((prev) => [notification, ...prev]);
+      newSocket.on("disconnect", () => {
+        console.log("Socket disconnected");
+        setIsConnected(false);
+      });
 
-          const toastOptions = {
-            duration: 5000,
-            action: {
-              label: "View",
-              onClick: () => navigate("/notifications"),
-            },
-            closeButton: true,
-          };
+      // Align with server event names
+      newSocket.on("notification", (notification) => {
+        setNotifications((prev) => [notification, ...prev]);
+      });
 
-          switch (notification.type) {
-            case "success":
-              toast.success(notification.message, toastOptions);
-              break;
-            case "warning":
-              toast.warning(notification.message, toastOptions);
-              break;
-            case "error":
-              toast.error(notification.message, toastOptions);
-              break;
-            default:
-              toast.info(notification.message, toastOptions);
-          }
-        }
-      );
+      newSocket.on("new_message", (message) => {
+        // Handle incoming chat messages
+        console.log("New chat message:", message);
+      });
 
-      // Listener for users coming online.
-      const unsubscribeUserOnline = socketService.on(
-        "user_online",
-        (userData) => {
-          if (!userData || !userData.id) {
-            console.warn("Received malformed user_online data:", userData);
-            return;
-          }
-          setOnlineUsers((prev) => {
-            const filtered = prev.filter((u) => u.id !== userData.id);
-            return [...filtered, userData];
-          });
-        }
-      );
+      newSocket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+      });
 
-      // Listener for users going offline.
-      const unsubscribeUserOffline = socketService.on(
-        "user_offline",
-        (userData) => {
-          if (!userData || !userData.id) {
-            console.warn("Received malformed user_offline data:", userData);
-            return;
-          }
-          setOnlineUsers((prev) => prev.filter((u) => u.id !== userData.id));
-        }
-      );
+      setSocket(newSocket);
 
-      // Listener for global system alerts.
-      const unsubscribeSystemAlert = socketService.on(
-        "system_alert",
-        (alert) => {
-          if (!alert || !alert.message) {
-            console.warn("Received malformed system_alert data:", alert);
-            return;
-          }
-          toast.error(alert.message, {
-            duration: 10000,
-            important: true,
-            closeButton: true,
-          });
-        }
-      );
-
-      // The cleanup function for the useEffect hook.
-      // This runs when the component unmounts or dependencies change.
       return () => {
-        console.log("Cleaning up global socket listeners...");
-        unsubscribeConnection();
-        unsubscribeNotifications();
-        unsubscribeUserOnline();
-        unsubscribeUserOffline();
-        unsubscribeSystemAlert();
+        newSocket.close();
       };
-    } else {
-      // If the user logs out or the token is invalid, ensure the socket is disconnected.
-      socketService.disconnect();
-      setIsConnected(false);
-      setOnlineUsers([]);
-      setNotifications([]);
-      console.log("Socket disconnected due to no user/token.");
     }
-  }, [user, navigate]); // The useEffect dependencies. It re-runs if `user` or `navigate` changes.
+  }, [isAuthenticated, user]);
 
-  // Callable function to subscribe to dynamic data updates from components.
-  const subscribeToDataUpdates = useCallback((callbacks) => {
-    const unsubscribers = [];
-
-    // The socket.js `on` method returns an unsubscribe function, which is perfect for this pattern.
-    if (callbacks.onMemberUpdate) {
-      unsubscribers.push(
-        socketService.on("member_updated", callbacks.onMemberUpdate)
-      );
+  const sendMessage = (payload) => {
+    if (socket && isConnected) {
+      socket.emit("send-message", payload);
     }
-    if (callbacks.onLoanUpdate) {
-      unsubscribers.push(
-        socketService.on("loan_updated", callbacks.onLoanUpdate)
-      );
+  };
+
+  const joinGroup = (groupId) => {
+    if (socket && isConnected) {
+      socket.emit("join-group", { groupId });
     }
-    if (callbacks.onTransactionCreate) {
-      unsubscribers.push(
-        socketService.on("transaction_created", callbacks.onTransactionCreate)
-      );
+  };
+
+  const leaveGroup = (groupId) => {
+    if (socket && isConnected) {
+      socket.emit("leave-group", { groupId });
     }
-    if (callbacks.onSavingsUpdate) {
-      unsubscribers.push(
-        socketService.on("savings_updated", callbacks.onSavingsUpdate)
-      );
-    }
-    if (callbacks.onMeetingReminder) {
-      unsubscribers.push(
-        socketService.on("meeting_reminder", callbacks.onMeetingReminder)
-      );
-    }
+  };
 
-    // Return a single cleanup function that unsubscribes all listeners.
-    return () => {
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
-    };
-  }, []);
+  const markNotificationAsRead = (notificationId) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, read: true }
+          : notification
+      )
+    );
+  };
 
-  // Functions to send events to the server.
-  const sendUpdate = useCallback((event, data) => {
-    socketService.send(event, data);
-  }, []);
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
 
-  const joinRoom = useCallback((room) => {
-    socketService.joinRoom(room);
-  }, []);
-
-  const leaveRoom = useCallback((room) => {
-    socketService.leaveRoom(room);
-  }, []);
-
-  // The value object to be provided to consuming components.
   const value = {
+    socket,
     isConnected,
-    onlineUsers,
     notifications,
-    sendUpdate,
-    joinRoom,
-    leaveRoom,
-    subscribeToDataUpdates,
+    sendMessage,
+    joinGroup,
+    leaveGroup,
+    markNotificationAsRead,
+    clearNotifications,
   };
 
   return (

@@ -1,65 +1,71 @@
-// client/src/services/memberService.js
-import { api } from "./api/client";
+import api from "./api";
 
-export const memberService = {
-  // === MEMBER MANAGEMENT ===
+class MemberService {
+  // Get all members
+  async getMembers(params = {}) {
+    const response = await api.get("/members", { params });
+    return response.data;
+  }
 
-  // Create a new member
-  createMember: (memberData) => api.post("/members", memberData),
+  // Get member by ID
+  async getMember(id) {
+    const response = await api.get(`/members/${id}`);
+    return response.data;
+  }
 
-  // Get all members (with optional filtering)
-  getAllMembers: (params) => api.get("/members", { params }),
+  // Create new member
+  async createMember(memberData) {
+    const response = await api.post("/members", memberData);
+    return response.data;
+  }
 
-  // Get a single member by ID
-  getMemberById: (id) => api.get(`/members/${id}`),
+  // Update member
+  async updateMember(id, memberData) {
+    const response = await api.put(`/members/${id}`, memberData);
+    return response.data;
+  }
 
-  // Update a member's details
-  updateMember: (id, memberData) => api.put(`/members/${id}`, memberData),
+  // Delete member
+  async deleteMember(id) {
+    const response = await api.delete(`/members/${id}`);
+    return response.data;
+  }
 
-  // Delete/Deactivate a member
-  deleteMember: (id) => api.delete(`/members/${id}`),
+  // Get member statistics
+  async getMemberStats() {
+    const response = await api.get("/members/stats");
+    return response.data;
+  }
 
-  // === GROUP MANAGEMENT ===
+  // Get members by group
+  async getMembersByGroup(groupId) {
+    const response = await api.get(`/members/group/${groupId}`);
+    return response.data;
+  }
 
-  // Create a new group
-  createGroup: (groupData) => api.post("/groups", groupData),
+  // Add member to group
+  async addMemberToGroup(memberId, groupId) {
+    const response = await api.post(`/members/${memberId}/groups`, { groupId });
+    return response.data;
+  }
 
-  // Get all groups (with optional filtering)
-  getAllGroups: (params) => api.get("/groups", { params }),
+  // Remove member from group
+  async removeMemberFromGroup(memberId, groupId) {
+    const response = await api.delete(`/members/${memberId}/groups/${groupId}`);
+    return response.data;
+  }
 
-  // Get a single group by ID
-  getGroupById: (id) => api.get(`/groups/${id}`),
+  // Get member profile
+  async getMemberProfile(id) {
+    const response = await api.get(`/members/${id}/profile`);
+    return response.data;
+  }
 
-  // Update a group's details
-  updateGroup: (id, groupData) => api.put(`/groups/${id}`, groupData),
+  // Update member profile
+  async updateMemberProfile(id, profileData) {
+    const response = await api.put(`/members/${id}/profile`, profileData);
+    return response.data;
+  }
+}
 
-  // Delete/Dissolve a group
-  deleteGroup: (id) => api.delete(`/groups/${id}`),
-
-  // === GROUP MEMBERSHIP MANAGEMENT ===
-
-  // Add a member to a group
-  addMemberToGroup: (memberId, groupId, memberData = {}) =>
-    api.post(`/members/${memberId}/groups/${groupId}`, memberData),
-
-  // Remove a member from a group
-  removeMemberFromGroup: (memberId, groupId, newLeaderId = null) => {
-    const config = newLeaderId ? { data: { newLeaderId } } : {};
-    return api.delete(`/members/${memberId}/groups/${groupId}`, config);
-  },
-
-  // Update a member's role within a group
-  updateMemberRoleInGroup: (memberId, groupId, roleData) =>
-    api.put(`/members/${memberId}/groups/${groupId}/role`, roleData),
-
-  // Get all members of a specific group
-  getGroupMembers: (groupId) => api.get(`/groups/${groupId}/members`),
-
-  // Allow a user to join a group (self-service)
-  joinGroup: (groupId) => api.post(`/groups/${groupId}/join`),
-
-  // === USER-GROUP RELATIONSHIPS ===
-
-  // Get all groups that a user is a member of
-  getUserGroups: (userId) => api.get(`/users/${userId}/groups`),
-};
+export const memberService = new MemberService(); 

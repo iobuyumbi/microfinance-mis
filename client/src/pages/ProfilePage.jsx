@@ -1,481 +1,373 @@
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "../hooks/useAuth";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+  FacebookCard,
+  FacebookCardHeader,
+  FacebookCardContent,
+} from "../components/ui/facebook-card";
+import { Badge } from "../components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import {
+  Edit,
+  Save,
+  X,
   User,
   Mail,
   Phone,
   MapPin,
   Calendar,
   Shield,
+  Activity,
+  Settings,
   Camera,
-  Edit,
-  Save,
-  X,
-  Eye,
-  EyeOff,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 
 const ProfilePage = () => {
-  const { user, updateProfile, changePassword, uploadAvatar } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const [profileData, setProfileData] = useState({
+  const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
     phone: user?.phone || "",
     address: user?.address || "",
-    bio: user?.bio || "",
   });
-
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
-  const handleProfileUpdate = async () => {
-    try {
-      setLoading(true);
-      const result = await updateProfile(profileData);
-      if (result.success) {
-        setIsEditing(false);
-        toast.success("Profile updated successfully");
-      }
-    } catch (error) {
-      console.error("Failed to update profile:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords do not match");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const result = await changePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword,
-      });
-      if (result.success) {
-        setIsChangingPassword(false);
-        setPasswordData({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
-        toast.success("Password changed successfully");
-      }
-    } catch (error) {
-      console.error("Failed to change password:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAvatarUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const result = await uploadAvatar(file);
-      if (result.success) {
-        toast.success("Avatar updated successfully");
-      }
-    } catch (error) {
-      console.error("Failed to upload avatar:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setProfileData((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handlePasswordInputChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleSave = async () => {
+    try {
+      await updateProfile(formData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+    }
   };
 
-  const getRoleBadge = (role) => {
-    const variants = {
-      admin: "destructive",
-      officer: "default",
-      leader: "secondary",
-      member: "outline",
-    };
-    return (
-      <Badge variant={variants[role]} className="capitalize">
-        {role}
-      </Badge>
-    );
+  const handleCancel = () => {
+    setFormData({
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      address: user?.address || "",
+    });
+    setIsEditing(false);
   };
+
+  const profileStats = [
+    {
+      label: "Total Loans",
+      value: "5",
+      icon: Shield,
+      color: "text-blue-600",
+    },
+    {
+      label: "Active Savings",
+      value: "$2,450",
+      icon: Activity,
+      color: "text-green-600",
+    },
+    {
+      label: "Group Memberships",
+      value: "2",
+      icon: User,
+      color: "text-purple-600",
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profile</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your account information and settings
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Profile
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          Manage your account information and settings
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Card */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <div className="relative inline-block">
-                  <Avatar className="h-24 w-24 mx-auto">
+        {/* Profile Overview */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Profile Header */}
+          <FacebookCard>
+            <FacebookCardContent className="p-8">
+              <div className="flex items-center gap-6">
+                <div className="relative">
+                  <Avatar className="h-24 w-24">
                     <AvatarImage src={user?.avatar} />
-                    <AvatarFallback className="text-2xl">
-                      {user?.name?.charAt(0)}
+                    <AvatarFallback className="text-2xl bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      {user?.name?.charAt(0) || <User className="h-12 w-12" />}
                     </AvatarFallback>
                   </Avatar>
-                  <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                  >
                     <Camera className="h-4 w-4" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  </Button>
                 </div>
-                <h2 className="text-xl font-bold mt-4">{user?.name}</h2>
-                <p className="text-gray-600">{user?.email}</p>
-                <div className="mt-2">{getRoleBadge(user?.role)}</div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Member since {new Date(user?.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList>
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="profile" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Personal Information</CardTitle>
-                      <CardDescription>
-                        Update your personal information and contact details
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant={isEditing ? "outline" : "default"}
-                      onClick={() => setIsEditing(!isEditing)}
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {user?.name}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {user?.email}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge className="capitalize bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      {user?.role}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
                     >
-                      {isEditing ? (
-                        <>
-                          <X className="mr-2 h-4 w-4" />
-                          Cancel
-                        </>
-                      ) : (
-                        <>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </>
-                      )}
+                      Active
+                    </Badge>
+                  </div>
+                </div>
+                {!isEditing ? (
+                  <Button
+                    onClick={() => setIsEditing(true)}
+                    variant="outline"
+                    className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={handleSave}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save
+                    </Button>
+                    <Button onClick={handleCancel} variant="outline">
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
                     </Button>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={profileData.name}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={profileData.email}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        value={profileData.phone}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Enter phone number"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="address">Address</Label>
-                      <Input
-                        id="address"
-                        name="address"
-                        value={profileData.address}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Enter address"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      name="bio"
-                      value={profileData.bio}
+                )}
+              </div>
+            </FacebookCardContent>
+          </FacebookCard>
+
+          {/* Personal Information */}
+          <FacebookCard>
+            <FacebookCardHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Personal Information
+                </h2>
+              </div>
+            </FacebookCardHeader>
+            <FacebookCardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="name"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Full Name
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
                       disabled={!isEditing}
-                      rows={3}
-                      placeholder="Tell us about yourself..."
+                      className="pl-10 h-11 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  {isEditing && (
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsEditing(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button onClick={handleProfileUpdate} disabled={loading}>
-                        {loading ? "Saving..." : "Save Changes"}
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Email Address
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className="pl-10 h-11 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="phone"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Phone Number
+                  </Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className="pl-10 h-11 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="address"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Address
+                  </Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      className="pl-10 h-11 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </FacebookCardContent>
+          </FacebookCard>
 
-            <TabsContent value="security" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+          {/* Profile Stats */}
+          <FacebookCard>
+            <FacebookCardHeader>
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Profile Statistics
+                </h2>
+              </div>
+            </FacebookCardHeader>
+            <FacebookCardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {profileStats.map((stat, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
+                  >
+                    <div className={`p-2 rounded-lg bg-white dark:bg-gray-700`}>
+                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                    </div>
                     <div>
-                      <CardTitle>Change Password</CardTitle>
-                      <CardDescription>
-                        Update your password to keep your account secure
-                      </CardDescription>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {stat.label}
+                      </p>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {stat.value}
+                      </p>
                     </div>
-                    <Button
-                      variant={isChangingPassword ? "outline" : "default"}
-                      onClick={() => setIsChangingPassword(!isChangingPassword)}
-                    >
-                      {isChangingPassword ? (
-                        <>
-                          <X className="mr-2 h-4 w-4" />
-                          Cancel
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="mr-2 h-4 w-4" />
-                          Change Password
-                        </>
-                      )}
-                    </Button>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isChangingPassword ? (
-                    <>
-                      <div>
-                        <Label htmlFor="currentPassword">
-                          Current Password
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="currentPassword"
-                            name="currentPassword"
-                            type={showPassword ? "text" : "password"}
-                            value={passwordData.currentPassword}
-                            onChange={handlePasswordInputChange}
-                            placeholder="Enter current password"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <div className="relative">
-                          <Input
-                            id="newPassword"
-                            name="newPassword"
-                            type={showNewPassword ? "text" : "password"}
-                            value={passwordData.newPassword}
-                            onChange={handlePasswordInputChange}
-                            placeholder="Enter new password"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                          >
-                            {showNewPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="confirmPassword">
-                          Confirm New Password
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            type={showConfirmPassword ? "text" : "password"}
-                            value={passwordData.confirmPassword}
-                            onChange={handlePasswordInputChange}
-                            placeholder="Confirm new password"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() =>
-                              setShowConfirmPassword(!showConfirmPassword)
-                            }
-                          >
-                            {showConfirmPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsChangingPassword(false);
-                            setPasswordData({
-                              currentPassword: "",
-                              newPassword: "",
-                              confirmPassword: "",
-                            });
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handlePasswordChange}
-                          disabled={loading}
-                        >
-                          {loading ? "Changing..." : "Change Password"}
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <Shield className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>Click "Change Password" to update your password</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                ))}
+              </div>
+            </FacebookCardContent>
+          </FacebookCard>
+        </div>
 
-            <TabsContent value="preferences" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Preferences</CardTitle>
-                  <CardDescription>
-                    Manage your account preferences and settings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-gray-500">
-                    <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>Account preferences will be displayed here</p>
+        {/* Profile Summary */}
+        <div className="space-y-6">
+          <FacebookCard>
+            <FacebookCardHeader>
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Account Details
+                </h2>
+              </div>
+            </FacebookCardHeader>
+            <FacebookCardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Member Since:
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    Jan 2024
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Last Login:
+                    </span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    Today
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Account Status:
+                    </span>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                    Active
+                  </Badge>
+                </div>
+              </div>
+            </FacebookCardContent>
+          </FacebookCard>
+
+          <FacebookCard>
+            <FacebookCardHeader>
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Quick Actions
+                </h2>
+              </div>
+            </FacebookCardHeader>
+            <FacebookCardContent>
+              <div className="space-y-3">
+                <Button variant="outline" className="w-full justify-start h-11">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Account Settings
+                </Button>
+                <Button variant="outline" className="w-full justify-start h-11">
+                  <Shield className="mr-2 h-4 w-4" />
+                  Security Settings
+                </Button>
+                <Button variant="outline" className="w-full justify-start h-11">
+                  <Activity className="mr-2 h-4 w-4" />
+                  Activity History
+                </Button>
+              </div>
+            </FacebookCardContent>
+          </FacebookCard>
         </div>
       </div>
     </div>

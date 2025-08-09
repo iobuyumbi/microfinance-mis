@@ -1,156 +1,55 @@
-import React, { forwardRef, createContext, useContext } from "react";
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
 import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
 
-// Button variants using class-variance-authority
+import { cn } from "@/lib/utils"
+
 const buttonVariants = cva(
-  // Base styles
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
         default:
-          "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800",
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
         destructive:
-          "bg-error-600 text-white hover:bg-error-700 active:bg-error-800",
+          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border border-border-primary bg-transparent hover:bg-surface-secondary hover:text-text-primary",
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
         secondary:
-          "bg-secondary-100 text-secondary-900 hover:bg-secondary-200 active:bg-secondary-300",
-        ghost: "hover:bg-surface-secondary hover:text-text-primary",
-        link: "text-primary-600 underline-offset-4 hover:underline",
-        success:
-          "bg-success-600 text-white hover:bg-success-700 active:bg-success-800",
-        warning:
-          "bg-warning-600 text-white hover:bg-warning-700 active:bg-warning-800",
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-12 rounded-md px-8 text-base",
-        xl: "h-14 rounded-lg px-10 text-lg",
-        icon: "h-10 w-10",
-        "icon-sm": "h-8 w-8",
-        "icon-lg": "h-12 w-12",
-      },
-      fullWidth: {
-        true: "w-full",
-        false: "",
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
-      fullWidth: false,
     },
   }
-);
+)
 
-// Button Group Context
-const ButtonGroupContext = createContext({
-  variant: "default",
-  size: "default",
-  fullWidth: false,
-});
-
-// Button Group Component
-const ButtonGroup = ({
-  children,
-  variant = "default",
-  size = "default",
-  fullWidth = false,
+function Button({
   className,
+  variant,
+  size,
+  asChild = false,
   ...props
-}) => {
+}) {
+  const Comp = asChild ? Slot : "button"
+
   return (
-    <ButtonGroupContext.Provider value={{ variant, size, fullWidth }}>
-      <div
-        className={cn("inline-flex", fullWidth && "w-full", className)}
-        {...props}
-      >
-        {children}
-      </div>
-    </ButtonGroupContext.Provider>
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props} />
   );
-};
+}
 
-// Main Button Component
-const Button = forwardRef(
-  (
-    {
-      className,
-      variant,
-      size,
-      fullWidth,
-      loading = false,
-      loadingText,
-      leftIcon,
-      rightIcon,
-      children,
-      disabled,
-      ...props
-    },
-    ref
-  ) => {
-    const groupContext = useContext(ButtonGroupContext);
-
-    // Use group context values if not explicitly provided
-    const finalVariant = variant || groupContext.variant;
-    const finalSize = size || groupContext.size;
-    const finalFullWidth = fullWidth ?? groupContext.fullWidth;
-
-    const isDisabled = disabled || loading;
-
-    return (
-      <button
-        className={cn(
-          buttonVariants({
-            variant: finalVariant,
-            size: finalSize,
-            fullWidth: finalFullWidth,
-          }),
-          className
-        )}
-        ref={ref}
-        disabled={isDisabled}
-        {...props}
-      >
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {!loading && leftIcon && <span className="mr-2">{leftIcon}</span>}
-        {loading && loadingText ? loadingText : children}
-        {!loading && rightIcon && <span className="ml-2">{rightIcon}</span>}
-      </button>
-    );
-  }
-);
-
-Button.displayName = "Button";
-
-// Button Group Item Component
-const ButtonGroupItem = forwardRef(
-  ({ className, variant, size, fullWidth, ...props }, ref) => {
-    const groupContext = useContext(ButtonGroupContext);
-
-    return (
-      <Button
-        ref={ref}
-        className={cn(
-          "rounded-none first:rounded-l-md last:rounded-r-md",
-          "border-r border-border-primary last:border-r-0",
-          className
-        )}
-        variant={variant || groupContext.variant}
-        size={size || groupContext.size}
-        fullWidth={fullWidth ?? groupContext.fullWidth}
-        {...props}
-      />
-    );
-  }
-);
-
-ButtonGroupItem.displayName = "ButtonGroupItem";
-
-// Export components
-export { Button, ButtonGroup, ButtonGroupItem, buttonVariants };
-export default Button;
+export { Button, buttonVariants }

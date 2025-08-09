@@ -1,34 +1,77 @@
-import { api } from './api/client';
-import { ENDPOINTS } from './api/endpoints';
+import api from "./api";
 
-export const loanService = {
-  getAll: (params) =>
-    api.get(ENDPOINTS.LOANS.BASE, { params }),
+class LoanService {
+  // Get all loans
+  async getLoans(params = {}) {
+    const response = await api.get("/loans", { params });
+    return response.data;
+  }
 
-  getById: (id) =>
-    api.get(ENDPOINTS.LOANS.BY_ID(id)),
+  // Get loan by ID
+  async getLoan(id) {
+    const response = await api.get(`/loans/${id}`);
+    return response.data;
+  }
 
-  create: (data) =>
-    api.post(ENDPOINTS.LOANS.APPLY, data),
+  // Create new loan
+  async createLoan(loanData) {
+    const response = await api.post("/loans", loanData);
+    return response.data;
+  }
 
-  update: (id, data) =>
-    api.put(ENDPOINTS.LOANS.BY_ID(id), data),
+  // Update loan
+  async updateLoan(id, loanData) {
+    const response = await api.put(`/loans/${id}`, loanData);
+    return response.data;
+  }
 
-  remove: (id) =>
-    api.delete(ENDPOINTS.LOANS.BY_ID(id)),
+  // Delete loan
+  async deleteLoan(id) {
+    const response = await api.delete(`/loans/${id}`);
+    return response.data;
+  }
 
-  approve: (id, approvalData) =>
-    api.put(ENDPOINTS.LOANS.APPROVE(id), approvalData),
+  // Approve loan
+  async approveLoan(id, approvalData) {
+    const response = await api.put(`/loans/${id}/approve`, approvalData);
+    return response.data;
+  }
 
-  getStats: (params) =>
-    api.get(ENDPOINTS.LOANS.STATS, { params }),
+  // Reject loan
+  async rejectLoan(id, rejectionData) {
+    const response = await api.put(`/loans/${id}/reject`, rejectionData);
+    return response.data;
+  }
 
-  getRepaymentSchedule: (id) =>
-    api.get(ENDPOINTS.LOANS.REPAYMENT_SCHEDULE(id)),
+  // Get loan statistics
+  async getLoanStats() {
+    const response = await api.get("/loans/stats");
+    return response.data;
+  }
 
-  addPayment: (id, paymentData) =>
-    api.post(ENDPOINTS.LOANS.PAYMENTS(id), paymentData),
+  // Get pending loans
+  async getPendingLoans() {
+    const response = await api.get("/loans/pending");
+    return response.data;
+  }
 
-  getPayments: (id, params) =>
-    api.get(ENDPOINTS.LOANS.PAYMENTS(id), { params }),
-};
+  // Get overdue loans
+  async getOverdueLoans() {
+    const response = await api.get("/loans/overdue");
+    return response.data;
+  }
+
+  // Get member loans
+  async getMemberLoans(memberId) {
+    const response = await api.get(`/loans/member/${memberId}`);
+    return response.data;
+  }
+
+  // Get group loans
+  async getGroupLoans(groupId) {
+    const response = await api.get(`/loans/group/${groupId}`);
+    return response.data;
+  }
+}
+
+export const loanService = new LoanService(); 

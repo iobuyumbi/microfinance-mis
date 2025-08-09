@@ -1,179 +1,67 @@
 import React from "react";
-import { AlertTriangle, RefreshCw, Home, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { Button } from "../ui/button";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      errorId: null,
-    };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {
-    // Update state so the next render will show the fallback UI
-    return {
-      hasError: true,
-      error,
-      errorId: Date.now().toString(36) + Math.random().toString(36).substr(2),
-    };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error to console in development
-    if (import.meta.env.DEV) {
-      console.error("Error Boundary caught an error:", error, errorInfo);
-    }
-
-    // Log error to external service in production
-    if (import.meta.env.PROD) {
-      this.logErrorToService(error, errorInfo);
-    }
-
-    this.setState({
-      errorInfo,
-    });
+    console.error("Error caught by boundary:", error, errorInfo);
   }
-
-  logErrorToService = (error, errorInfo) => {
-    // TODO: Implement error logging service (e.g., Sentry, LogRocket)
-    // Example:
-    // Sentry.captureException(error, {
-    //   extra: errorInfo,
-    //   tags: {
-    //     errorId: this.state.errorId,
-    //     component: this.props.componentName || 'Unknown',
-    //   },
-    // });
-  };
-
-  handleRetry = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      errorId: null,
-    });
-  };
-
-  handleGoHome = () => {
-    window.location.href = "/";
-  };
-
-  handleGoBack = () => {
-    window.history.back();
-  };
 
   render() {
     if (this.state.hasError) {
-      const { error, errorId } = this.state;
-      const { fallback: FallbackComponent, showDetails = false } = this.props;
-
-      // Custom fallback component
-      if (FallbackComponent) {
-        return (
-          <FallbackComponent
-            error={error}
-            errorId={errorId}
-            onRetry={this.handleRetry}
-          />
-        );
-      }
-
-      // Default error UI
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <CardTitle className="text-xl font-semibold text-gray-900">
-                Something went wrong
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                We're sorry, but something unexpected happened. Please try
-                again.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Error ID for debugging */}
-              {errorId && (
-                <div className="text-xs text-gray-500 text-center">
-                  Error ID: {errorId}
-                </div>
-              )}
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
 
-              {/* Error details in development */}
-              {import.meta.env.DEV && showDetails && error && (
-                <details className="text-xs bg-gray-100 p-3 rounded">
-                  <summary className="cursor-pointer font-medium mb-2">
-                    Error Details (Development)
-                  </summary>
-                  <pre className="whitespace-pre-wrap text-red-600">
-                    {error.toString()}
-                  </pre>
-                  {this.state.errorInfo && (
-                    <pre className="whitespace-pre-wrap text-gray-600 mt-2">
-                      {this.state.errorInfo.componentStack}
-                    </pre>
-                  )}
-                </details>
-              )}
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Something went wrong
+            </h2>
 
-              {/* Action buttons */}
-              <div className="flex flex-col space-y-2">
-                <Button onClick={this.handleRetry} className="w-full">
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
+            <p className="text-gray-600 mb-6">
+              We're sorry, but something unexpected happened. Please try
+              refreshing the page.
+            </p>
 
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    onClick={this.handleGoBack}
-                    className="flex-1"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Go Back
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={this.handleGoHome}
-                    className="flex-1"
-                  >
-                    <Home className="w-4 h-4 mr-2" />
-                    Home
-                  </Button>
-                </div>
-              </div>
+            <div className="space-y-3">
+              <Button
+                onClick={() => window.location.reload()}
+                className="w-full"
+              >
+                Refresh Page
+              </Button>
 
-              {/* Contact support */}
-              <div className="text-center text-sm text-gray-500">
-                If the problem persists, please{" "}
-                <button
-                  onClick={() => {
-                    // TODO: Implement contact support functionality
-                    console.log("Contact support clicked");
-                  }}
-                  className="text-blue-600 hover:text-blue-800 underline"
-                >
-                  contact support
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+              <Button
+                variant="outline"
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="w-full"
+              >
+                Try Again
+              </Button>
+            </div>
+          </div>
         </div>
       );
     }
@@ -181,65 +69,5 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
-
-// Hook-based error boundary for functional components
-export const useErrorHandler = () => {
-  const [error, setError] = React.useState(null);
-
-  const handleError = React.useCallback((error) => {
-    console.error("Error caught by useErrorHandler:", error);
-    setError(error);
-  }, []);
-
-  const clearError = React.useCallback(() => {
-    setError(null);
-  }, []);
-
-  return { error, handleError, clearError };
-};
-
-// Higher-order component for error boundaries
-export const withErrorBoundary = (Component, options = {}) => {
-  const WrappedComponent = (props) => (
-    <ErrorBoundary {...options}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
-  return WrappedComponent;
-};
-
-// Error boundary for specific error types
-export const NetworkErrorBoundary = ({ children }) => (
-  <ErrorBoundary
-    fallback={({ error, onRetry }) => (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-              <AlertTriangle className="w-6 h-6 text-yellow-600" />
-            </div>
-            <CardTitle className="text-xl font-semibold text-gray-900">
-              Network Error
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              Unable to connect to the server. Please check your internet
-              connection.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={onRetry} className="w-full">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Retry Connection
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )}
-  >
-    {children}
-  </ErrorBoundary>
-);
 
 export default ErrorBoundary;

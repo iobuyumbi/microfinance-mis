@@ -1,429 +1,251 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { StatsCard } from "../components/ui/stats-card";
+import { ActionButton } from "../components/ui/action-button";
+import { ActivityItem } from "../components/ui/activity-item";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+  FacebookCard,
+  FacebookCardHeader,
+  FacebookCardContent,
+} from "../components/ui/facebook-card";
 import {
   Users,
   DollarSign,
-  TrendingUp,
-  Calendar,
-  FileText,
+  PiggyBank,
   Building2,
   Plus,
-  Eye,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  ArrowUpRight,
-  ArrowDownRight,
+  CreditCard,
+  TrendingUp,
+  Calendar,
+  MessageCircle,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { useApi } from "@/hooks/useApi";
-import { ENDPOINTS } from "@/services/api/endpoints";
+import FormModal from "../components/modals/FormModal";
+import LoanForm from "../components/forms/LoanForm";
+import SavingsForm from "../components/forms/SavingsForm";
+import MemberForm from "../components/forms/MemberForm";
+import GroupForm from "../components/forms/GroupForm";
+import TransactionForm from "../components/forms/TransactionForm";
 
 const DashboardPage = () => {
-  const { user, hasRole } = useAuth();
-  const { getDashboardReport, getReports, loading } = useApi();
-  const [dashboardData, setDashboardData] = useState(null);
-  const [recentActivities, setRecentActivities] = useState([]);
+  const [activeModal, setActiveModal] = useState(null);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const stats = [
+    {
+      title: "Total Members",
+      value: "1,234",
+      change: "+12%",
+      changeType: "positive",
+      icon: Users,
+    },
+    {
+      title: "Active Loans",
+      value: "567",
+      change: "+8%",
+      changeType: "positive",
+      icon: DollarSign,
+    },
+    {
+      title: "Total Savings",
+      value: "$45,678",
+      change: "+15%",
+      changeType: "positive",
+      icon: PiggyBank,
+    },
+    {
+      title: "Groups",
+      value: "89",
+      change: "+3%",
+      changeType: "positive",
+      icon: Building2,
+    },
+  ];
 
-  const loadDashboardData = async () => {
-    try {
-      const [dashboardResult, activitiesResult] = await Promise.all([
-        getDashboardReport(),
-        getReports(ENDPOINTS.REPORTS.RECENT_ACTIVITY),
-      ]);
+  const quickActions = [
+    {
+      title: "Apply for Loan",
+      description: "Submit a new loan application",
+      icon: DollarSign,
+      action: () => setActiveModal("loan"),
+      variant: "default",
+    },
+    {
+      title: "Create Savings",
+      description: "Open a new savings account",
+      icon: PiggyBank,
+      action: () => setActiveModal("savings"),
+      variant: "success",
+    },
+    {
+      title: "Register Member",
+      description: "Add a new member",
+      icon: Users,
+      action: () => setActiveModal("member"),
+      variant: "purple",
+    },
+    {
+      title: "Create Group",
+      description: "Form a new group",
+      icon: Building2,
+      action: () => setActiveModal("group"),
+      variant: "warning",
+    },
+    {
+      title: "New Transaction",
+      description: "Create a new transaction",
+      icon: CreditCard,
+      action: () => setActiveModal("transaction"),
+      variant: "teal",
+    },
+  ];
 
-      if (dashboardResult.success) {
-        setDashboardData(dashboardResult.data);
-      }
+  const recentActivities = [
+    {
+      icon: Users,
+      title: "New member registered",
+      description: "John Doe joined the platform",
+      time: "2 hours ago",
+      variant: "default",
+    },
+    {
+      icon: DollarSign,
+      title: "Loan approved",
+      description: "Business loan for $5,000 approved",
+      time: "1 day ago",
+      variant: "success",
+    },
+    {
+      icon: PiggyBank,
+      title: "Savings deposit",
+      description: "$500 deposited to emergency fund",
+      time: "3 days ago",
+      variant: "purple",
+    },
+    {
+      icon: Calendar,
+      title: "Group meeting scheduled",
+      description: "Monthly meeting for Group A",
+      time: "1 week ago",
+      variant: "warning",
+    },
+  ];
 
-      if (activitiesResult.success) {
-        setRecentActivities(activitiesResult.data.slice(0, 10));
-      }
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+  const getModalContent = () => {
+    switch (activeModal) {
+      case "loan":
+        return <LoanForm />;
+      case "savings":
+        return <SavingsForm />;
+      case "member":
+        return <MemberForm />;
+      case "group":
+        return <GroupForm />;
+      case "transaction":
+        return <TransactionForm />;
+      default:
+        return null;
     }
   };
 
-  const getStatsCards = () => {
-    if (!dashboardData) return [];
-
-    const baseStats = [
-      {
-        title: "Total Members",
-        value: dashboardData.totalMembers || 0,
-        change: dashboardData.memberGrowth || 0,
-        icon: Users,
-        color: "text-blue-600",
-        bgColor: "bg-blue-50",
-      },
-      {
-        title: "Active Loans",
-        value: dashboardData.activeLoans || 0,
-        change: dashboardData.loanGrowth || 0,
-        icon: DollarSign,
-        color: "text-green-600",
-        bgColor: "bg-green-50",
-      },
-      {
-        title: "Total Savings",
-        value: `$${(dashboardData.totalSavings || 0).toLocaleString()}`,
-        change: dashboardData.savingsGrowth || 0,
-        icon: TrendingUp,
-        color: "text-purple-600",
-        bgColor: "bg-purple-50",
-      },
-      {
-        title: "Upcoming Meetings",
-        value: dashboardData.upcomingMeetings || 0,
-        change: 0,
-        icon: Calendar,
-        color: "text-orange-600",
-        bgColor: "bg-orange-50",
-      },
-    ];
-
-    // Add role-specific stats
-    if (hasRole(["admin", "officer"])) {
-      baseStats.push({
-        title: "Pending Approvals",
-        value: dashboardData.pendingApprovals || 0,
-        change: 0,
-        icon: Clock,
-        color: "text-red-600",
-        bgColor: "bg-red-50",
-      });
+  const getModalTitle = () => {
+    switch (activeModal) {
+      case "loan":
+        return "Apply for Loan";
+      case "savings":
+        return "Create Savings Account";
+      case "member":
+        return "Register Member";
+      case "group":
+        return "Create Group";
+      case "transaction":
+        return "New Transaction";
+      default:
+        return "";
     }
-
-    if (hasRole("admin")) {
-      baseStats.push({
-        title: "Total Groups",
-        value: dashboardData.totalGroups || 0,
-        change: dashboardData.groupGrowth || 0,
-        icon: Building2,
-        color: "text-indigo-600",
-        bgColor: "bg-indigo-50",
-      });
-    }
-
-    return baseStats;
   };
-
-  const getQuickActions = () => {
-    const actions = [];
-
-    if (hasRole(["admin", "officer"])) {
-      actions.push(
-        {
-          title: "Add Member",
-          icon: Plus,
-          href: "/members/create",
-          color: "bg-blue-500",
-        },
-        {
-          title: "Create Group",
-          icon: Building2,
-          href: "/groups/create",
-          color: "bg-green-500",
-        },
-        {
-          title: "Approve Loans",
-          icon: CheckCircle,
-          href: "/loans",
-          color: "bg-purple-500",
-        }
-      );
-    }
-
-    if (hasRole(["admin", "officer", "leader"])) {
-      actions.push(
-        {
-          title: "Schedule Meeting",
-          icon: Calendar,
-          href: "/meetings/create",
-          color: "bg-orange-500",
-        },
-        {
-          title: "View Reports",
-          icon: FileText,
-          href: "/reports",
-          color: "bg-indigo-500",
-        }
-      );
-    }
-
-    actions.push({
-      title: "View Profile",
-      icon: Eye,
-      href: "/profile",
-      color: "bg-gray-500",
-    });
-
-    return actions;
-  };
-
-  const getRoleBasedContent = () => {
-    if (hasRole("admin")) {
-      return {
-        title: "Admin Dashboard",
-        description: "Manage the entire microfinance system",
-        tabs: [
-          { value: "overview", label: "Overview" },
-          { value: "financials", label: "Financials" },
-          { value: "operations", label: "Operations" },
-          { value: "reports", label: "Reports" },
-        ],
-      };
-    }
-
-    if (hasRole("officer")) {
-      return {
-        title: "Officer Dashboard",
-        description: "Manage your assigned groups and members",
-        tabs: [
-          { value: "overview", label: "Overview" },
-          { value: "groups", label: "My Groups" },
-          { value: "loans", label: "Loan Management" },
-          { value: "reports", label: "Reports" },
-        ],
-      };
-    }
-
-    if (hasRole("leader")) {
-      return {
-        title: "Group Leader Dashboard",
-        description: "Manage your group activities",
-        tabs: [
-          { value: "overview", label: "Overview" },
-          { value: "members", label: "Group Members" },
-          { value: "meetings", label: "Meetings" },
-          { value: "contributions", label: "Contributions" },
-        ],
-      };
-    }
-
-    return {
-      title: "Member Dashboard",
-      description: "View your account and activities",
-      tabs: [
-        { value: "overview", label: "Overview" },
-        { value: "loans", label: "My Loans" },
-        { value: "savings", label: "My Savings" },
-        { value: "transactions", label: "Transactions" },
-      ],
-    };
-  };
-
-  const content = getRoleBasedContent();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{content.title}</h1>
-          <p className="text-gray-600 mt-1">{content.description}</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Avatar>
-            <AvatarImage src={user?.avatar} />
-            <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className="text-right">
-            <p className="text-sm font-medium">{user?.name}</p>
-            <Badge variant="secondary" className="text-xs capitalize">
-              {user?.role}
-            </Badge>
-          </div>
-        </div>
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
+        <h1 className="text-2xl font-bold mb-2">Welcome back! 👋</h1>
+        <p className="text-blue-100">
+          Here's what's happening with your microfinance platform today.
+        </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {getStatsCards().map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      {stat.title}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {stat.value}
-                    </p>
-                    {stat.change !== 0 && (
-                      <div className="flex items-center mt-1">
-                        {stat.change > 0 ? (
-                          <ArrowUpRight className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <ArrowDownRight className="h-4 w-4 text-red-500" />
-                        )}
-                        <span
-                          className={`text-sm ml-1 ${stat.change > 0 ? "text-green-500" : "text-red-500"}`}
-                        >
-                          {Math.abs(stat.change)}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => (
+          <StatsCard
+            key={index}
+            title={stat.title}
+            value={stat.value}
+            change={stat.change}
+            changeType={stat.changeType}
+            icon={stat.icon}
+          />
+        ))}
       </div>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common tasks and shortcuts</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {getQuickActions().map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center space-y-2"
-                  onClick={() => (window.location.href = action.href)}
-                >
-                  <Icon
-                    className={`h-6 w-6 ${action.color.replace("bg-", "text-")}`}
-                  />
-                  <span className="text-xs text-center">{action.title}</span>
-                </Button>
-              );
-            })}
+      <FacebookCard>
+        <FacebookCardHeader>
+          <div className="flex items-center gap-2">
+            <Plus className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Quick Actions
+            </h2>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          {content.tabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Activities */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activities</CardTitle>
-                <CardDescription>Latest system activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentActivities.map((activity, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{activity.title}</p>
-                        <p className="text-xs text-gray-500">
-                          {activity.description}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(activity.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Performance Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Metrics</CardTitle>
-                <CardDescription>Key performance indicators</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>Loan Repayment Rate</span>
-                      <span>85%</span>
-                    </div>
-                    <Progress value={85} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>Member Retention</span>
-                      <span>92%</span>
-                    </div>
-                    <Progress value={92} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>Meeting Attendance</span>
-                      <span>78%</span>
-                    </div>
-                    <Progress value={78} className="h-2" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        </FacebookCardHeader>
+        <FacebookCardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {quickActions.map((action, index) => (
+              <ActionButton
+                key={index}
+                title={action.title}
+                description={action.description}
+                icon={action.icon}
+                onClick={action.action}
+                variant={action.variant}
+              />
+            ))}
           </div>
-        </TabsContent>
+        </FacebookCardContent>
+      </FacebookCard>
 
-        {/* Other tab contents would be implemented based on the specific needs */}
-        {content.tabs.slice(1).map((tab) => (
-          <TabsContent key={tab.value} value={tab.value}>
-            <Card>
-              <CardHeader>
-                <CardTitle>{tab.label}</CardTitle>
-                <CardDescription>
-                  Content for {tab.label.toLowerCase()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  This section will contain {tab.label.toLowerCase()} specific
-                  content.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+      {/* Recent Activity */}
+      <FacebookCard>
+        <FacebookCardHeader>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Recent Activity
+            </h2>
+          </div>
+        </FacebookCardHeader>
+        <FacebookCardContent>
+          <div className="space-y-3">
+            {recentActivities.map((activity, index) => (
+              <ActivityItem
+                key={index}
+                icon={activity.icon}
+                title={activity.title}
+                description={activity.description}
+                time={activity.time}
+                variant={activity.variant}
+              />
+            ))}
+          </div>
+        </FacebookCardContent>
+      </FacebookCard>
+
+      {/* Modal */}
+      <FormModal
+        isOpen={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        title={getModalTitle()}
+      >
+        {getModalContent()}
+      </FormModal>
     </div>
   );
 };

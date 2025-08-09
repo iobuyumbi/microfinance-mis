@@ -1,73 +1,99 @@
-// client/src/pages/auth/ForgotPasswordPage.jsx
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 
 const ForgotPasswordPage = () => {
+  const { forgotPassword, isLoading } = useAuth();
   const [email, setEmail] = useState("");
-  const navigate = useNavigate();
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleResetPassword = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically call an API to send a reset email.
-    // For now, we'll just log the email and navigate.
-    console.log("Password reset requested for:", email);
-    // After a successful request, you might navigate to a confirmation page.
-    navigate("/login");
+
+    try {
+      const result = await forgotPassword(email);
+      if (result.success) {
+        setIsSubmitted(true);
+      }
+    } catch (error) {
+      console.error("Password reset failed:", error);
+    }
   };
 
+  if (isSubmitted) {
+    return (
+      <div className="text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg
+            className="w-8 h-8 text-green-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          Check your email
+        </h2>
+        <p className="text-gray-600 mb-6">
+          We've sent a password reset link to {email}
+        </p>
+        <Link to="/auth/login">
+          <Button variant="outline">Back to login</Button>
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            Forgot Your Password?
-          </CardTitle>
-          <CardDescription>
-            Enter your email address below and we'll send you a link to reset
-            your password.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleResetPassword} className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Send Reset Link
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Remember your password?{" "}
-            <a
-              href="#"
-              className="underline"
-              onClick={() => navigate("/login")}
-            >
-              Login
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+    <div>
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Reset your password
+        </h2>
+        <p className="text-gray-600 mt-2">
+          Enter your email address and we'll send you a link to reset your
+          password
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email Address</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Sending..." : "Send reset link"}
+        </Button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <Link
+          to="/auth/login"
+          className="text-blue-600 hover:text-blue-500 font-medium"
+        >
+          Back to login
+        </Link>
+      </div>
     </div>
   );
 };
 
-export default ForgotPasswordPage;
+export default ForgotPasswordPage; 

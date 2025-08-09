@@ -21,6 +21,7 @@ const morgan = require('morgan');
 // Socket.IO and authentication
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose'); // Added mongoose to validate ObjectId
 
 // Models
 const User = require('./models/User');
@@ -107,9 +108,8 @@ io.on('connection', socket => {
   // console.log(`User connected: ${socket.id}`); // This is handled by the auth middleware's `next()`
   console.log(
     `User ${socket.user.name} (${socket.user.id}) connected via socket: ${socket.id}`
-  );
+  ); // Join a group chat
 
-  // Join a group chat
   socket.on('join-group', async data => {
     try {
       const { groupId } = data; // userId comes from socket.user.id
@@ -130,30 +130,25 @@ io.on('connection', socket => {
         message: error.message || 'Failed to join group.',
       });
     }
-  });
+  }); // Leave a group chat
 
-  // Leave a group chat
   socket.on('leave-group', data => {
-    const { groupId } = data;
-    // Room name should be consistent with how it was joined
+    const { groupId } = data; // Room name should be consistent with how it was joined
     socket.leave(`group-${groupId}`);
     console.log(`User ${socket.user.id} left group room: group-${groupId}`);
-  });
+  }); // Handle chat messages
 
-  // Handle chat messages
   socket.on('send-message', async data => {
     try {
       // Client needs to send: message (content), chatId, chatType, and optionally groupId
-      const { message: content, chatId, chatType, groupId } = data;
+      const { message: content, chatId, chatType, groupId } = data; // Validate essential data
 
-      // Validate essential data
       if (!content || content.trim() === '' || !chatId || !chatType) {
         throw new Error(
           'Message content, chat ID, and chat type are required.'
         );
-      }
+      } // Perform access control for real-time messages using socket.user
 
-      // Perform access control for real-time messages using socket.user
       if (chatType === 'group') {
         if (!groupId) {
           throw new Error('Group ID is required for group chats.');
@@ -174,22 +169,20 @@ io.on('connection', socket => {
         // Example:
         // const participantIds = chatId.split('_'); // Assuming chatId is like 'user1id_user2id'
         // if (!participantIds.includes(socket.user.id.toString())) {
-        //      throw new Error('Not authorized to send direct message to this chat.');
+        //      throw new Error('Not authorized to send direct message to this chat.');
         // }
       } else {
         throw new Error('Invalid chat type specified.');
-      }
+      } // Use the extracted function to create and save the message
 
-      // Use the extracted function to create and save the message
       const savedMessage = await createAndSaveChatMessage(
         socket.user.id, // Sender ID from authenticated socket
         content,
         chatType,
         chatId,
         groupId // groupId is optional in the model if chatType is not 'group'
-      );
+      ); // Broadcast to the specific chat room using the consistent chatId
 
-      // Broadcast to the specific chat room using the consistent chatId
       io.to(chatId).emit('new_message', {
         message: savedMessage.toJSON(), // Ensure populated sender and virtuals are included
         chatId,
@@ -203,9 +196,8 @@ io.on('connection', socket => {
         message: error.message || 'Failed to send message',
       });
     }
-  });
+  }); // Handle typing indicators
 
-  // Handle typing indicators
   socket.on('typing', data => {
     const { chatId, isTyping } = data; // Client should send chatId (e.g., 'group-XYZ' or 'admin-chat')
     // Emit to others in the room, excluding the sender
@@ -215,11 +207,9 @@ io.on('connection', socket => {
   socket.on('disconnect', reason => {
     console.log(
       `User ${socket.user?.name || socket.id} disconnected: ${reason}`
-    );
-    // You might want to emit an 'user_offline' event here if you track online status
-  });
+    ); // You might want to emit an 'user_offline' event here if you track online status
+  }); // Add a generic error listener for debugging client-side emits without a listener
 
-  // Add a generic error listener for debugging client-side emits without a listener
   socket.on('error', err => {
     console.error('Socket error (from client or internal):', err);
   });
@@ -252,6 +242,10 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// -------------------------------------------------------------
+// IMPORTANT: MOVE THE BODY PARSING MIDDLEWARE HERE
+// It needs to be placed BEFORE any of your API routes are defined
+// -------------------------------------------------------------
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -344,9 +338,8 @@ const startServer = async () => {
   try {
     // Connect to database
     await connectDB();
-    console.log('✅ MongoDB connected successfully');
+    console.log('✅ MongoDB connected successfully'); // Start server
 
-    // Start server
     server.listen(PORT, () => {
       console.log(
         `🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`
@@ -357,8 +350,8 @@ const startServer = async () => {
 
       if (process.env.NODE_ENV === 'development') {
         console.log(`\n🔧 Development Mode: Default admin account available:`);
-        console.log(`   Email: admin@microfinance.com`);
-        console.log(`   Password: admin1234`);
+        console.log(`   Email: admin@microfinance.com`);
+        console.log(`   Password: admin1234`);
       }
     });
   } catch (error) {

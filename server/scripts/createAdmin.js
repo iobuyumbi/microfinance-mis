@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 require('dotenv').config();
 
@@ -17,16 +16,12 @@ async function createAdminUser() {
     if (existingAdmin) {
       console.log('Admin user already exists');
     } else {
-      // Hash the password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash('admin1234', saltRounds);
-
-      // Create admin user
+      // Create admin user (pre-save hook will hash)
       const adminUser = new User({
         name: 'System Administrator',
         email: 'admin@microfinance.com',
         phone: '+1234567890',
-        password: hashedPassword,
+        password: 'admin1234',
         role: 'admin',
         status: 'active',
         nationalID: 'ADMIN001',
@@ -47,16 +42,12 @@ async function createAdminUser() {
     if (existingMember) {
       console.log('Member user already exists');
     } else {
-      // Hash the password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash('member1234', saltRounds);
-
-      // Create member user
+      // Create member user (pre-save hook will hash)
       const memberUser = new User({
         name: 'Test Member',
         email: 'member@microfinance.com',
         phone: '+1234567891',
-        password: hashedPassword,
+        password: 'member1234',
         role: 'member',
         status: 'active',
         nationalID: 'MEMBER001',
@@ -77,16 +68,12 @@ async function createAdminUser() {
     if (existingOfficer) {
       console.log('Officer user already exists');
     } else {
-      // Hash the password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash('officer1234', saltRounds);
-
-      // Create officer user
+      // Create officer user (pre-save hook will hash)
       const officerUser = new User({
         name: 'Test Officer',
         email: 'officer@microfinance.com',
         phone: '+1234567892',
-        password: hashedPassword,
+        password: 'officer1234',
         role: 'officer',
         status: 'active',
         nationalID: 'OFFICER001',
@@ -107,16 +94,12 @@ async function createAdminUser() {
     if (existingLeader) {
       console.log('Leader user already exists');
     } else {
-      // Hash the password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash('leader1234', saltRounds);
-
-      // Create leader user
+      // Create leader user (pre-save hook will hash)
       const leaderUser = new User({
         name: 'Test Leader',
         email: 'leader@microfinance.com',
         phone: '+1234567893',
-        password: hashedPassword,
+        password: 'leader1234',
         role: 'leader',
         status: 'active',
         nationalID: 'LEADER001',

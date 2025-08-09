@@ -58,7 +58,24 @@ router
 // User management by ID
 router
   .route('/:id')
-  .get(validateObjectId, authorizeOwnerOrAdmin('id'), getUserById)
+  .get(
+    validateObjectId,
+    (req, res, next) => {
+      // Allow access if user is accessing their own profile or is admin/officer
+      if (
+        req.user.role === 'admin' ||
+        req.user.role === 'officer' ||
+        req.params.id === req.user.id
+      ) {
+        return next();
+      }
+      return res.status(403).json({
+        success: false,
+        message: 'You can only access your own profile.',
+      });
+    },
+    getUserById
+  )
   .put(
     authorize('admin', 'officer'), // Officer and Admin update other user roles/status
     validateObjectId,
@@ -70,7 +87,20 @@ router
 router.get(
   '/:id/groups',
   validateObjectId,
-  authorizeOwnerOrAdmin('id'),
+  (req, res, next) => {
+    // Allow access if user is accessing their own groups or is admin/officer
+    if (
+      req.user.role === 'admin' ||
+      req.user.role === 'officer' ||
+      req.params.id === req.user.id
+    ) {
+      return next();
+    }
+    return res.status(403).json({
+      success: false,
+      message: 'You can only access your own groups.',
+    });
+  },
   getUserGroups
 );
 
@@ -78,7 +108,20 @@ router.get(
 router.get(
   '/:id/financial-summary',
   validateObjectId,
-  authorizeOwnerOrAdmin('id'),
+  (req, res, next) => {
+    // Allow access if user is accessing their own financial summary or is admin/officer
+    if (
+      req.user.role === 'admin' ||
+      req.user.role === 'officer' ||
+      req.params.id === req.user.id
+    ) {
+      return next();
+    }
+    return res.status(403).json({
+      success: false,
+      message: 'You can only access your own financial summary.',
+    });
+  },
   getUserFinancialSummary
 );
 

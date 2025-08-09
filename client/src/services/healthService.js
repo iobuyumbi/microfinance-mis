@@ -8,7 +8,7 @@ export const healthService = {
       const response = await api.get(ENDPOINTS.HEALTH.BASE);
       return {
         status: "healthy",
-        data: response.data,
+        data: response,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
@@ -25,7 +25,7 @@ export const healthService = {
       const response = await api.get(ENDPOINTS.AUTH.STATUS);
       return {
         status: "accessible",
-        data: response.data,
+        data: response,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
@@ -51,7 +51,7 @@ export const healthService = {
       const response = await api.get(ENDPOINTS.AUTH.ME);
       return {
         status: "authenticated",
-        data: response.data,
+        data: response,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {

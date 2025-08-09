@@ -140,9 +140,12 @@ export const ENDPOINTS = {
   // Chat
   CHAT: {
     BASE: "/chat",
+    CHANNELS: "/chat/channels",
     MESSAGES: (chatId) => `/chat/${chatId}/messages`,
     SEND_MESSAGE: (chatId) => `/chat/${chatId}/messages`,
     MARK_READ: (chatId) => `/chat/${chatId}/read`,
+    MESSAGE: (messageId) => `/chat/messages/${messageId}`,
+    STATS: "/chat/stats",
   },
 
   // Guarantors
