@@ -1,21 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { PiggyBank, DollarSign } from "lucide-react";
+import { PiggyBank, DollarSign, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 
-const SavingsForm = () => {
+const SavingsForm = ({ onSubmit, initialData }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     savingsType: "",
     amount: "",
     frequency: "",
     purpose: "",
+    owner: "",
+    ownerModel: "User",
   });
+
+  // Load initial data if provided (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        savingsType: initialData.savingsType || "",
+        amount: initialData.amount || "",
+        frequency: initialData.frequency || "",
+        purpose: initialData.purpose || "",
+        owner: initialData.owner || "",
+        ownerModel: initialData.ownerModel || "User",
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -23,26 +39,33 @@ const SavingsForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!formData.savingsType || !formData.amount || !formData.frequency) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      const response = await fetch("/api/savings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        toast.success("Savings account created!");
-        setFormData({ savingsType: "", amount: "", frequency: "", purpose: "" });
-      } else {
-        toast.error("Failed to create savings account");
+      // Use the onSubmit prop to handle form submission
+      await onSubmit(formData);
+      
+      // Only reset form if not in edit mode
+      if (!initialData) {
+        setFormData({ 
+          savingsType: "", 
+          amount: "", 
+          frequency: "", 
+          purpose: "",
+          owner: "",
+          ownerModel: "User", 
+        });
       }
     } catch (error) {
-      toast.error("Error creating savings account");
+      console.error("Error submitting form:", error);
+      toast.error("Error saving account information");
     } finally {
       setLoading(false);
     }
@@ -53,7 +76,7 @@ const SavingsForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <PiggyBank className="h-5 w-5" />
-          Create Savings Account
+          {initialData ? "Edit Savings Account" : "Create Savings Account"}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -109,12 +132,45 @@ const SavingsForm = () => {
             />
           </div>
 
+          <div>
+            <Label htmlFor="owner">Account Owner</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Enter owner ID"
+                value={formData.owner}
+                onChange={(e) => handleChange("owner", e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="ownerModel">Owner Type</Label>
+            <Select value={formData.ownerModel} onValueChange={(value) => handleChange("ownerModel", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select owner type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="User">Individual Member</SelectItem>
+                <SelectItem value="Group">Group</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="w-full"
           >
-            {loading ? "Creating..." : "Create Account"}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {initialData ? "Updating..." : "Creating..."}
+              </>
+            ) : (
+              initialData ? "Update Account" : "Create Account"
+            )}
           </Button>
         </form>
       </CardContent>

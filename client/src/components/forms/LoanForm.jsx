@@ -1,21 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { DollarSign, FileText } from "lucide-react";
+import { DollarSign, FileText, Loader2, Calendar, User } from "lucide-react";
 import { toast } from "sonner";
 
-const LoanForm = () => {
+const LoanForm = ({ onSubmit, initialData }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     loanType: "",
     amount: "",
     purpose: "",
     duration: "",
+    interestRate: "",
+    applicant: "",
   });
+
+  // Load initial data if provided (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        loanType: initialData.loanType || "",
+        amount: initialData.amount || "",
+        purpose: initialData.purpose || "",
+        duration: initialData.duration || "",
+        interestRate: initialData.interestRate || "",
+        applicant: initialData.applicant || "",
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -23,26 +39,33 @@ const LoanForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!formData.loanType || !formData.amount || !formData.purpose || !formData.duration) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      const response = await fetch("/api/loans", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        toast.success("Loan application submitted!");
-        setFormData({ loanType: "", amount: "", purpose: "", duration: "" });
-      } else {
-        toast.error("Failed to submit application");
+      // Use the onSubmit prop to handle form submission
+      await onSubmit(formData);
+      
+      // Only reset form if not in edit mode
+      if (!initialData) {
+        setFormData({ 
+          loanType: "", 
+          amount: "", 
+          purpose: "", 
+          duration: "",
+          interestRate: "",
+          applicant: "", 
+        });
       }
     } catch (error) {
-      toast.error("Error submitting application");
+      console.error("Error submitting form:", error);
+      toast.error("Error submitting loan application");
     } finally {
       setLoading(false);
     }
@@ -53,7 +76,7 @@ const LoanForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Apply for Loan
+          {initialData ? "Edit Loan Application" : "Apply for Loan"}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -96,21 +119,56 @@ const LoanForm = () => {
           </div>
 
           <div>
-            <Label htmlFor="duration">Duration (months)</Label>
+            <Label htmlFor="applicant">Applicant Name</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Enter applicant name"
+                value={formData.applicant}
+                onChange={(e) => handleChange("applicant", e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="interestRate">Interest Rate (%)</Label>
             <Input
               type="number"
-              placeholder="Enter duration"
-              value={formData.duration}
-              onChange={(e) => handleChange("duration", e.target.value)}
+              step="0.1"
+              placeholder="Enter interest rate"
+              value={formData.interestRate}
+              onChange={(e) => handleChange("interestRate", e.target.value)}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="duration">Duration (months)</Label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="number"
+                placeholder="Enter duration in months"
+                value={formData.duration}
+                onChange={(e) => handleChange("duration", e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
 
           <Button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="w-full"
           >
-            {loading ? "Submitting..." : "Submit Application"}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {initialData ? "Updating..." : "Submitting..."}
+              </>
+            ) : (
+              initialData ? "Update Application" : "Submit Application"
+            )}
           </Button>
         </form>
       </CardContent>

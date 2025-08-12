@@ -5,13 +5,28 @@ import { useSocket } from "../context/SocketContext";
 import { groupService } from "../services/groupService";
 import { chatService } from "../services/chatService";
 import { toast } from "sonner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../components/ui/resizable";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "../components/ui/resizable";
 import ChatInterface from "../components/chat/ChatInterface";
 import {
   Building2,
@@ -77,9 +92,11 @@ const GroupDetailPage = () => {
 
   const getStatusBadge = (status) => {
     const statusColors = {
-      active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      active:
+        "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
       inactive: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
-      pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      pending:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
       dissolved: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
     };
     return statusColors[status] || statusColors.inactive;
@@ -106,7 +123,9 @@ const GroupDetailPage = () => {
       <div className="flex flex-col items-center justify-center h-full">
         <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold mb-2">Group Not Found</h2>
-        <p className="text-muted-foreground mb-4">The group you're looking for doesn't exist or you don't have access.</p>
+        <p className="text-muted-foreground mb-4">
+          The group you're looking for doesn't exist or you don't have access.
+        </p>
         <Button onClick={() => navigate("/groups")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Groups
@@ -120,13 +139,19 @@ const GroupDetailPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/groups")}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/groups")}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{group.name}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge className={getStatusBadge(group.status)}>{group.status}</Badge>
+              <Badge className={getStatusBadge(group.status)}>
+                {group.status}
+              </Badge>
               <span className="text-muted-foreground">{group.location}</span>
             </div>
           </div>
@@ -173,19 +198,25 @@ const GroupDetailPage = () => {
                   <Building2 className="h-5 w-5" />
                   Group Information
                 </CardTitle>
-                <CardDescription>Details about this microfinance group</CardDescription>
+                <CardDescription>
+                  Details about this microfinance group
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Formation Date</p>
+                    <p className="text-sm text-muted-foreground">
+                      Formation Date
+                    </p>
                     <p className="font-medium">
                       {new Date(group.formationDate).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Leader</p>
-                    <p className="font-medium">{group.leader?.name || "Not assigned"}</p>
+                    <p className="font-medium">
+                      {group.leader?.name || "Not assigned"}
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Location</p>
@@ -198,7 +229,9 @@ const GroupDetailPage = () => {
                 </div>
 
                 <div className="pt-4">
-                  <p className="text-sm text-muted-foreground mb-2">Description</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Description
+                  </p>
                   <p>{group.description || "No description provided."}</p>
                 </div>
               </CardContent>
@@ -295,7 +328,9 @@ const GroupDetailPage = () => {
                               </Badge>
                               <span className="text-xs text-muted-foreground">
                                 Joined:{" "}
-                                {new Date(member.joinedDate).toLocaleDateString()}
+                                {new Date(
+                                  member.joinedDate
+                                ).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
@@ -304,7 +339,11 @@ const GroupDetailPage = () => {
                           <Button size="sm" variant="outline">
                             View
                           </Button>
-                          <Button size="sm" variant="outline" className="text-destructive">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive"
+                          >
                             Remove
                           </Button>
                         </div>
@@ -336,12 +375,16 @@ const GroupDetailPage = () => {
                 <PiggyBank className="h-5 w-5" />
                 Group Finances
               </CardTitle>
-              <CardDescription>Financial overview of this group</CardDescription>
+              <CardDescription>
+                Financial overview of this group
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
                 <PiggyBank className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Financial Management</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Financial Management
+                </h3>
                 <p className="text-muted-foreground mb-4">
                   Track group savings, loans, and transactions.
                 </p>
@@ -362,7 +405,10 @@ const GroupDetailPage = () => {
 
         <TabsContent value="chat" className="mt-6">
           {chatChannel ? (
-            <ResizablePanelGroup direction="horizontal" className="min-h-[600px] rounded-lg border">
+            <ResizablePanelGroup
+              direction="horizontal"
+              className="min-h-[600px] rounded-lg border"
+            >
               <ResizablePanel defaultSize={75}>
                 <ChatInterface selectedChannel={chatChannel} />
               </ResizablePanel>
@@ -399,7 +445,9 @@ const GroupDetailPage = () => {
                           ))
                         ) : (
                           <div className="text-center py-8">
-                            <p className="text-muted-foreground">No members found</p>
+                            <p className="text-muted-foreground">
+                              No members found
+                            </p>
                           </div>
                         )}
                       </div>
@@ -412,10 +460,13 @@ const GroupDetailPage = () => {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Chat Not Available</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  Chat Not Available
+                </h3>
                 <p className="text-muted-foreground text-center max-w-md mb-4">
-                  The chat channel for this group is not available. This could be because the group
-                  is inactive or the chat feature has not been set up for this group.
+                  The chat channel for this group is not available. This could
+                  be because the group is inactive or the chat feature has not
+                  been set up for this group.
                 </p>
               </CardContent>
             </Card>

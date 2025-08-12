@@ -649,3 +649,47 @@ exports.getSavingsAccountTransactions = asyncHandler(async (req, res, next) => {
     data: formattedTransactions,
   });
 });
+
+// @desc    Get savings statistics
+// @route   GET /api/savings/stats
+// @access  Private (Admin, Officer, or filtered by user/group membership for others)
+exports.getSavingsStats = asyncHandler(async (req, res, next) => {
+  // Apply data filtering based on user role (similar to getSavings)
+  const filter = { ...req.dataFilter, type: 'savings', deleted: false };
+  
+  // Get total number of accounts
+  const totalAccounts = await Account.countDocuments(filter);
+  
+  // Get sum of all savings balances
+  const aggregateResult = await Account.aggregate([
+    { $match: filter },
+    { $group: { _id: null, totalSavings: { $sum: '$balance' } } }
+  ]);
+  
+  const totalSavings = aggregateResult.length > 0 ? aggregateResult[0].totalSavings : 0;
+  
+  // Get number of active accounts (those with balance > 0)
+  const activeAccounts = await Account.countDocuments({
+    ...filter,
+    balance: { $gt: 0 }
+  });
+  
+  // Format the total savings amount
+  const currency = await settingsHelper.getCurrency();
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency || 'USD'
+  });
+  
+  const formattedTotalSavings = formatter.format(totalSavings);
+  
+  res.status(200).json({
+    success: true,
+    data: {
+      totalAccounts,
+      totalSavings,
+      formattedTotalSavings,
+      activeAccounts
+    }
+  });
+});

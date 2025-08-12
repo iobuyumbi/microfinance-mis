@@ -71,6 +71,7 @@ export const ENDPOINTS = {
     DEPOSIT: (id) => `/savings/${id}/deposit`,
     WITHDRAW: (id) => `/savings/${id}/withdraw`,
     TRANSACTIONS: (id) => `/savings/${id}/transactions`,
+    STATS: "/savings/stats",
   },
 
   // Transactions
@@ -80,6 +81,7 @@ export const ENDPOINTS = {
     BY_TYPE: (type) => `/transactions?type=${type}`,
     BY_DATE_RANGE: (startDate, endDate) =>
       `/transactions?startDate=${startDate}&endDate=${endDate}`,
+    STATS: "/transactions/stats",
   },
 
   // Accounts
@@ -135,6 +137,7 @@ export const ENDPOINTS = {
     UPDATE_APP: "/settings/app",
     USER: "/settings/user",
     UPDATE_USER: "/settings/user",
+    RESET: "/settings/reset",
   },
 
   // Chat

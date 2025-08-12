@@ -10,6 +10,7 @@ const {
   recordSavingsDeposit, // NEW
   recordSavingsWithdrawal, // NEW
   getSavingsAccountTransactions, // NEW
+  getSavingsStats, // Added for stats endpoint
 } = require('../controllers/savingsController');
 const {
   protect,
@@ -31,6 +32,9 @@ router
     filterDataByRole('Account'), // Applies role-based filtering to returned accounts
     getSavings
   );
+
+// Route for getting savings statistics (must be BEFORE parameterized routes)
+router.route('/stats').get(filterDataByRole('Account'), getSavingsStats);
 
 router
   .route('/deposit') // Route for recording a deposit into ANY savings account

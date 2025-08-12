@@ -54,7 +54,7 @@ const MemberForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="h-5 w-5" />
-          Register Member
+          {initialData ? "Edit Member" : "Register Member"}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -63,17 +63,21 @@ const MemberForm = () => {
             <div>
               <Label htmlFor="firstName">First Name</Label>
               <Input
+                id="firstName"
                 placeholder="Enter first name"
                 value={formData.firstName}
                 onChange={(e) => handleChange("firstName", e.target.value)}
+                required
               />
             </div>
             <div>
               <Label htmlFor="lastName">Last Name</Label>
               <Input
+                id="lastName"
                 placeholder="Enter last name"
                 value={formData.lastName}
                 onChange={(e) => handleChange("lastName", e.target.value)}
+                required
               />
             </div>
           </div>
@@ -83,11 +87,13 @@ const MemberForm = () => {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                id="email"
                 type="email"
                 placeholder="Enter email"
                 value={formData.email}
                 onChange={(e) => handleChange("email", e.target.value)}
                 className="pl-10"
+                required
               />
             </div>
           </div>
@@ -97,10 +103,12 @@ const MemberForm = () => {
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                id="phone"
                 placeholder="Enter phone number"
                 value={formData.phone}
                 onChange={(e) => handleChange("phone", e.target.value)}
                 className="pl-10"
+                required
               />
             </div>
           </div>
@@ -121,19 +129,57 @@ const MemberForm = () => {
 
           <div>
             <Label htmlFor="occupation">Occupation</Label>
-            <Input
-              placeholder="Enter occupation"
-              value={formData.occupation}
-              onChange={(e) => handleChange("occupation", e.target.value)}
-            />
+            <div className="relative">
+              <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="occupation"
+                placeholder="Enter occupation"
+                value={formData.occupation}
+                onChange={(e) => handleChange("occupation", e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
+          
+          <div>
+            <Label htmlFor="address">Address</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="address"
+                placeholder="Enter address"
+                value={formData.address}
+                onChange={(e) => handleChange("address", e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          
+          {initialData && (
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleChange("status", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <Button 
             type="submit" 
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
           >
-            {loading ? "Registering..." : "Register Member"}
+            {loading ? "Saving..." : initialData ? "Update Member" : "Register Member"}
           </Button>
         </form>
       </CardContent>

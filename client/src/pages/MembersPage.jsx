@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { StatsCard } from "../components/ui/stats-card";
@@ -26,6 +26,8 @@ import {
 } from "../components/ui/dropdown-menu";
 import FormModal from "../components/modals/FormModal";
 import MemberForm from "../components/forms/MemberForm";
+import { memberService } from "../services/memberService";
+import { toast } from "sonner";
 import {
   Users,
   Plus,
@@ -45,6 +47,7 @@ import {
   MapPin,
   UserCheck,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 const MembersPage = () => {
@@ -52,63 +55,70 @@ const MembersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalMembers: 0,
+    activeMembers: 0,
+    pendingMembers: 0,
+    inactiveMembers: 0,
+  });
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [isEditMemberOpen, setIsEditMemberOpen] = useState(false);
 
-  // Mock data - replace with actual API calls
-  const members = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@email.com",
-      phone: "+1234567890",
-      status: "active",
-      role: "member",
-      group: "Group A",
-      joinDate: "2024-01-15",
-      totalSavings: "$2,450",
-      activeLoan: "$1,500",
-      lastPayment: "2024-01-10",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane.smith@email.com",
-      phone: "+1234567891",
-      status: "active",
-      role: "leader",
-      group: "Group B",
-      joinDate: "2024-01-10",
-      totalSavings: "$3,200",
-      activeLoan: "$0",
-      lastPayment: "2024-01-12",
-    },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      email: "mike.johnson@email.com",
-      phone: "+1234567892",
-      status: "pending",
-      role: "member",
-      group: "Group A",
-      joinDate: "2024-01-20",
-      totalSavings: "$500",
-      activeLoan: "$0",
-      lastPayment: "N/A",
-    },
-    {
-      id: 4,
-      name: "Sarah Wilson",
-      email: "sarah.wilson@email.com",
-      phone: "+1234567893",
-      status: "inactive",
-      role: "member",
-      group: "Group C",
-      joinDate: "2023-12-01",
-      totalSavings: "$1,800",
-      activeLoan: "$2,000",
-      lastPayment: "2023-12-15",
-    },
-  ];
+  /**
+   * Fetch members and stats from API on component mount
+   */
+  useEffect(() => {
+    fetchMembers();
+    fetchMemberStats();
+  }, []);
 
+  /**
+   * Fetch members from the API with optional search and filter parameters
+   * @async
+   */
+  const fetchMembers = async () => {
+    try {
+      setLoading(true);
+      const response = await memberService.getMembers({
+        status: filterStatus !== "all" ? filterStatus : undefined,
+        search: searchTerm || undefined,
+      });
+      setMembers(response.data || []);
+    } catch (error) {
+      console.error("Error fetching members:", error);
+      toast.error("Failed to load members");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Fetch member statistics from the API
+   * @async
+   */
+  const fetchMemberStats = async () => {
+    try {
+      const response = await memberService.getMemberStats();
+      setStats(
+        response || {
+          totalMembers: 0,
+          activeMembers: 0,
+          pendingMembers: 0,
+          inactiveMembers: 0,
+        }
+      );
+    } catch (error) {
+      console.error("Error fetching member stats:", error);
+    }
+  };
+
+  /**
+   * Get appropriate badge styling based on member status
+   * @param {string} status - The member status
+   * @returns {JSX.Element} Badge component with appropriate styling
+   */
   const getStatusBadge = (status) => {
     const variants = {
       active:
@@ -129,6 +139,11 @@ const MembersPage = () => {
     );
   };
 
+  /**
+   * Get appropriate badge styling based on member role
+   * @param {string} role - The member role
+   * @returns {JSX.Element} Badge component with appropriate styling
+   */
   const getRoleBadge = (role) => {
     const variants = {
       member:
@@ -149,43 +164,90 @@ const MembersPage = () => {
     );
   };
 
-  const filteredMembers = members.filter((member) => {
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phone.includes(searchTerm);
-    const matchesFilter =
-      filterStatus === "all" || member.status === filterStatus;
-    return matchesSearch && matchesFilter;
-  });
+  /**
+   * Handle search and filter with debounce
+   * Fetches members when search term or filter status changes after a 500ms delay
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchMembers();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm, filterStatus]);
 
-  const stats = [
+  /**
+   * Handle member creation
+   * @async
+   * @param {Object} memberData - The member data to be submitted
+   */
+  const handleCreateMember = async (memberData) => {
+    try {
+      await memberService.createMember(memberData);
+      toast.success("Member created successfully");
+      setIsAddMemberOpen(false);
+      fetchMembers();
+      fetchMemberStats();
+    } catch (error) {
+      console.error("Error creating member:", error);
+      toast.error("Failed to create member");
+    }
+  };
+
+  /**
+   * Handle member update
+   * @async
+   * @param {Object} memberData - The updated member data
+   */
+  const handleUpdateMember = async (memberData) => {
+    try {
+      await memberService.updateMember(selectedMember.id, memberData);
+      toast.success("Member updated successfully");
+      setIsEditMemberOpen(false);
+      fetchMembers();
+    } catch (error) {
+      console.error("Error updating member:", error);
+      toast.error("Failed to update member");
+    }
+  };
+
+  /**
+   * Handle member deletion with confirmation
+   * @async
+   * @param {string|number} id - The ID of the member to delete
+   */
+  const handleDeleteMember = async (id) => {
+    if (window.confirm("Are you sure you want to delete this member?")) {
+      try {
+        await memberService.deleteMember(id);
+        toast.success("Member deleted successfully");
+        fetchMembers();
+        fetchMemberStats();
+      } catch (error) {
+        console.error("Error deleting member:", error);
+        toast.error("Failed to delete member");
+      }
+    }
+  };
+
+  const statsData = [
     {
       title: "Total Members",
-      value: members.length.toString(),
-      change: "+5%",
-      changeType: "positive",
+      value: stats.totalMembers.toString(),
       icon: Users,
     },
     {
       title: "Active Members",
-      value: members.filter((m) => m.status === "active").length.toString(),
-      change: "+12%",
-      changeType: "positive",
+      value: stats.activeMembers.toString(),
       icon: UserCheck,
     },
     {
       title: "Group Leaders",
       value: members.filter((m) => m.role === "leader").length.toString(),
-      change: "+3%",
-      changeType: "positive",
       icon: Building2,
     },
     {
       title: "Pending Applications",
-      value: members.filter((m) => m.status === "pending").length.toString(),
-      change: "-2%",
-      changeType: "negative",
+      value: stats.pendingMembers.toString(),
       icon: Clock,
     },
   ];
@@ -215,17 +277,23 @@ const MembersPage = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statsData.map((stat) => (
           <StatsCard
             key={stat.title}
             title={stat.title}
             value={stat.value}
-            change={stat.change}
-            changeType={stat.changeType}
             icon={stat.icon}
           />
         ))}
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading members...</span>
+        </div>
+      )}
 
       {/* Search and Filters */}
       <FacebookCard>
@@ -310,103 +378,136 @@ const MembersPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMembers.map((member) => (
-                  <TableRow
-                    key={member.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-semibold text-white">
-                            {member.name.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900 dark:text-white">
-                            {member.name}
-                          </div>
-                          <div className="mt-1">
-                            {getRoleBadge(member.role)}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center text-sm text-gray-900 dark:text-white">
-                          <Mail className="mr-2 h-3 w-3 text-gray-400" />
-                          {member.email}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <Phone className="mr-2 h-3 w-3 text-gray-400" />
-                          {member.phone}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-gray-900 dark:text-white">
-                        <Building2 className="mr-2 h-4 w-4 text-gray-400" />
-                        {member.group}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(member.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-green-600 dark:text-green-400 font-medium">
-                        <PiggyBank className="mr-2 h-4 w-4" />
-                        {member.totalSavings}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-orange-600 dark:text-orange-400 font-medium">
-                        <DollarSign className="mr-2 h-4 w-4" />
-                        {member.activeLoan === "$0"
-                          ? "No loan"
-                          : member.activeLoan}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {member.lastPayment}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
+                {!loading && members.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="flex flex-col items-center justify-center">
+                        <Users className="h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium mb-2">
+                          No members found
+                        </h3>
+                        <p className="text-gray-500 mb-4">
+                          {searchTerm || filterStatus !== "all"
+                            ? "Try adjusting your search or filter criteria"
+                            : "Get started by adding your first member"}
+                        </p>
+                        {hasRole(["admin", "officer"]) && (
+                          <Button onClick={() => setIsAddMemberOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" /> Add Member
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link to={`/members/${member.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          {hasRole(["admin", "officer"]) && (
-                            <>
-                              <DropdownMenuItem asChild>
-                                <Link to={`/members/${member.id}/edit`}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit Member
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600 dark:text-red-400">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Member
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  members.map((member) => (
+                    <TableRow
+                      key={member.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    >
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-semibold text-white">
+                              {member.name ? member.name.charAt(0) : ""}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900 dark:text-white">
+                              {member.name}
+                            </div>
+                            <div className="mt-1">
+                              {getRoleBadge(member.role)}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm text-gray-900 dark:text-white">
+                            <Mail className="mr-2 h-3 w-3 text-gray-400" />
+                            {member.email}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <Phone className="mr-2 h-3 w-3 text-gray-400" />
+                            {member.phone}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-gray-900 dark:text-white">
+                          <Building2 className="mr-2 h-4 w-4 text-gray-400" />
+                          {member.group?.name || "No Group"}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(member.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-green-600 dark:text-green-400 font-medium">
+                          <PiggyBank className="mr-2 h-4 w-4" />$
+                          {member.totalSavings?.toFixed(2) || "0.00"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-orange-600 dark:text-orange-400 font-medium">
+                          <DollarSign className="mr-2 h-4 w-4" />
+                          {member.activeLoanAmount > 0
+                            ? `$${member.activeLoanAmount.toFixed(2)}`
+                            : "No loan"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          {member.lastPaymentDate
+                            ? new Date(
+                                member.lastPaymentDate
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link to={`/members/${member.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            {hasRole(["admin", "officer"]) && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setIsEditMemberOpen(true);
+                                  }}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Member
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600 dark:text-red-400"
+                                  onClick={() => handleDeleteMember(member.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Member
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -419,7 +520,19 @@ const MembersPage = () => {
         onClose={() => setIsAddMemberOpen(false)}
         title="Add Member"
       >
-        <MemberForm />
+        <MemberForm onSubmit={handleCreateMember} />
+      </FormModal>
+
+      {/* Edit Member Modal */}
+      <FormModal
+        isOpen={isEditMemberOpen}
+        onClose={() => setIsEditMemberOpen(false)}
+        title="Edit Member"
+      >
+        <MemberForm
+          onSubmit={handleUpdateMember}
+          initialData={selectedMember}
+        />
       </FormModal>
     </div>
   );

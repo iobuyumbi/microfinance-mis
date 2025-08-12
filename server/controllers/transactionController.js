@@ -391,3 +391,35 @@ exports.deleteTransaction = asyncHandler(async (req, res, next) => {
     data: {}, // No data returned for delete operations typically
   });
 });
+
+// @desc    Get transaction statistics
+// @route   GET /api/transactions/stats
+// @access  Private (filtered by role)
+exports.getTransactionStats = asyncHandler(async (req, res, next) => {
+  const filter = { ...(req.dataFilter || {}), deleted: false };
+
+  const [totals] = await Transaction.aggregate([
+    { $match: filter },
+    {
+      $group: {
+        _id: null,
+        totalAmount: { $sum: '$amount' },
+        totalTransactions: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const pendingTransactions = await Transaction.countDocuments({
+    ...filter,
+    status: 'pending',
+  });
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalTransactions: totals?.totalTransactions || 0,
+      totalAmount: totals?.totalAmount || 0,
+      pendingTransactions,
+    },
+  });
+});

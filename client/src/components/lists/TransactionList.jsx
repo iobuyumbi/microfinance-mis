@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { CreditCard, Search, Plus, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
+import { transactionService } from "../../services/transactionService";
 
 const TransactionList = () => {
   const [transactions, setTransactions] = useState([]);
@@ -17,18 +18,11 @@ const TransactionList = () => {
 
   const loadTransactions = async () => {
     try {
-      const response = await fetch("/api/transactions", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTransactions(data.data || []);
-      }
+      const data = await transactionService.getAll();
+      setTransactions(data.data || []);
     } catch (error) {
-      toast.error("Failed to load transactions");
+      console.error("Error loading transactions:", error);
+      toast.error(error.response?.data?.message || "Failed to load transactions");
     } finally {
       setLoading(false);
     }

@@ -9,6 +9,13 @@ function StatsCard({
   changeType = "positive",
   icon: Icon,
   className,
+  trendValue, // Add trendValue to destructured props to prevent it from being passed to DOM
+  trend, // Add trend to destructured props to prevent it from being passed to DOM
+  trendLabel, // Add trendLabel to destructured props to prevent it from being passed to DOM
+  progress, // Add progress to destructured props to prevent it from being passed to DOM
+  currency, // Add currency to destructured props to prevent it from being passed to DOM
+  variant, // Add variant to destructured props to prevent it from being passed to DOM
+  description, // Add description to destructured props to prevent it from being passed to DOM
   ...props
 }) {
   return (

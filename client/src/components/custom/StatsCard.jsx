@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/utils/formatters";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 export function StatsCard({
@@ -71,9 +72,11 @@ export function StatsCard({
         {(trend || trendValue) && (
           <div className="flex items-center space-x-1">
             <TrendIcon className={cn("h-3 w-3", getTrendColor())} />
-            <span className={cn("text-xs font-medium", getTrendColor())}>
-              {trendValue && `${trendValue}%`}
-            </span>
+            {trendValue && (
+              <span className={cn("text-xs font-medium", getTrendColor())}>
+                {`${trendValue}%`}
+              </span>
+            )}
             {trendLabel && (
               <span className="text-xs text-muted-foreground">
                 {trendLabel}

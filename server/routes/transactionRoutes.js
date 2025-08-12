@@ -7,6 +7,7 @@ const {
   getTransactionById,
   updateTransaction,
   deleteTransaction,
+  getTransactionStats,
 } = require('../controllers/transactionController');
 const { protect, authorize, filterDataByRole } = require('../middleware/auth');
 const {
@@ -28,6 +29,11 @@ router
     filterDataByRole('Transaction'), // Filters all transactions based on user's role and access
     getTransactions
   );
+
+// Stats route should be defined before parameterized routes
+router
+  .route('/stats')
+  .get(filterDataByRole('Transaction'), getTransactionStats);
 
 router
   .route('/:id')

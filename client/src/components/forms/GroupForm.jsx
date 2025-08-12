@@ -1,19 +1,35 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
-const GroupForm = () => {
+const GroupForm = ({ onSubmit, initialData }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     maxMembers: "",
+    status: "active",
+    location: "",
   });
+
+  // Load initial data if provided (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || "",
+        description: initialData.description || "",
+        maxMembers: initialData.maxMembers || "",
+        status: initialData.status || "active",
+        location: initialData.location || "",
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -21,26 +37,32 @@ const GroupForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!formData.name) {
+      toast.error("Group name is required");
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      const response = await fetch("/api/groups", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        toast.success("Group created successfully!");
-        setFormData({ name: "", description: "", maxMembers: "" });
-      } else {
-        toast.error("Failed to create group");
+      // Use the onSubmit prop to handle form submission
+      await onSubmit(formData);
+      
+      // Only reset form if not in edit mode
+      if (!initialData) {
+        setFormData({ 
+          name: "", 
+          description: "", 
+          maxMembers: "", 
+          status: "active",
+          location: "",
+        });
       }
     } catch (error) {
-      toast.error("Error creating group");
+      console.error("Error submitting form:", error);
+      toast.error("Error saving group");
     } finally {
       setLoading(false);
     }
@@ -51,7 +73,7 @@ const GroupForm = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Building2 className="h-5 w-5" />
-          Create Group
+          {initialData ? "Edit Group" : "Create Group"}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -88,12 +110,45 @@ const GroupForm = () => {
             </div>
           </div>
 
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <Input
+              placeholder="Enter group location"
+              value={formData.location}
+              onChange={(e) => handleChange("location", e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select 
+              value={formData.status} 
+              onValueChange={(value) => handleChange("status", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="w-full"
           >
-            {loading ? "Creating..." : "Create Group"}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {initialData ? "Updating..." : "Creating..."}
+              </>
+            ) : (
+              initialData ? "Update Group" : "Create Group"
+            )}
           </Button>
         </form>
       </CardContent>

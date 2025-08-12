@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { PiggyBank, Search, Plus, DollarSign, Target } from "lucide-react";
 import { toast } from "sonner";
+import { savingsService } from "../../services/savingsService";
 
 const SavingsList = () => {
   const [savings, setSavings] = useState([]);
@@ -17,18 +18,11 @@ const SavingsList = () => {
 
   const loadSavings = async () => {
     try {
-      const response = await fetch("/api/savings", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSavings(data.data || []);
-      }
+      const data = await savingsService.getAll();
+      setSavings(data.data || []);
     } catch (error) {
-      toast.error("Failed to load savings");
+      console.error("Error loading savings:", error);
+      toast.error(error.response?.data?.message || "Failed to load savings");
     } finally {
       setLoading(false);
     }
