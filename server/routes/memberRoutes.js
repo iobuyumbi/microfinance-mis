@@ -7,6 +7,7 @@ const {
   getMemberById,
   updateMember,
   deleteMember,
+  getMemberStats,
 } = require('../controllers/memberController');
 const { protect, authorize, filterDataByRole } = require('../middleware/auth');
 const {
@@ -37,6 +38,11 @@ router.get(
   filterDataByRole('User'), // Data filtering based on user role
   getMembers
 );
+
+// @route   GET /api/members/stats
+// @desc    Get member statistics (counts by status)
+// @access  Private (Admin, Officer, Leader)
+router.get('/stats', authorize('admin', 'officer', 'leader'), getMemberStats);
 
 // @route   GET /api/members/:id
 // @desc    Get a single member by ID
