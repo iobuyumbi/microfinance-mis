@@ -1,4 +1,4 @@
-import api from "./api";
+import { api } from "./api/client";
 
 class MemberService {
   // Get all members
@@ -68,4 +68,4 @@ class MemberService {
   }
 }
 
-export const memberService = new MemberService(); 
+export const memberService = new MemberService();

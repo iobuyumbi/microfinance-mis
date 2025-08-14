@@ -140,13 +140,13 @@ export const ENDPOINTS = {
     RESET: "/settings/reset",
   },
 
-  // Chat
+  // Chat (aligned with backend routes)
   CHAT: {
     BASE: "/chat",
     CHANNELS: "/chat/channels",
-    MESSAGES: (chatId) => `/chat/${chatId}/messages`,
-    SEND_MESSAGE: (chatId) => `/chat/${chatId}/messages`,
-    MARK_READ: (chatId) => `/chat/${chatId}/read`,
+    MESSAGES: "/chat/messages",
+    SEND_MESSAGE: "/chat/messages",
+    MARK_READ: "/chat/messages/read",
     MESSAGE: (messageId) => `/chat/messages/${messageId}`,
     STATS: "/chat/stats",
   },

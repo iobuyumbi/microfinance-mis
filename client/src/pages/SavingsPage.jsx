@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { StatsCard } from "../components/ui/stats-card";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+  FacebookCard,
+  FacebookCardHeader,
+  FacebookCardContent,
+} from "../components/ui/facebook-card";
 import { Button } from "../components/ui/button";
 import {
   PiggyBank,
@@ -15,6 +14,9 @@ import {
   DollarSign,
   Activity,
   MoreHorizontal,
+  TrendingUp,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { Input } from "../components/ui/input";
 import {
@@ -200,8 +202,10 @@ const SavingsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Savings</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Savings
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage savings accounts and transactions
           </p>
         </div>
@@ -212,58 +216,35 @@ const SavingsPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Accounts
-            </CardTitle>
-            <PiggyBank className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {savingsStats.totalAccounts}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Savings accounts managed
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(savingsStats.totalSavings)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Cumulative savings amount
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Accounts
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {savingsStats.activeAccounts}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Currently active savings accounts
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 md:grid-cols-3">
+        <StatsCard
+          title="Total Accounts"
+          value={savingsStats.totalAccounts.toString()}
+          description="Savings accounts managed"
+          icon={PiggyBank}
+          trend="up"
+        />
+        <StatsCard
+          title="Total Savings"
+          value={formatCurrency(savingsStats.totalSavings)}
+          description="Cumulative savings amount"
+          icon={DollarSign}
+          changeType="positive"
+          change="+12%"
+        />
+        <StatsCard
+          title="Active Accounts"
+          value={savingsStats.activeAccounts.toString()}
+          description="Currently active savings accounts"
+          icon={Activity}
+          changeType="positive"
+          change="+8%"
+        />
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
         <Input
           placeholder="Search savings accounts..."
           className="pl-10"
@@ -272,20 +253,22 @@ const SavingsPage = () => {
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PiggyBank className="h-5 w-5" />
-            Savings Accounts
-          </CardTitle>
-          <CardDescription>
+      <FacebookCard>
+        <FacebookCardHeader>
+          <div className="flex items-center gap-2">
+            <PiggyBank className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Savings Accounts
+            </h2>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             View and manage all savings accounts
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </FacebookCardHeader>
+        <FacebookCardContent>
           {loading ? (
             <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
             </div>
           ) : savings.length === 0 ? (
             <div className="text-center py-12">
@@ -375,8 +358,8 @@ const SavingsPage = () => {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+        </FacebookCardContent>
+      </FacebookCard>
 
       {/* Create Savings Dialog */}
       <Dialog open={isCreateSavingsOpen} onOpenChange={setIsCreateSavingsOpen}>

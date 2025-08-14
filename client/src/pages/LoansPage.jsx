@@ -83,17 +83,26 @@ const LoansPage = () => {
         search: searchTerm || undefined,
         status: filterStatus !== "all" ? filterStatus : undefined,
       });
-      
+
       setLoans(response.data || []);
-      
+
       // Calculate stats
       if (response.data) {
         const stats = {
           totalLoans: response.data.length,
-          totalAmount: response.data.reduce((sum, loan) => sum + parseFloat(loan.amount || 0), 0),
-          approvedLoans: response.data.filter(loan => loan.status === "approved").length,
-          pendingLoans: response.data.filter(loan => loan.status === "pending").length,
-          rejectedLoans: response.data.filter(loan => loan.status === "rejected").length,
+          totalAmount: response.data.reduce(
+            (sum, loan) => sum + parseFloat(loan.amount || 0),
+            0
+          ),
+          approvedLoans: response.data.filter(
+            (loan) => loan.status === "approved"
+          ).length,
+          pendingLoans: response.data.filter(
+            (loan) => loan.status === "pending"
+          ).length,
+          rejectedLoans: response.data.filter(
+            (loan) => loan.status === "rejected"
+          ).length,
         };
         setLoanStats(stats);
       }
@@ -205,8 +214,8 @@ const LoansPage = () => {
    */
   const formatCurrency = (amount) => {
     if (!amount) return "$0";
-    return typeof amount === 'string' && amount.startsWith('$') 
-      ? amount 
+    return typeof amount === "string" && amount.startsWith("$")
+      ? amount
       : `$${parseFloat(amount).toFixed(2)}`;
   };
 
@@ -369,10 +378,7 @@ const LoansPage = () => {
             Manage loan applications, approvals, and repayments
           </p>
         </div>
-        <Button
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          onClick={() => setIsNewLoanOpen(true)}
-        >
+        <Button onClick={() => setIsNewLoanOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Loan Application
         </Button>
@@ -467,7 +473,8 @@ const LoansPage = () => {
                   <Filter className="mr-2 h-4 w-4" />
                   {filterStatus === "all"
                     ? "All Status"
-                    : filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)}
+                    : filterStatus.charAt(0).toUpperCase() +
+                      filterStatus.slice(1)}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -616,27 +623,37 @@ const LoansPage = () => {
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
-                                setSelectedLoan(loan);
-                                setIsEditLoanOpen(true);
-                              }}>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedLoan(loan);
+                                  setIsEditLoanOpen(true);
+                                }}
+                              >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Application
                               </DropdownMenuItem>
                               {loan.status === "pending" && (
                                 <>
-                                  <DropdownMenuItem onClick={() => handleApproveLoan(loan.id)} className="text-green-600 dark:text-green-400">
+                                  <DropdownMenuItem
+                                    onClick={() => handleApproveLoan(loan.id)}
+                                    className="text-green-600 dark:text-green-400"
+                                  >
                                     <CheckCircle className="mr-2 h-4 w-4" />
                                     Approve
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleRejectLoan(loan.id)} className="text-red-600 dark:text-red-400">
+                                  <DropdownMenuItem
+                                    onClick={() => handleRejectLoan(loan.id)}
+                                    className="text-red-600 dark:text-red-400"
+                                  >
                                     <XCircle className="mr-2 h-4 w-4" />
                                     Reject
                                   </DropdownMenuItem>
                                 </>
                               )}
                               {loan.status === "approved" && (
-                                <DropdownMenuItem onClick={() => handleDisburseLoan(loan.id)}>
+                                <DropdownMenuItem
+                                  onClick={() => handleDisburseLoan(loan.id)}
+                                >
                                   <DollarSign className="mr-2 h-4 w-4" />
                                   Disburse Loan
                                 </DropdownMenuItem>
@@ -658,7 +675,7 @@ const LoansPage = () => {
       <FacebookCard>
         <FacebookCardHeader>
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-blue-600" />
+            <TrendingUp className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Recent Activity
             </h2>
@@ -696,10 +713,7 @@ const LoansPage = () => {
         onClose={() => setIsEditLoanOpen(false)}
         title="Edit Loan Application"
       >
-        <LoanForm 
-          onSubmit={handleUpdateLoan} 
-          initialData={selectedLoan} 
-        />
+        <LoanForm onSubmit={handleUpdateLoan} initialData={selectedLoan} />
       </FormModal>
     </div>
   );

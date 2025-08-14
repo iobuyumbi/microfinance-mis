@@ -1,15 +1,45 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { StatsCard } from "../components/ui/stats-card";
+import {
+  FacebookCard,
+  FacebookCardHeader,
+  FacebookCardContent,
+} from "../components/ui/facebook-card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { groupService } from "../services/groupService";
 import { toast } from "sonner";
 import FormModal from "../components/modals/FormModal";
 import GroupForm from "../components/forms/GroupForm";
-import { Building2, Plus, Search, MoreHorizontal, Eye, Edit, Trash2, Users, Loader2 } from "lucide-react";
+import {
+  Building2,
+  Plus,
+  Search,
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  Users,
+  Loader2,
+  TrendingUp,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 const GroupsPage = () => {
@@ -92,8 +122,10 @@ const GroupsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Groups Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Groups Management
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage microfinance groups and their members
           </p>
         </div>
@@ -101,6 +133,45 @@ const GroupsPage = () => {
           <Plus className="mr-2 h-4 w-4" />
           Create Group
         </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <StatsCard
+          title="Total Groups"
+          value={groups && groups.length ? groups.length.toString() : "0"}
+          description="Active microfinance groups"
+          icon={Building2}
+          trend="up"
+          changeType="positive"
+          change="+15%"
+        />
+        <StatsCard
+          title="Total Members"
+          value={
+            groups && groups.length
+              ? groups
+                  .reduce((sum, group) => sum + (group.memberCount || 0), 0)
+                  .toString()
+              : "0"
+          }
+          description="Across all groups"
+          icon={Users}
+          changeType="positive"
+          change="+8%"
+        />
+        <StatsCard
+          title="Active Groups"
+          value={
+            groups && groups.length
+              ? groups.filter((g) => g.status === "active").length.toString()
+              : "0"
+          }
+          description="Currently meeting regularly"
+          icon={CheckCircle}
+          changeType="positive"
+          change="+12%"
+        />
       </div>
 
       {/* Search */}
@@ -118,127 +189,151 @@ const GroupsPage = () => {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading groups...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-gray-700 dark:text-gray-300">
+            Loading groups...
+          </span>
         </div>
       )}
 
       {/* Groups Table */}
       {!loading && groups.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Groups Found</h3>
-            <p className="text-muted-foreground mb-4">
+        <FacebookCard>
+          <FacebookCardContent className="text-center py-12">
+            <Building2 className="h-12 w-12 text-primary mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+              No Groups Found
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               {searchTerm
                 ? "Try adjusting your search criteria"
                 : "Get started by creating your first group"}
             </p>
-            <Button onClick={() => setIsCreateGroupOpen(true)}>
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              onClick={() => setIsCreateGroupOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" /> Create Group
             </Button>
-          </CardContent>
-        </Card>
-      ) : !loading && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Microfinance Groups
-            </CardTitle>
-            <CardDescription>
-              View and manage all groups in the microfinance system
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Group Name</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {groups.map((group) => (
-                  <TableRow key={group.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="font-medium">{group.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {group.description?.substring(0, 50)}{group.description?.length > 50 ? '...' : ''}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Users className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {group.memberCount || 0} members
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          group.status === "active"
-                            ? "success"
-                            : group.status === "pending"
-                            ? "warning"
-                            : "destructive"
-                        }
-                      >
-                        {group.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(group.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Link
-                              to={`/groups/${group.id}`}
-                              className="flex items-center w-full"
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedGroup(group);
-                            setIsEditGroupOpen(true);
-                          }}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Group
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-red-600"
-                            onClick={() => handleDeleteGroup(group.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Group
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          </FacebookCardContent>
+        </FacebookCard>
+      ) : (
+        !loading && (
+          <FacebookCard>
+            <FacebookCardHeader>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Microfinance Groups
+                </h2>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                View and manage all groups in the microfinance system
+              </p>
+            </FacebookCardHeader>
+            <FacebookCardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Group Name</TableHead>
+                    <TableHead>Members</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {groups && groups.length > 0 ? (
+                    groups.map((group) => (
+                      <TableRow key={group.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Building2 className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{group.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {group.description?.substring(0, 50)}
+                                {group.description?.length > 50 ? "..." : ""}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                            {group.memberCount || 0} members
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              group.status === "active"
+                                ? "success"
+                                : group.status === "pending"
+                                ? "warning"
+                                : "destructive"
+                            }
+                          >
+                            {group.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(group.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Link
+                                  to={`/groups/${group.id}`}
+                                  className="flex items-center w-full"
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedGroup(group);
+                                  setIsEditGroupOpen(true);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Group
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleDeleteGroup(group.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Group
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-6">
+                        <p className="text-gray-500 dark:text-gray-400">
+                          No groups found
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </FacebookCardContent>
+          </FacebookCard>
+        )
       )}
 
       {/* Create Group Modal */}
@@ -256,10 +351,7 @@ const GroupsPage = () => {
         onClose={() => setIsEditGroupOpen(false)}
         title="Edit Group"
       >
-        <GroupForm 
-          onSubmit={handleUpdateGroup} 
-          initialData={selectedGroup} 
-        />
+        <GroupForm onSubmit={handleUpdateGroup} initialData={selectedGroup} />
       </FormModal>
     </div>
   );

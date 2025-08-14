@@ -26,6 +26,23 @@ const ChatInterface = ({ selectedChannel }) => {
     scrollToBottom();
   }, [messages]);
 
+  // Join/leave room on channel change for group chats
+  useEffect(() => {
+    if (!socket) return;
+    let prevGroupId;
+
+    if (selectedChannel?.type === "group" && selectedChannel.groupId) {
+      socket.emit("join-group", { groupId: selectedChannel.groupId });
+      prevGroupId = selectedChannel.groupId;
+    }
+
+    return () => {
+      if (socket && prevGroupId) {
+        socket.emit("leave-group", { groupId: prevGroupId });
+      }
+    };
+  }, [socket, selectedChannel]);
+
   useEffect(() => {
     if (!selectedChannel) return;
     loadMessages();
@@ -37,7 +54,7 @@ const ChatInterface = ({ selectedChannel }) => {
     socket.on("new_message", handleNewMessage);
 
     return () => {
-      socket.off("new_message");
+      socket.off("new_message", handleNewMessage);
     };
   }, [socket, selectedChannel]);
 
@@ -46,10 +63,14 @@ const ChatInterface = ({ selectedChannel }) => {
 
     setLoading(true);
     try {
-      const response = await chatService.getChatMessages({
+      const params = {
         chatId: selectedChannel.id,
-        chatType: selectedChannel.type
-      });
+        chatType: selectedChannel.type,
+      };
+      if (selectedChannel.type === "group" && selectedChannel.groupId) {
+        params.groupId = selectedChannel.groupId;
+      }
+      const response = await chatService.getChatMessages(params);
       setMessages(response.data.data || []);
     } catch (error) {
       toast.error("Failed to load messages");
@@ -60,7 +81,7 @@ const ChatInterface = ({ selectedChannel }) => {
 
   const handleNewMessage = (data) => {
     if (data.chatId === selectedChannel?.id) {
-      setMessages(prev => [...prev, data.message]);
+      setMessages((prev) => [...prev, data.message]);
     }
   };
 
@@ -68,11 +89,15 @@ const ChatInterface = ({ selectedChannel }) => {
     if (!newMessage.trim() || !selectedChannel) return;
 
     try {
-      await chatService.sendMessage({
+      const payload = {
         content: newMessage.trim(),
         chatId: selectedChannel.id,
         chatType: selectedChannel.type,
-      });
+      };
+      if (selectedChannel.type === "group" && selectedChannel.groupId) {
+        payload.groupId = selectedChannel.groupId;
+      }
+      await chatService.sendMessage(payload);
       setNewMessage("");
     } catch (error) {
       toast.error("Failed to send message");
@@ -93,7 +118,9 @@ const ChatInterface = ({ selectedChannel }) => {
           <div className="text-center">
             <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Select a Channel</h3>
-            <p className="text-muted-foreground">Choose a channel to start chatting</p>
+            <p className="text-muted-foreground">
+              Choose a channel to start chatting
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -147,7 +174,8 @@ const ChatInterface = ({ selectedChannel }) => {
                     </div>
                     <div className="mt-1">
                       <span className="text-xs text-muted-foreground">
-                        {message.sender.name} • {new Date(message.createdAt).toLocaleTimeString()}
+                        {message.sender.name} •{" "}
+                        {new Date(message.createdAt).toLocaleTimeString()}
                       </span>
                     </div>
                   </div>
