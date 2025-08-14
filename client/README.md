@@ -1,118 +1,104 @@
-# BlogApp Client
+# Microfinance MIS Client
 
-A modern React frontend for the BlogApp MERN stack application, built with Vite, Tailwind CSS, and shadcn/ui components.
+A modern React frontend for the Microfinance Management Information System, built with Vite, Tailwind CSS, and shadcn/ui. It provides dashboards, members, groups, loans, savings, transactions, meetings, reports, chat, and user management.
 
 ## Features
 
-- 🎨 Modern UI with Tailwind CSS and shadcn/ui components
-- 🔐 User authentication (login/register)
-- 📝 Full CRUD operations for blog posts
-- 💬 Comments system
-- 🔍 Search and filtering functionality
-- 📱 Responsive design
+- 🎨 Unified blue/purple gradient UI across buttons, inputs, cards, and tables
+- 🔐 Auth with JWT and role-based access (admin/officer/leader/member)
+- 👥 Members and Groups management
+- 💰 Loans and 💳 Savings workflows
+- 🔄 Transactions and 📅 Meetings
+- 💬 Real-time Chat with optimistic updates
+- 📊 Dashboard and Reports
+- 👤 Users management (CRUD, role/status)
 - 🌙 Dark/light theme support
-- ⚡ Fast development with Vite
 
 ## Tech Stack
 
-- **React 19** - UI library
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Styling
-- **shadcn/ui** - Component library
-- **React Router** - Client-side routing
-- **Axios** - HTTP client
-- **Sonner** - Toast notifications
+- React 19, Vite, Tailwind CSS, shadcn/ui
+- React Router, Axios, Sonner (toasts)
+- Socket.io-client for realtime chat
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v18 or higher)
-- npm or pnpm
 
 ### Installation
 
-1. Install dependencies:
+```bash
+npm install
+```
 
-   ```bash
-   npm install
-   # or
-   pnpm install
-   ```
+### Environment
 
-2. Create environment file:
+Create `.env` in `client/`:
 
-   ```bash
-   cp .env.example .env
-   ```
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
-3. Configure environment variables:
+### Development
 
-   ```env
-   VITE_API_URL=http://localhost:5000/api
-   ```
+```bash
+npm run dev
+```
 
-4. Start development server:
-   ```bash
-   npm run dev
-   # or
-   pnpm dev
-   ```
+PowerShell tip: use `;` rather than `&&` to chain commands.
 
-The application will be available at `http://localhost:5173`
+### Build
+
+```bash
+npm run build
+npm run preview
+```
 
 ## Project Structure
 
 ```
 src/
 ├── components/          # Reusable UI components
-│   ├── ui/             # shadcn/ui components
-│   ├── Navbar.jsx      # Navigation component
-│   └── Footer.jsx      # Footer component
-├── context/            # React context providers
-│   └── AuthContext.jsx # Authentication context
-├── pages/              # Page components
-│   ├── Home.jsx        # Home page
-│   ├── Login.jsx       # Login page
-│   ├── Register.jsx    # Registration page
-│   ├── PostList.jsx    # Posts listing page
-│   ├── PostDetail.jsx  # Single post view
-│   ├── CreatePost.jsx  # Create post form
-│   ├── EditPost.jsx    # Edit post form
-│   └── Profile.jsx     # User profile page
-├── services/           # API services
-│   └── api.js          # API client and services
-├── hooks/              # Custom React hooks
-├── lib/                # Utility functions
-├── assets/             # Static assets
-├── App.jsx             # Main app component
-└── main.jsx            # App entry point
+│   ├── ui/              # shadcn/ui components
+│   ├── modals/          # Dialog-based modals
+│   └── chat/            # Chat interface components
+├── context/             # Auth, Socket providers
+├── pages/               # App pages (Dashboard, Users, Members, ...)
+├── services/            # API services (axios)
+├── store/               # State (if applicable)
+├── lib/                 # Utilities
+├── routes/              # Routing
+└── main.jsx             # Entry
 ```
 
-## Available Scripts
+## API Integration
+
+- Base URL: `VITE_API_URL` (defaults to `http://localhost:5000`)
+- Central endpoints: `src/services/api/endpoints.js`
+- Shared axios client with interceptors: `src/services/api/client.js`
+
+Key services:
+
+- `userService`: list/create/update role/status/delete users
+- `memberService`: members CRUD + stats
+- `chatService`: channels/messages/send/read
+- `loanService`, `savingsService`, `transactionService`, etc.
+
+## Styling
+
+- Tailwind CSS with a blue/purple gradient theme
+- Inputs have blue borders and purple focus rings
+- Tables have gradient headers and row hovers
+
+## Notes
+
+- Chat uses optimistic UI: messages appear instantly; socket events unify state
+- If members stats 400 occurs, ensure backend route order has `/members/stats` before `/:id`
+
+## Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
-
-## API Integration
-
-The client communicates with the backend API through the `api.js` service file. All API calls are centralized and include:
-
-- Authentication (login, register, logout)
-- Post management (CRUD operations)
-- Category management
-- Comments system
-
-## Styling
-
-The application uses Tailwind CSS for styling with shadcn/ui components for consistent design. The theme supports both light and dark modes.
-
-## Contributing
-
-1. Follow the existing code style
-2. Use shadcn/ui components when possible
-3. Ensure responsive design
-4. Add proper error handling
-5. Test your changes thoroughly

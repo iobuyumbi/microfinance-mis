@@ -81,25 +81,89 @@ const ChatInterface = ({ selectedChannel }) => {
 
   const handleNewMessage = (data) => {
     if (data.chatId === selectedChannel?.id) {
-      setMessages((prev) => [...prev, data.message]);
+      // Check if message already exists (prevents duplicates)
+      setMessages((prev) => {
+        const messageExists = prev.some(
+          (msg) =>
+            msg._id === data.message._id ||
+            (msg.isOptimistic &&
+              msg.content === data.message.content &&
+              msg.sender._id === data.message.sender._id &&
+              Math.abs(
+                new Date(msg.createdAt) - new Date(data.message.createdAt)
+              ) < 5000) // Within 5 seconds
+        );
+
+        if (messageExists) {
+          // If it's an optimistic message, replace it with the real one
+          if (
+            prev.some(
+              (msg) => msg.isOptimistic && msg.content === data.message.content
+            )
+          ) {
+            return prev.map((msg) =>
+              msg.isOptimistic && msg.content === data.message.content
+                ? data.message
+                : msg
+            );
+          }
+          // Otherwise, don't add duplicate
+          return prev;
+        }
+
+        // Add new message
+        return [...prev, data.message];
+      });
     }
   };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChannel) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage(""); // Clear input immediately for better UX
+
+    // Create optimistic message object
+    const optimisticMessage = {
+      _id: `temp-${Date.now()}`, // Temporary ID for optimistic update
+      content: messageContent,
+      sender: {
+        _id: user?.id,
+        name: user?.name,
+        avatar: user?.avatar,
+      },
+      createdAt: new Date().toISOString(),
+      isOptimistic: true, // Flag to identify optimistic messages
+    };
+
+    // Add optimistic message to UI immediately
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
       const payload = {
-        content: newMessage.trim(),
+        content: messageContent,
         chatId: selectedChannel.id,
         chatType: selectedChannel.type,
       };
       if (selectedChannel.type === "group" && selectedChannel.groupId) {
         payload.groupId = selectedChannel.groupId;
       }
-      await chatService.sendMessage(payload);
-      setNewMessage("");
+
+      const response = await chatService.sendMessage(payload);
+
+      // Replace optimistic message with real message from server
+      if (response.data?.data) {
+        setMessages((prev) =>
+          prev.map((msg) => (msg.isOptimistic ? response.data.data : msg))
+        );
+      } else if (response.data?.message) {
+        // Fallback: if the response structure is different, just remove the optimistic message
+        setMessages((prev) => prev.filter((msg) => !msg.isOptimistic));
+      }
     } catch (error) {
+      // Remove optimistic message on error
+      setMessages((prev) => prev.filter((msg) => !msg.isOptimistic));
+      setNewMessage(messageContent); // Restore the message content
       toast.error("Failed to send message");
     }
   };

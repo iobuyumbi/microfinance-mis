@@ -11,11 +11,13 @@ function ActionButton({
   ...props
 }) {
   const variants = {
-    default: "bg-blue-600 hover:bg-blue-700 text-white",
+    default:
+      "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white",
     success: "bg-green-600 hover:bg-green-700 text-white",
     warning: "bg-orange-600 hover:bg-orange-700 text-white",
     danger: "bg-red-600 hover:bg-red-700 text-white",
-    purple: "bg-purple-600 hover:bg-purple-700 text-white",
+    purple:
+      "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white",
     teal: "bg-teal-600 hover:bg-teal-700 text-white",
   };
 

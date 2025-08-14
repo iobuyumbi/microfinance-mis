@@ -10,6 +10,7 @@ A comprehensive full-stack MERN application for managing microfinance operations
 
 ## 📋 Table of Contents
 
+- [What's New](#-whats-new)
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
 - [Architecture](#-architecture)
@@ -18,24 +19,37 @@ A comprehensive full-stack MERN application for managing microfinance operations
 - [Testing](#-testing)
 - [Deployment](#-deployment)
 - [API Documentation](#-api-documentation)
+- [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
 - [License](#-license)
+
+## ✨ What's New
+
+- Unified blue/purple gradient theme across buttons, inputs, cards, and tables
+- Chat: optimistic UI updates so sent messages appear instantly with duplicate prevention
+- Users: functional management page (list/search, create, update role/status, delete)
+- Chat endpoints aligned to `/api/chat/messages` and read markers
+- Members stats route fixed by placing `/stats` before `/:id`
+- PowerShell tip: use `;` instead of `&&` for chaining commands
 
 ## ✨ Features
 
 ### 🔐 Authentication & Authorization
+
 - JWT-based authentication
 - Role-based access control (Admin, Officer, Leader)
 - Secure password hashing with bcrypt
 - Password reset functionality
 
 ### 👥 Member Management
+
 - Complete member registration and profiles
 - Group-based member organization
 - Member status tracking (Active, Inactive, Suspended)
 - Bulk member operations
 
 ### 💰 Loan Management
+
 - Loan application and approval workflow
 - Multiple loan types and terms
 - Repayment scheduling and tracking
@@ -43,25 +57,29 @@ A comprehensive full-stack MERN application for managing microfinance operations
 - Guarantor system
 
 ### 💳 Savings & Transactions
+
 - Individual and group savings accounts
 - Transaction history and reporting
 - Interest calculation on savings
 - Withdrawal and deposit management
 
 ### 📊 Reporting & Analytics
+
 - Real-time dashboard with key metrics
 - Comprehensive financial reports
 - Export functionality (PDF, Excel)
 - Data visualization with charts
 
 ### 🔔 Real-time Features
+
 - Live notifications using Socket.io
-- Real-time chat system
+- Real-time chat system with optimistic updates
 - Live updates for transactions and status changes
 
 ### 📱 Modern UI & Responsive Design
+
 - ChatGPT-inspired UI with fixed footer
-- Floating chat button with notification indicators
+- Blue/purple gradient brand theme
 - Streamlined navigation with role-based access
 - Mobile-first responsive design
 - Progressive Web App (PWA) features
@@ -70,6 +88,7 @@ A comprehensive full-stack MERN application for managing microfinance operations
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **React 19** - UI library
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Styling framework
@@ -83,6 +102,7 @@ A comprehensive full-stack MERN application for managing microfinance operations
 - **Vitest** - Testing framework
 
 ### Backend
+
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
 - **MongoDB** - NoSQL database
@@ -95,6 +115,7 @@ A comprehensive full-stack MERN application for managing microfinance operations
 - **Supertest** - API testing
 
 ### DevOps & Tools
+
 - **GitHub Actions** - CI/CD pipelines
 - **Vercel** - Frontend deployment
 - **Render** - Backend deployment
@@ -131,82 +152,90 @@ microfinance-mis/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - MongoDB (local or Atlas)
 - Git
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/microfinance-mis.git
-   cd microfinance-mis
-   ```
+1. Clone the repository
 
-2. **Install dependencies**
-   ```bash
-   # Install backend dependencies
-   cd server
-   pnpm install
-   
-   # Install frontend dependencies
-   cd ../client
-   pnpm install
-   ```
+```bash
+git clone https://github.com/yourusername/microfinance-mis.git
+cd microfinance-mis
+```
 
-3. **Environment Setup**
-   
-   Create `.env` file in the server directory:
-   ```env
-   NODE_ENV=development
-   PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/microfinance-mis
-   JWT_SECRET=your-super-secret-jwt-key
-   JWT_EXPIRE=30d
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USER=your-email@gmail.com
-   EMAIL_PASS=your-app-password
-   CLIENT_URL=http://localhost:5173
-   ```
+2. Install dependencies
 
-   Create `.env` file in the client directory:
-   ```env
-   VITE_API_URL=http://localhost:5000
-   ```
+```bash
+# Install backend dependencies
+cd server
+npm install
 
-4. **Start the development servers**
-   ```bash
-   # Start backend (from server directory)
-   pnpm run dev
-   
-   # Start frontend (from client directory)
-   pnpm run dev
-   ```
+# Install frontend dependencies
+cd ../client
+npm install
+```
 
-5. **Access the application**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:5000
+3. Environment Setup
+
+Create `.env` file in the server directory:
+
+```env
+NODE_ENV=development
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/microfinance-mis
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRE=30d
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+CLIENT_URL=http://localhost:5173
+```
+
+Create `.env` file in the client directory:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+4. Start the development servers
+
+```bash
+# Start backend (from server directory)
+npm run dev
+
+# Start frontend (from client directory)
+npm run dev
+```
+
+PowerShell tip: use `;` to chain commands instead of `&&`.
+
+5. Access the application
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5000
 
 ## 🧪 Testing
 
 ### Backend Testing
+
 ```bash
 cd server
-pnpm test              # Run all tests
-pnpm run test:watch    # Run tests in watch mode
-pnpm run test:ci       # Run tests for CI
+npm test              # Run all tests
 ```
 
 ### Frontend Testing
+
 ```bash
 cd client
-pnpm test              # Run all tests
-pnpm run test:watch    # Run tests in watch mode
-pnpm run test:ui       # Run tests with UI
+npm test              # Run all tests
 ```
 
 ### E2E Testing
+
 ```bash
 npm run test:e2e      # Run Playwright E2E tests
 ```
@@ -214,11 +243,13 @@ npm run test:e2e      # Run Playwright E2E tests
 ## 🚀 Deployment
 
 ### Frontend (Vercel)
+
 1. Connect your GitHub repository to Vercel
 2. Set environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
 ### Backend (Render)
+
 1. Connect your GitHub repository to Render
 2. Set environment variables in Render dashboard
 3. Configure build command: `npm install && npm run build`
@@ -227,19 +258,21 @@ npm run test:e2e      # Run Playwright E2E tests
 ### Environment Variables for Production
 
 **Backend (Render)**
+
 ```env
 NODE_ENV=production
-MONGODB_URI=your-mongodb-atlas-uri
+MONGO_URI=your-mongodb-atlas-uri
 JWT_SECRET=your-production-jwt-secret
 JWT_EXPIRE=30d
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
+EMAIL_PASSWORD=your-app-password
 CLIENT_URL=https://microfinance-mis.vercel.app
 ```
 
 **Frontend (Vercel)**
+
 ```env
 VITE_API_URL=https://microfinance-mis.onrender.com
 ```
@@ -247,6 +280,7 @@ VITE_API_URL=https://microfinance-mis.onrender.com
 ## 📚 API Documentation
 
 ### Authentication Endpoints
+
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Get current user
@@ -254,24 +288,39 @@ VITE_API_URL=https://microfinance-mis.onrender.com
 - `POST /api/auth/reset-password` - Reset password
 
 ### User Management
+
+- `POST /api/users` - Create user (Admin/Officer/Leader)
 - `GET /api/users` - Get all users
 - `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+- `PUT /api/users/:id` - Update user role/status (Admin/Officer)
+- `DELETE /api/users/:id` - Delete user (Admin)
 
 ### Member Management
+
 - `GET /api/members` - Get all members
+- `GET /api/members/stats` - Get member stats
 - `POST /api/members` - Create member
 - `PUT /api/members/:id` - Update member
 - `DELETE /api/members/:id` - Delete member
 
-### Loan Management
+### Chat
+
+- `GET /api/chat/channels` - List channels
+- `GET /api/chat/messages` - List messages (params: chatId, chatType, groupId)
+- `POST /api/chat/messages` - Send message
+- `POST /api/chat/messages/read` - Mark messages as read
+- `PUT /api/chat/messages/:id` - Edit message
+- `DELETE /api/chat/messages/:id` - Delete message
+
+### Loans
+
 - `GET /api/loans` - Get all loans
 - `POST /api/loans` - Create loan
 - `PUT /api/loans/:id` - Update loan
 - `DELETE /api/loans/:id` - Delete loan
 
 ### Savings & Transactions
+
 - `GET /api/savings` - Get savings accounts
 - `POST /api/savings` - Create savings account
 - `GET /api/transactions` - Get transactions
@@ -279,15 +328,22 @@ VITE_API_URL=https://microfinance-mis.onrender.com
 
 For complete API documentation, visit: [https://microfinance-mis.onrender.com/api-docs](https://microfinance-mis.onrender.com/api-docs)
 
+## 🧯 Troubleshooting
+
+- Windows PowerShell: use `;` instead of `&&` to chain commands
+- If `GET /api/members/stats` returns 400, ensure the `/stats` route is defined before `/:id`
+- If chat messages you send don’t appear instantly, ensure the frontend is updated with optimistic UI and the chat endpoints match `/api/chat/messages`
+
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+3. Commit your changes (`git commit -m 'feat: amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ### Development Guidelines
+
 - Follow the existing code style
 - Write tests for new features
 - Update documentation as needed

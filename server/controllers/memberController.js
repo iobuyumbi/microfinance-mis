@@ -285,3 +285,50 @@ exports.deleteMember = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Failed to soft delete member.', 500));
   }
 });
+
+/**
+ * Get member statistics (counts by status)
+ * Route: GET /api/members/stats
+ * Access: Private (Admin, Officer, Leader)
+ * Returns counts of members by status (total, active, pending, inactive)
+ */
+exports.getMemberStats = asyncHandler(async (req, res, next) => {
+  try {
+    // Apply data filters based on user role (set by middleware)
+    const filter = req.dataFilter || {};
+    
+    // Get total count
+    const totalMembers = await User.countDocuments({ ...filter, role: 'member' });
+    
+    // Get active members count
+    const activeMembers = await User.countDocuments({ 
+      ...filter, 
+      role: 'member', 
+      status: 'active' 
+    });
+    
+    // Get pending members count
+    const pendingMembers = await User.countDocuments({ 
+      ...filter, 
+      role: 'member', 
+      status: 'pending' 
+    });
+    
+    // Get inactive members count
+    const inactiveMembers = await User.countDocuments({ 
+      ...filter, 
+      role: 'member', 
+      status: 'inactive' 
+    });
+    
+    res.status(200).json({
+      totalMembers,
+      activeMembers,
+      pendingMembers,
+      inactiveMembers
+    });
+  } catch (error) {
+    console.error('Error fetching member stats:', error);
+    return next(new ErrorResponse('Failed to fetch member statistics', 500));
+  }
+});

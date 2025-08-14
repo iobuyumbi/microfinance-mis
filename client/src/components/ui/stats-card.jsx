@@ -21,7 +21,7 @@ function StatsCard({
   return (
     <div
       className={cn(
-        "bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-200",
+        "bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-200 dark:border-blue-400 p-6 hover:shadow-md transition-all duration-200",
         className
       )}
       {...props}

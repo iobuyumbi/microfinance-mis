@@ -378,7 +378,10 @@ const LoansPage = () => {
             Manage loan applications, approvals, and repayments
           </p>
         </div>
-        <Button onClick={() => setIsNewLoanOpen(true)}>
+        <Button
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+          onClick={() => setIsNewLoanOpen(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           New Loan Application
         </Button>
@@ -414,7 +417,7 @@ const LoansPage = () => {
       </div>
 
       {/* Quick Actions */}
-      <FacebookCard>
+      <FacebookCard className="border-2 border-blue-200">
         <FacebookCardHeader>
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-blue-600" />
@@ -440,7 +443,7 @@ const LoansPage = () => {
       </FacebookCard>
 
       {/* Loan Applications */}
-      <FacebookCard>
+      <FacebookCard className="border-2 border-blue-200">
         <FacebookCardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -463,13 +466,16 @@ const LoansPage = () => {
                   placeholder="Search by applicant or purpose..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-11 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 h-11 border-2 border-blue-200 focus:border-purple-500 focus:ring-purple-500/20"
                 />
               </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-11 px-4">
+                <Button
+                  variant="outline"
+                  className="h-11 px-4 border-2 border-blue-200 hover:border-purple-500"
+                >
                   <Filter className="mr-2 h-4 w-4" />
                   {filterStatus === "all"
                     ? "All Status"
@@ -522,7 +528,10 @@ const LoansPage = () => {
                   ? "Try adjusting your search criteria or filters"
                   : "Get started by creating your first loan application"}
               </p>
-              <Button onClick={() => setIsNewLoanOpen(true)}>
+              <Button
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                onClick={() => setIsNewLoanOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" /> New Loan Application
               </Button>
             </div>
@@ -530,26 +539,26 @@ const LoansPage = () => {
 
           {/* Loans Table */}
           {!loading && loans.length > 0 && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="rounded-xl border-2 border-blue-200 overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50 dark:bg-gray-800/50">
-                    <TableHead className="font-semibold text-gray-900 dark:text-white">
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-purple-50">
+                    <TableHead className="font-semibold text-blue-900">
                       Applicant
                     </TableHead>
-                    <TableHead className="font-semibold text-gray-900 dark:text-white">
+                    <TableHead className="font-semibold text-blue-900">
                       Amount
                     </TableHead>
-                    <TableHead className="font-semibold text-gray-900 dark:text-white">
+                    <TableHead className="font-semibold text-blue-900">
                       Purpose
                     </TableHead>
-                    <TableHead className="font-semibold text-gray-900 dark:text-white">
+                    <TableHead className="font-semibold text-blue-900">
                       Status
                     </TableHead>
-                    <TableHead className="font-semibold text-gray-900 dark:text-white">
+                    <TableHead className="font-semibold text-blue-900">
                       Application Date
                     </TableHead>
-                    <TableHead className="text-right font-semibold text-gray-900 dark:text-white">
+                    <TableHead className="text-right font-semibold text-blue-900">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -560,7 +569,7 @@ const LoansPage = () => {
                     return (
                       <TableRow
                         key={loan.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-colors"
                       >
                         <TableCell>
                           <div className="flex items-center space-x-3">
@@ -672,10 +681,10 @@ const LoansPage = () => {
       </FacebookCard>
 
       {/* Recent Activity */}
-      <FacebookCard>
+      <FacebookCard className="border-2 border-blue-200">
         <FacebookCardHeader>
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
+            <TrendingUp className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Recent Activity
             </h2>

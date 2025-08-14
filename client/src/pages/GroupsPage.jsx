@@ -129,7 +129,10 @@ const GroupsPage = () => {
             Manage microfinance groups and their members
           </p>
         </div>
-        <Button onClick={() => setIsCreateGroupOpen(true)}>
+        <Button
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+          onClick={() => setIsCreateGroupOpen(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Create Group
         </Button>
@@ -180,7 +183,7 @@ const GroupsPage = () => {
         <Input
           type="text"
           placeholder="Search groups..."
-          className="pl-10"
+          className="pl-10 border-2 border-blue-200 focus:border-purple-500 focus:ring-purple-500/20"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -198,9 +201,9 @@ const GroupsPage = () => {
 
       {/* Groups Table */}
       {!loading && groups.length === 0 ? (
-        <FacebookCard>
+        <FacebookCard className="border-2 border-blue-200">
           <FacebookCardContent className="text-center py-12">
-            <Building2 className="h-12 w-12 text-primary mx-auto mb-4" />
+            <Building2 className="h-12 w-12 text-blue-600 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
               No Groups Found
             </h3>
@@ -210,7 +213,7 @@ const GroupsPage = () => {
                 : "Get started by creating your first group"}
             </p>
             <Button
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
               onClick={() => setIsCreateGroupOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" /> Create Group
@@ -219,10 +222,10 @@ const GroupsPage = () => {
         </FacebookCard>
       ) : (
         !loading && (
-          <FacebookCard>
+          <FacebookCard className="border-2 border-blue-200">
             <FacebookCardHeader>
               <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
+                <Building2 className="h-5 w-5 text-blue-600" />
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Microfinance Groups
                 </h2>
@@ -234,22 +237,35 @@ const GroupsPage = () => {
             <FacebookCardContent>
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Group Name</TableHead>
-                    <TableHead>Members</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-gradient-to-r from-blue-50 to-purple-50">
+                    <TableHead className="text-blue-900 font-semibold">
+                      Group Name
+                    </TableHead>
+                    <TableHead className="text-blue-900 font-semibold">
+                      Members
+                    </TableHead>
+                    <TableHead className="text-blue-900 font-semibold">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-blue-900 font-semibold">
+                      Created
+                    </TableHead>
+                    <TableHead className="text-right text-blue-900 font-semibold">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {groups && groups.length > 0 ? (
                     groups.map((group) => (
-                      <TableRow key={group.id}>
+                      <TableRow
+                        key={group.id}
+                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+                      >
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Building2 className="h-5 w-5 text-primary" />
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                              <Building2 className="h-5 w-5 text-white" />
                             </div>
                             <div>
                               <div className="font-medium">{group.name}</div>

@@ -209,7 +209,10 @@ const SavingsPage = () => {
             Manage savings accounts and transactions
           </p>
         </div>
-        <Button onClick={() => setIsCreateSavingsOpen(true)}>
+        <Button
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+          onClick={() => setIsCreateSavingsOpen(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           New Savings
         </Button>
@@ -247,16 +250,16 @@ const SavingsPage = () => {
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
         <Input
           placeholder="Search savings accounts..."
-          className="pl-10"
+          className="pl-10 border-2 border-blue-200 focus:border-purple-500 focus:ring-purple-500/20"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
-      <FacebookCard>
+      <FacebookCard className="border-2 border-blue-200">
         <FacebookCardHeader>
           <div className="flex items-center gap-2">
-            <PiggyBank className="h-5 w-5 text-primary" />
+            <PiggyBank className="h-5 w-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Savings Accounts
             </h2>
@@ -281,7 +284,10 @@ const SavingsPage = () => {
                   ? "No accounts match your search criteria."
                   : "Start by creating a new savings account."}
               </p>
-              <Button onClick={() => setIsCreateSavingsOpen(true)}>
+              <Button
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                onClick={() => setIsCreateSavingsOpen(true)}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Create Savings Account
               </Button>
@@ -289,18 +295,33 @@ const SavingsPage = () => {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Account Type</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="bg-gradient-to-r from-blue-50 to-purple-50">
+                  <TableHead className="text-blue-900 font-semibold">
+                    Account Type
+                  </TableHead>
+                  <TableHead className="text-blue-900 font-semibold">
+                    Owner
+                  </TableHead>
+                  <TableHead className="text-blue-900 font-semibold">
+                    Balance
+                  </TableHead>
+                  <TableHead className="text-blue-900 font-semibold">
+                    Frequency
+                  </TableHead>
+                  <TableHead className="text-blue-900 font-semibold">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-right text-blue-900 font-semibold">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {savings.map((account) => (
-                  <TableRow key={account._id}>
+                  <TableRow
+                    key={account._id}
+                    className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
+                  >
                     <TableCell className="font-medium">
                       {account.savingsType}
                     </TableCell>

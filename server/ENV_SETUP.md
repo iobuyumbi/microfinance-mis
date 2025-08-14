@@ -23,7 +23,10 @@ EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
 FROM_NAME=Microfinance MIS
 FROM_EMAIL=noreply@microfinance-mis.com
-FRONTEND_URL=http://localhost:3000
+
+# CORS / Frontend URLs
+CLIENT_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Optional Variables
