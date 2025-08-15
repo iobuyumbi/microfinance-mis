@@ -7,7 +7,11 @@ const Loan = require('../models/Loan'); // Ensure Loan model is imported for fin
 const UserGroupMembership = require('../models/UserGroupMembership'); // Import for direct membership queries
 
 const asyncHandler = require('../middleware/asyncHandler');
-const { ErrorResponse, settingsHelper } = require('../utils');
+const {
+  ErrorResponse,
+  settingsHelper,
+  generateAccountNumber,
+} = require('../utils');
 const mongoose = require('mongoose');
 
 // Helper function to validate ObjectId
@@ -84,17 +88,16 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     const user = newUser[0]; // User.create returns an array
 
     // Create a default primary savings account for the new user
-    const currency = await settingsHelper.getCurrency(); // Get default currency from settings
+    const accountNumber = await generateAccountNumber(); // Generate unique account number
 
     await Account.create(
       [
         {
           owner: user._id,
           ownerModel: 'User',
-          type: 'savings', // Assuming 'savings' is the default account type
-          accountName: `${user.name}'s Primary Savings`,
+          type: 'savings', // Default account type
+          accountNumber: accountNumber, // Add the generated account number
           balance: 0,
-          currency: currency,
           status: 'active',
           // createdBy: req.user.id, // Uncomment if you have this field in Account model
         },

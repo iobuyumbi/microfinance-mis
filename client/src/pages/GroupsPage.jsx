@@ -81,13 +81,16 @@ const GroupsPage = () => {
   // Handle group creation
   const handleCreateGroup = async (groupData) => {
     try {
+      console.log("Creating group with data:", groupData);
       await groupService.create(groupData);
       toast.success("Group created successfully");
       setIsCreateGroupOpen(false);
       fetchGroups();
     } catch (error) {
       console.error("Error creating group:", error);
-      toast.error("Failed to create group");
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      toast.error(error.response?.data?.message || "Failed to create group");
     }
   };
 

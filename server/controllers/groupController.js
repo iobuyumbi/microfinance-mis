@@ -5,7 +5,11 @@ const User = require('../models/User');
 const Account = require('../models/Account');
 const UserGroupMembership = require('../models/UserGroupMembership');
 const asyncHandler = require('../middleware/asyncHandler');
-const { ErrorResponse, settingsHelper } = require('../utils');
+const {
+  ErrorResponse,
+  settingsHelper,
+  generateAccountNumber,
+} = require('../utils');
 const mongoose = require('mongoose');
 
 const isValidObjectId = id => mongoose.Types.ObjectId.isValid(id);
@@ -59,16 +63,15 @@ exports.createGroup = asyncHandler(async (req, res, next) => {
     const newGroup = group[0]; // Mongoose.create returns an array
 
     // 2. Create a default savings account for the group
-    const currency = await settingsHelper.getCurrency();
+    const accountNumber = await generateAccountNumber();
     const groupAccount = await Account.create(
       [
         {
           owner: newGroup._id,
           ownerModel: 'Group',
           balance: 0,
-          accountNumber: `GRP-${newGroup._id.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`,
+          accountNumber: accountNumber,
           type: 'savings',
-          currency: currency,
           status: 'active',
         },
       ],
