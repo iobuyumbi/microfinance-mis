@@ -49,6 +49,14 @@ This application is currently in active development. While core features are imp
 - Improved socket connection management
 - Enhanced error boundaries and loading states
 
+### New Features
+
+- **Contribution Tracking System**: Comprehensive contribution management with real-time analytics
+- **Member Contribution Cards**: Individual member tracking with compliance monitoring
+- **Group Contribution Reports**: Advanced group analytics and performance metrics
+- **Export Functionality**: CSV export for contributions and reports
+- **Advanced Filtering**: Date range, group, and member-based filtering
+
 ## ✨ Features
 
 ### 🔐 Authentication & Authorization
@@ -79,6 +87,15 @@ This application is currently in active development. While core features are imp
 - Transaction history and reporting
 - Interest calculation on savings
 - Withdrawal and deposit management
+
+### 🏦 Contribution Management
+
+- Real-time contribution tracking and analytics
+- Individual member contribution history
+- Group performance monitoring and compliance
+- Advanced filtering and search capabilities
+- CSV export for reports and data analysis
+- Payment method tracking (cash, mobile, bank, cheque)
 
 ### 📊 Reporting & Analytics
 
