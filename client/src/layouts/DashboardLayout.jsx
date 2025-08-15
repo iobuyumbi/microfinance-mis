@@ -28,7 +28,6 @@ import {
 } from "../components/ui/tooltip";
 import Footer from "../components/Footer";
 
-
 // Components
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
@@ -69,7 +68,9 @@ const DashboardLayout = () => {
   // Update unread notifications count
   useEffect(() => {
     if (notifications && notifications.length > 0) {
-      const unread = notifications.filter(notification => !notification.read).length;
+      const unread = notifications.filter(
+        (notification) => !notification.read
+      ).length;
       setUnreadNotifications(unread);
     }
   }, [notifications]);
@@ -81,7 +82,7 @@ const DashboardLayout = () => {
 
   // Reset unread notifications when navigating to chat
   useEffect(() => {
-    if (location.pathname === '/chat' && unreadNotifications > 0) {
+    if (location.pathname === "/chat" && unreadNotifications > 0) {
       // In a real app, you would mark notifications as read in the backend
       setUnreadNotifications(0);
     }
@@ -135,6 +136,12 @@ const DashboardLayout = () => {
       roles: ["admin", "officer", "leader", "member"],
     },
     {
+      name: "Contributions",
+      href: "/contributions",
+      icon: ArrowRightLeft,
+      roles: ["admin", "officer", "leader", "member"],
+    },
+    {
       name: "Meetings",
       href: "/meetings",
       icon: Calendar,
@@ -168,11 +175,15 @@ const DashboardLayout = () => {
             <div className="flex h-14 items-center border-b px-4">
               <div className="flex items-center space-x-2">
                 <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">MF</span>
+                  <span className="text-primary-foreground font-bold text-sm">
+                    MF
+                  </span>
                 </div>
                 <div>
                   <h1 className="text-lg font-bold">Microfinance</h1>
-                  <p className="text-xs text-muted-foreground">Management System</p>
+                  <p className="text-xs text-muted-foreground">
+                    Management System
+                  </p>
                 </div>
               </div>
             </div>
@@ -196,7 +207,11 @@ const DashboardLayout = () => {
                         <Link
                           key={item.name}
                           to={item.href}
-                          className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${isActive ? "bg-accent text-accent-foreground" : "text-foreground"}`}
+                          className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+                            isActive
+                              ? "bg-accent text-accent-foreground"
+                              : "text-foreground"
+                          }`}
                           onClick={() => setIsMobileSidebarOpen(false)}
                         >
                           <div className="relative">
@@ -217,7 +232,7 @@ const DashboardLayout = () => {
                   </nav>
                 </div>
               </ScrollArea>
-              
+
               {/* User Profile - Mobile Sidebar */}
               <div className="border-t p-4">
                 <div className="flex items-center space-x-2">
@@ -228,10 +243,19 @@ const DashboardLayout = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="text-sm font-medium leading-none">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                    <p className="text-sm font-medium leading-none">
+                      {user?.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {user?.role}
+                    </p>
                   </div>
-                  <Button variant="ghost" size="icon" className="ml-auto h-8 w-8" onClick={handleLogout}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto h-8 w-8"
+                    onClick={handleLogout}
+                  >
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </div>
@@ -245,11 +269,15 @@ const DashboardLayout = () => {
           <div className="flex h-14 items-center border-b px-4">
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">MF</span>
+                <span className="text-primary-foreground font-bold text-sm">
+                  MF
+                </span>
               </div>
               <div>
                 <h1 className="text-lg font-bold">Microfinance</h1>
-                <p className="text-xs text-muted-foreground">Management System</p>
+                <p className="text-xs text-muted-foreground">
+                  Management System
+                </p>
               </div>
             </div>
           </div>
@@ -273,7 +301,11 @@ const DashboardLayout = () => {
                       <Link
                         key={item.name}
                         to={item.href}
-                        className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${isActive ? "bg-accent text-accent-foreground" : "text-foreground"}`}
+                        className={`flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+                          isActive
+                            ? "bg-accent text-accent-foreground"
+                            : "text-foreground"
+                        }`}
                       >
                         <div className="relative">
                           <item.icon className="mr-3 h-4 w-4" />
@@ -293,7 +325,7 @@ const DashboardLayout = () => {
                 </nav>
               </div>
             </ScrollArea>
-            
+
             {/* User Profile - Desktop Sidebar */}
             <div className="border-t p-4">
               <div className="flex items-center space-x-2">
@@ -304,12 +336,20 @@ const DashboardLayout = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-medium leading-none">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {user?.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground capitalize">
+                    {user?.role}
+                  </p>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="ml-auto h-8 w-8"
+                    >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -327,7 +367,10 @@ const DashboardLayout = () => {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="cursor-pointer text-destructive focus:text-destructive"
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </DropdownMenuItem>
@@ -353,8 +396,8 @@ const DashboardLayout = () => {
               </Button>
               <div>
                 <h1 className="text-xl font-semibold">
-                  {filteredNavigation.find(
-                    (item) => location.pathname.startsWith(item.href)
+                  {filteredNavigation.find((item) =>
+                    location.pathname.startsWith(item.href)
                   )?.name || "Dashboard"}
                 </h1>
               </div>
@@ -366,7 +409,9 @@ const DashboardLayout = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      onClick={() =>
+                        setTheme(theme === "dark" ? "light" : "dark")
+                      }
                     >
                       <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -378,7 +423,7 @@ const DashboardLayout = () => {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              
+
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 {unreadNotifications > 0 && (
@@ -390,7 +435,7 @@ const DashboardLayout = () => {
                   </Badge>
                 )}
               </Button>
-              
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -409,7 +454,9 @@ const DashboardLayout = () => {
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{user?.name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {user?.role}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -426,7 +473,10 @@ const DashboardLayout = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
@@ -441,7 +491,7 @@ const DashboardLayout = () => {
           </main>
         </div>
       </div>
-      
+
       {/* Fixed Footer */}
       <div className="fixed bottom-0 left-0 right-0 z-10 md:ml-64">
         <Footer />

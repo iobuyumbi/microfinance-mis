@@ -29,6 +29,7 @@ import TransactionsPage from "./pages/TransactionsPage";
 import MeetingsPage from "./pages/MeetingsPage";
 import MembersPage from "./pages/MembersPage";
 import ChatPage from "./pages/ChatPage";
+import ContributionsPage from "./pages/ContributionsPage";
 
 // Common Components
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -74,6 +75,10 @@ function App() {
                     <Route path="meetings" element={<MeetingsPage />} />
                     <Route path="members" element={<MembersPage />} />
                     <Route path="chat" element={<ChatPage />} />
+                    <Route
+                      path="contributions"
+                      element={<ContributionsPage />}
+                    />
                   </Route>
                 </Route>
 

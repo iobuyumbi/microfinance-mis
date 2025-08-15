@@ -95,6 +95,24 @@ export const ENDPOINTS = {
     DELETE: (id) => `/accounts/${id}`,
   },
 
+  // Contributions
+  CONTRIBUTIONS: {
+    BASE: "/contributions",
+    BY_ID: (id) => `/contributions/${id}`,
+    BY_GROUP: (groupId) => `/contributions/groups/${groupId}/contributions`,
+    BY_MEMBER: (memberId) => `/contributions/members/${memberId}/contributions`,
+    SUMMARY: (groupId) =>
+      `/contributions/groups/${groupId}/contributions/summary`,
+    BULK_IMPORT: (groupId) =>
+      `/contributions/groups/${groupId}/contributions/bulk`,
+    EXPORT: (groupId, format = "csv") =>
+      `/contributions/groups/${groupId}/contributions/export?format=${format}`,
+    MEMBER_HISTORY: (memberId) =>
+      `/contributions/members/${memberId}/contributions`,
+    STATS: "/contributions/stats",
+    REPORTS: "/contributions/reports",
+  },
+
   // Meetings
   MEETINGS: {
     BASE: "/meetings",

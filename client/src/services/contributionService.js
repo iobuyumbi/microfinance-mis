@@ -2,31 +2,53 @@ import { api } from "./api/client";
 import { ENDPOINTS } from "./api/endpoints";
 
 export const contributionService = {
+  // Get all contributions with optional filters
   getAll: (params) => api.get(ENDPOINTS.CONTRIBUTIONS.BASE, { params }),
 
+  // Get a single contribution by ID
+  getById: (id) => api.get(ENDPOINTS.CONTRIBUTIONS.BY_ID(id)),
+
+  // Create a new contribution
+  create: (contributionData) =>
+    api.post(ENDPOINTS.CONTRIBUTIONS.BASE, contributionData),
+
+  // Update a contribution
+  update: (id, contributionData) =>
+    api.put(ENDPOINTS.CONTRIBUTIONS.BY_ID(id), contributionData),
+
+  // Delete a contribution
+  delete: (id) => api.delete(ENDPOINTS.CONTRIBUTIONS.BY_ID(id)),
+
+  // Get contributions by group
   getByGroup: (groupId, params) =>
     api.get(ENDPOINTS.CONTRIBUTIONS.BY_GROUP(groupId), { params }),
 
-  getById: (id) => api.get(ENDPOINTS.CONTRIBUTIONS.BY_ID(id)),
+  // Get contributions by member
+  getByMember: (memberId, params) =>
+    api.get(ENDPOINTS.CONTRIBUTIONS.BY_MEMBER(memberId), { params }),
 
-  create: (data) => api.post(ENDPOINTS.CONTRIBUTIONS.BASE, data),
+  // Get contribution summary for a group
+  getGroupSummary: (groupId) =>
+    api.get(ENDPOINTS.CONTRIBUTIONS.SUMMARY(groupId)),
 
-  update: (id, data) => api.put(ENDPOINTS.CONTRIBUTIONS.BY_ID(id), data),
-
-  delete: (id) => api.delete(ENDPOINTS.CONTRIBUTIONS.BY_ID(id)),
-
-  getSummary: (groupId, params) =>
-    api.get(ENDPOINTS.CONTRIBUTIONS.SUMMARY(groupId), { params }),
-
-  bulkImport: (groupId, data) =>
-    api.post(ENDPOINTS.CONTRIBUTIONS.BULK_IMPORT(groupId), data),
-
-  export: (groupId, format = "json", params) =>
-    api.get(ENDPOINTS.CONTRIBUTIONS.EXPORT(groupId, format), {
+  // Export contributions
+  export: (params) =>
+    api.get(ENDPOINTS.CONTRIBUTIONS.EXPORT(params.groupId, "csv"), {
       params,
       responseType: "blob",
     }),
 
-  getMemberHistory: (memberId, params) =>
-    api.get(ENDPOINTS.CONTRIBUTIONS.MEMBER_HISTORY(memberId), { params }),
+  // Get member contribution history
+  getMemberHistory: (memberId) =>
+    api.get(ENDPOINTS.CONTRIBUTIONS.MEMBER_HISTORY(memberId)),
+
+  // Bulk import contributions
+  bulkImport: (groupId, contributions) =>
+    api.post(ENDPOINTS.CONTRIBUTIONS.BULK_IMPORT(groupId), contributions),
+
+  // Get contribution statistics
+  getStats: (params) => api.get("/contributions/stats", { params }),
+
+  // Get contribution reports
+  getReports: (params) => api.get("/contributions/reports", { params }),
 };
