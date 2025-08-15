@@ -80,6 +80,129 @@ app.use(
 // Mount health routes (usually before protected routes)
 app.use('/api/health', healthRoutes);
 
+// Root route for basic server info
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Microfinance MIS Backend Server',
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      api: '/api',
+      documentation: '/api-docs',
+    },
+  });
+});
+
+// API documentation route
+app.get('/api-docs', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API Documentation',
+    version: '1.0.0',
+    baseUrl: '/api',
+    endpoints: {
+      auth: {
+        description: 'Authentication endpoints',
+        routes: [
+          'POST /api/auth/register - User registration',
+          'POST /api/auth/login - User login',
+          'GET /api/auth/me - Get current user',
+          'POST /api/auth/forgot-password - Forgot password',
+          'POST /api/auth/reset-password - Reset password',
+        ],
+      },
+      users: {
+        description: 'User management',
+        routes: [
+          'GET /api/users - Get all users',
+          'POST /api/users - Create user',
+          'GET /api/users/:id - Get user by ID',
+          'PUT /api/users/:id - Update user',
+          'DELETE /api/users/:id - Delete user',
+        ],
+      },
+      groups: {
+        description: 'Group management',
+        routes: [
+          'GET /api/groups - Get all groups',
+          'POST /api/groups - Create group',
+          'GET /api/groups/:id - Get group by ID',
+          'PUT /api/groups/:id - Update group',
+          'DELETE /api/groups/:id - Delete group',
+        ],
+      },
+      contributions: {
+        description: 'Contribution tracking',
+        routes: [
+          'GET /api/contributions - Get all contributions',
+          'POST /api/contributions - Create contribution',
+          'GET /api/contributions/groups/:groupId/contributions - Get group contributions',
+          'GET /api/contributions/groups/:groupId/contributions/summary - Get group summary',
+          'GET /api/contributions/groups/:groupId/contributions/export - Export contributions',
+        ],
+      },
+      loans: {
+        description: 'Loan management',
+        routes: [
+          'GET /api/loans - Get all loans',
+          'POST /api/loans - Create loan',
+          'PUT /api/loans/:id - Update loan',
+          'DELETE /api/loans/:id - Delete loan',
+        ],
+      },
+      chat: {
+        description: 'Real-time chat',
+        routes: [
+          'GET /api/chat/channels - Get chat channels',
+          'GET /api/chat/messages - Get messages',
+          'POST /api/chat/messages - Send message',
+        ],
+      },
+    },
+    socketEvents: {
+      'join-group': 'Join a group chat room',
+      'leave-group': 'Leave a group chat room',
+      'send-message': 'Send a chat message',
+      new_message: 'Receive new message',
+      'socket-error': 'Socket error notification',
+    },
+  });
+});
+
+// Additional utility routes
+app.get('/status', (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: 'operational',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+  });
+});
+
+app.get('/info', (req, res) => {
+  res.status(200).json({
+    success: true,
+    name: 'Microfinance MIS Backend',
+    description: 'A comprehensive microfinance management information system',
+    version: process.env.npm_package_version || '1.0.0',
+    author: 'Development Team',
+    license: 'MIT',
+    repository: 'https://github.com/iobuyumbi/microfinance-mis',
+    endpoints: {
+      root: '/',
+      health: '/api/health',
+      status: '/status',
+      info: '/info',
+      api: '/api',
+      docs: '/api-docs',
+    },
+  });
+});
+
 // Initialize Socket.IO using modularized config
 const io = configureSocket(server);
 app.set('io', io);
@@ -299,6 +422,25 @@ app.use('/api/repayments', repaymentRoutes);
 app.use('/api/loan-assessments', loanAssessmentRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/contributions', contributionRoutes);
+
+// Catch-all route for undefined paths (must be before error handling)
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+    error: 'NOT_FOUND',
+    availableRoutes: {
+      root: '/',
+      health: '/health',
+      status: '/status',
+      info: '/info',
+      apiHealth: '/api/health',
+      apiDocs: '/api-docs',
+      api: '/api/*',
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Error handling middleware
 app.use(notFound);
