@@ -84,7 +84,7 @@ const LoansPage = () => {
         status: filterStatus !== "all" ? filterStatus : undefined,
       });
 
-      setLoans(response.data || []);
+      setLoans(response.data.data || []);
 
       // Calculate stats
       if (response.data) {

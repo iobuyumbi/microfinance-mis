@@ -46,7 +46,7 @@ const UsersPage = () => {
     try {
       setLoading(true);
       const res = await userService.getAll();
-      setUsers(res.data || []);
+      setUsers(res.data.data || []);
     } catch (err) {
       console.error("Failed to load users", err);
       toast.error("Failed to load users");
@@ -63,6 +63,7 @@ const UsersPage = () => {
     }
     try {
       setSaving(true);
+      console.log("Creating user with data:", createForm);
       await userService.create(createForm);
       toast.success("User created");
       setIsAddOpen(false);
@@ -70,6 +71,8 @@ const UsersPage = () => {
       fetchUsers();
     } catch (err) {
       console.error("Failed to create user", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
       toast.error(err.response?.data?.message || "Failed to create user");
     } finally {
       setSaving(false);
@@ -264,6 +267,7 @@ const UsersPage = () => {
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         title="Add User"
+        description="Create a new user account with appropriate role and permissions."
       >
         <form className="space-y-4" onSubmit={handleCreateUser}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

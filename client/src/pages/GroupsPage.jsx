@@ -61,7 +61,7 @@ const GroupsPage = () => {
       const response = await groupService.getAll({
         search: searchTerm || undefined,
       });
-      setGroups(response.data || []);
+      setGroups(response.data.data || []);
     } catch (error) {
       console.error("Error fetching groups:", error);
       toast.error("Failed to load groups");

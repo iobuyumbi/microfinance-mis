@@ -1,8 +1,14 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
 import { X } from "lucide-react";
 
-const FormModal = ({ isOpen, onClose, title, children }) => {
+const FormModal = ({ isOpen, onClose, title, description, children }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -12,14 +18,14 @@ const FormModal = ({ isOpen, onClose, title, children }) => {
             <button
               onClick={onClose}
               className="rounded-full p-1 hover:bg-muted transition-colors"
+              aria-label="Close dialog"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
+          {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className="py-4">
-          {children}
-        </div>
+        <div className="py-4">{children}</div>
       </DialogContent>
     </Dialog>
   );

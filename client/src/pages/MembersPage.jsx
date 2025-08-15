@@ -85,7 +85,7 @@ const MembersPage = () => {
         status: filterStatus !== "all" ? filterStatus : undefined,
         search: searchTerm || undefined,
       });
-      setMembers(response.data || []);
+      setMembers(response.data.data || []);
     } catch (error) {
       console.error("Error fetching members:", error);
       toast.error("Failed to load members");

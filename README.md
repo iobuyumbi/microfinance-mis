@@ -4,9 +4,18 @@ A comprehensive full-stack MERN application for managing microfinance operations
 
 ## 🚀 Live Demo
 
-- **Frontend**: [https://microfinance-mis.vercel.app](https://microfinance-mis.vercel.app)
-- **Backend API**: [https://microfinance-mis.onrender.com](https://microfinance-mis.onrender.com)
-- **API Documentation**: [https://microfinance-mis.onrender.com/api-docs](https://microfinance-mis.onrender.com/api-docs)
+- **Frontend**: [https://microfinance-mis.vercel.app](https://microfinance-mis.vercel.app) _(Development in progress)_
+- **Backend API**: [https://microfinance-mis.onrender.com](https://microfinance-mis.onrender.com) _(Development in progress)_
+- **API Documentation**: [https://microfinance-mis.onrender.com/api-docs](https://microfinance-mis.onrender.com/api-docs) _(Coming soon)_
+
+## ⚠️ Current Status
+
+This application is currently in active development. While core features are implemented, some components may have intermittent issues that are being addressed:
+
+- **Socket Connections**: Real-time features may have occasional connection drops
+- **API Response Handling**: Some components have been updated to handle API responses correctly
+- **Error Boundaries**: Comprehensive error handling is being implemented
+- **Mobile Responsiveness**: Mobile experience improvements are in progress
 
 ## 📋 Table of Contents
 
@@ -25,12 +34,20 @@ A comprehensive full-stack MERN application for managing microfinance operations
 
 ## ✨ What's New
 
-- Unified blue/purple gradient theme across buttons, inputs, cards, and tables
-- Chat: optimistic UI updates so sent messages appear instantly with duplicate prevention
-- Users: functional management page (list/search, create, update role/status, delete)
-- Chat endpoints aligned to `/api/chat/messages` and read markers
-- Members stats route fixed by placing `/stats` before `/:id`
-- PowerShell tip: use `;` instead of `&&` for chaining commands
+### Latest Updates (Current Development)
+
+- **API Response Fixes**: Fixed inconsistent API response handling across UsersPage, MembersPage, LoansPage, and GroupsPage
+- **Socket Connection**: Real-time chat and notifications with Socket.io (connection stability improvements in progress)
+- **User Management**: Complete CRUD operations for users with role-based access control
+- **Error Handling**: Improved error handling and user feedback with toast notifications
+- **UI Improvements**: Modern ChatGPT-inspired interface with blue/purple gradient theme
+
+### Recent Fixes
+
+- Fixed `users.filter is not a function` error in UsersPage
+- Standardized API response handling (`response.data.data` vs `response.data`)
+- Improved socket connection management
+- Enhanced error boundaries and loading states
 
 ## ✨ Features
 
@@ -92,14 +109,14 @@ A comprehensive full-stack MERN application for managing microfinance operations
 - **React 19** - UI library
 - **Vite** - Build tool and dev server
 - **Tailwind CSS** - Styling framework
-- **Radix UI** - Accessible component primitives
+- **shadcn/ui** - Modern component library built on Radix UI primitives
+- **Radix UI** - Underlying accessible component primitives (used by shadcn/ui)
 - **React Router** - Client-side routing
-- **React Hook Form** - Form management
-- **Zod** - Schema validation
 - **Axios** - HTTP client
 - **Socket.io Client** - Real-time communication
 - **Recharts** - Data visualization
-- **Vitest** - Testing framework
+- **Sonner** - Toast notifications
+- **Lucide React** - Icon library
 
 ### Backend
 
