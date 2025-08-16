@@ -53,7 +53,7 @@ const createApp = () => {
           defaultSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           scriptSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
+          imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'"],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],
@@ -76,7 +76,7 @@ const createApp = () => {
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use('/api/', limiter);
+  app.use('/api', limiter);
 
   // Body parsing middleware
   app.use(express.json({ limit: '10mb' }));
@@ -119,7 +119,7 @@ const createApp = () => {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/members', memberRoutes);
-  app.use('/api/groups', memberRoutes);
+  app.use('/api/groups', groupRoutes);
   app.use('/api/loans', loanRoutes);
   app.use('/api/savings', savingsRoutes);
   app.use('/api/transactions', transactionRoutes);
