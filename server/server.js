@@ -60,9 +60,6 @@ const loanAssessmentRoutes = require('./routes/loanAssessmentRoutes');
 const contributionRoutes = require('./routes/contributionRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 
-// Load environment variables
-require('dotenv').config();
-
 // Initialize express app
 const app = express();
 const server = http.createServer(app);
@@ -111,8 +108,8 @@ app.get('/api-docs', (req, res) => {
           'POST /api/auth/login - User login',
           'GET /api/auth/me - Get current user',
           'POST /api/auth/forgot-password - Forgot password',
-          'POST /api/auth/reset-password - Reset password',
-        ],
+          'POST /api/auth/reset-password - Reset password'
+        ]
       },
       users: {
         description: 'User management',
@@ -121,8 +118,8 @@ app.get('/api-docs', (req, res) => {
           'POST /api/users - Create user',
           'GET /api/users/:id - Get user by ID',
           'PUT /api/users/:id - Update user',
-          'DELETE /api/users/:id - Delete user',
-        ],
+          'DELETE /api/users/:id - Delete user'
+        ]
       },
       groups: {
         description: 'Group management',
@@ -131,8 +128,8 @@ app.get('/api-docs', (req, res) => {
           'POST /api/groups - Create group',
           'GET /api/groups/:id - Get group by ID',
           'PUT /api/groups/:id - Update group',
-          'DELETE /api/groups/:id - Delete group',
-        ],
+          'DELETE /api/groups/:id - Delete group'
+        ]
       },
       contributions: {
         description: 'Contribution tracking',
@@ -141,8 +138,8 @@ app.get('/api-docs', (req, res) => {
           'POST /api/contributions - Create contribution',
           'GET /api/contributions/groups/:groupId/contributions - Get group contributions',
           'GET /api/contributions/groups/:groupId/contributions/summary - Get group summary',
-          'GET /api/contributions/groups/:groupId/contributions/export - Export contributions',
-        ],
+          'GET /api/contributions/groups/:groupId/contributions/export - Export contributions'
+        ]
       },
       loans: {
         description: 'Loan management',
@@ -150,25 +147,25 @@ app.get('/api-docs', (req, res) => {
           'GET /api/loans - Get all loans',
           'POST /api/loans - Create loan',
           'PUT /api/loans/:id - Update loan',
-          'DELETE /api/loans/:id - Delete loan',
-        ],
+          'DELETE /api/loans/:id - Delete loan'
+        ]
       },
       chat: {
         description: 'Real-time chat',
         routes: [
           'GET /api/chat/channels - Get chat channels',
           'GET /api/chat/messages - Get messages',
-          'POST /api/chat/messages - Send message',
-        ],
-      },
+          'POST /api/chat/messages - Send message'
+        ]
+      }
     },
     socketEvents: {
       'join-group': 'Join a group chat room',
       'leave-group': 'Leave a group chat room',
       'send-message': 'Send a chat message',
-      new_message: 'Receive new message',
-      'socket-error': 'Socket error notification',
-    },
+      'new_message': 'Receive new message',
+      'socket-error': 'Socket error notification'
+    }
   });
 });
 
@@ -179,7 +176,7 @@ app.get('/status', (req, res) => {
     status: 'operational',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -198,8 +195,8 @@ app.get('/info', (req, res) => {
       status: '/status',
       info: '/info',
       api: '/api',
-      docs: '/api-docs',
-    },
+      docs: '/api-docs'
+    }
   });
 });
 
@@ -424,7 +421,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/contributions', contributionRoutes);
 
 // Catch-all route for undefined paths (must be before error handling)
-app.use('*', (req, res) => {
+app.use('/*', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,
@@ -436,9 +433,9 @@ app.use('*', (req, res) => {
       info: '/info',
       apiHealth: '/api/health',
       apiDocs: '/api-docs',
-      api: '/api/*',
+      api: '/api/*'
     },
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   });
 });
 
