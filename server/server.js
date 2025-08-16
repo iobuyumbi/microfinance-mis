@@ -360,7 +360,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use('/api/', limiter);
+app.use('/api', limiter);
 
 // -------------------------------------------------------------
 // IMPORTANT: MOVE THE BODY PARSING MIDDLEWARE HERE
@@ -401,24 +401,146 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/groups', groupRoutes);
-app.use('/api/members', memberRoutes);
-app.use('/api/members', groupMembershipRoutes);
-app.use('/api/loans', loanRoutes);
-app.use('/api/savings', savingsRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/meetings', meetingRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/accounts', accountRoutes);
-app.use('/api/guarantors', guarantorRoutes);
-app.use('/api/repayments', repaymentRoutes);
-app.use('/api/loan-assessments', loanAssessmentRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/contributions', contributionRoutes);
+console.log('🔧 Registering API routes...');
+try {
+  app.use('/api/auth', authRoutes);
+  console.log('  ✅ /api/auth registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/auth:', error.message);
+}
+
+try {
+  app.use('/api/users', userRoutes);
+  console.log('  ✅ /api/users registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/users:', error.message);
+}
+
+try {
+  app.use('/api/groups', groupRoutes);
+  console.log('  ✅ /api/groups registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/groups:', error.message);
+}
+
+try {
+  app.use('/api/members', memberRoutes);
+  console.log('  ✅ /api/members registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/members:', error.message);
+}
+
+try {
+  app.use('/api/members', groupMembershipRoutes);
+  console.log('  ✅ /api/members (groupMembership) registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/members (groupMembership):', error.message);
+}
+
+try {
+  app.use('/api/loans', loanRoutes);
+  console.log('  ✅ /api/loans registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/loans:', error.message);
+}
+
+try {
+  app.use('/api/savings', savingsRoutes);
+  console.log('  ✅ /api/savings registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/savings:', error.message);
+}
+
+try {
+  app.use('/api/transactions', transactionRoutes);
+  console.log('  ✅ /api/transactions registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/transactions:', error.message);
+}
+
+try {
+  app.use('/api/meetings', meetingRoutes);
+  console.log('  ✅ /api/meetings registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/meetings:', error.message);
+}
+
+try {
+  app.use('/api/notifications', notificationRoutes);
+  console.log('  ✅ /api/notifications registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/notifications:', error.message);
+}
+
+try {
+  app.use('/api/reports', reportRoutes);
+  console.log('  ✅ /api/reports registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/reports:', error.message);
+}
+
+try {
+  app.use('/api/settings', settingsRoutes);
+  console.log('  ✅ /api/settings registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/settings:', error.message);
+}
+
+try {
+  app.use('/api/accounts', accountRoutes);
+  console.log('  ✅ /api/accounts registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/accounts:', error.message);
+}
+
+try {
+  app.use('/api/guarantors', guarantorRoutes);
+  console.log('  ✅ /api/guarantors registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/guarantors:', error.message);
+}
+
+try {
+  app.use('/api/repayments', repaymentRoutes);
+  console.log('  ✅ /api/repayments registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/repayments:', error.message);
+}
+
+try {
+  app.use('/api/loan-assessments', loanAssessmentRoutes);
+  console.log('  ✅ /api/loan-assessments registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/loan-assessments:', error.message);
+}
+
+try {
+  app.use('/api/chat', chatRoutes);
+  console.log('  ✅ /api/chat registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/chat:', error.message);
+}
+
+try {
+  app.use('/api/contributions', contributionRoutes);
+  console.log('  ✅ /api/contributions registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/contributions:', error.message);
+}
+
+// Debug: Log all registered routes
+console.log('🔍 Registered API routes:');
+try {
+  app._router?.stack?.forEach((r, i) => {
+    if (r.route && r.route.path) {
+      console.log(`  ${i}: ${Object.keys(r.route.methods).join('|').toUpperCase()} ${r.route.path}`);
+    } else if (r.regexp) {
+      console.log(`  ${i}: Middleware: ${r.regexp}`);
+    }
+  });
+} catch (error) {
+  console.log('⚠️ Error logging routes:', error.message);
+}
 
 // Catch-all route for undefined paths (must be before error handling)
 app.use('/*', (req, res) => {
