@@ -21,6 +21,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import UsersPage from "./pages/UsersPage";
 import GroupsPage from "./pages/GroupsPage";
+import GroupDetailPage from "./pages/GroupDetailPage";
 import SettingsPage from "./pages/SettingsPage";
 import ReportsPage from "./pages/ReportsPage";
 import LoansPage from "./pages/LoansPage";
@@ -67,6 +68,7 @@ function App() {
                     {/* Main Routes */}
                     <Route path="users" element={<UsersPage />} />
                     <Route path="groups" element={<GroupsPage />} />
+                    <Route path="groups/:id" element={<GroupDetailPage />} />
                     <Route path="settings" element={<SettingsPage />} />
                     <Route path="reports" element={<ReportsPage />} />
                     <Route path="loans" element={<LoansPage />} />
