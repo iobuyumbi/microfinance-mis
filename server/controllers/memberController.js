@@ -145,10 +145,34 @@ exports.getMembers = asyncHandler(async (req, res, next) => {
     .select('-password')
     .sort({ name: 1 });
 
+  // Fetch active memberships for these members
+  const memberIds = members.map(m => m._id);
+  const memberships = await UserGroupMembership.find({
+    user: { $in: memberIds },
+    status: 'active',
+  })
+    .select('user group roleInGroup')
+    .lean();
+
+  const userIdToGroups = new Map();
+  memberships.forEach(ms => {
+    const key = String(ms.user);
+    if (!userIdToGroups.has(key)) userIdToGroups.set(key, []);
+    userIdToGroups
+      .get(key)
+      .push({ group: ms.group, roleInGroup: ms.roleInGroup });
+  });
+
+  const data = members.map(u => {
+    const obj = u.toObject();
+    obj.groups = userIdToGroups.get(String(u._id)) || [];
+    return obj;
+  });
+
   res.status(200).json({
     success: true,
-    count: members.length,
-    data: members,
+    count: data.length,
+    data,
   });
 });
 

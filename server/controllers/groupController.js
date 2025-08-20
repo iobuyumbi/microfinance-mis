@@ -142,10 +142,24 @@ exports.getGroups = asyncHandler(async (req, res, next) => {
     .populate('account')
     .sort({ name: 1 });
 
+  // Compute member counts per group from active memberships
+  const groupIds = groups.map(g => g._id);
+  const counts = await UserGroupMembership.aggregate([
+    { $match: { group: { $in: groupIds }, status: 'active' } },
+    { $group: { _id: '$group', count: { $sum: 1 } } },
+  ]);
+  const idToCount = new Map(counts.map(c => [String(c._id), c.count]));
+
+  const data = groups.map(g => {
+    const obj = g.toObject();
+    obj.memberCount = idToCount.get(String(g._id)) || 0;
+    return obj;
+  });
+
   res.status(200).json({
     success: true,
-    count: groups.length,
-    data: groups,
+    count: data.length,
+    data,
   });
 });
 
