@@ -50,8 +50,8 @@ const ContributionsPage = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [selectedMember, setSelectedMember] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("all");
+  const [selectedMember, setSelectedMember] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [stats, setStats] = useState({
@@ -79,8 +79,10 @@ const ContributionsPage = () => {
     try {
       setLoading(true);
       const params = {};
-      if (selectedGroup) params.groupId = selectedGroup;
-      if (selectedMember) params.memberId = selectedMember;
+      if (selectedGroup && selectedGroup !== "all")
+        params.groupId = selectedGroup;
+      if (selectedMember && selectedMember !== "all")
+        params.memberId = selectedMember;
       if (dateRange.start) params.startDate = dateRange.start;
       if (dateRange.end) params.endDate = dateRange.end;
       if (searchTerm) params.search = searchTerm;
@@ -160,8 +162,10 @@ const ContributionsPage = () => {
   const exportContributions = async () => {
     try {
       const params = {};
-      if (selectedGroup) params.groupId = selectedGroup;
-      if (selectedMember) params.memberId = selectedMember;
+      if (selectedGroup && selectedGroup !== "all")
+        params.groupId = selectedGroup;
+      if (selectedMember && selectedMember !== "all")
+        params.memberId = selectedMember;
       if (dateRange.start) params.startDate = dateRange.start;
       if (dateRange.end) params.endDate = dateRange.end;
 
@@ -299,7 +303,7 @@ const ContributionsPage = () => {
                   <SelectValue placeholder="All Groups" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Groups</SelectItem>
+                  <SelectItem value="all">All Groups</SelectItem>
                   {groups.map((group) => (
                     <SelectItem key={group._id} value={group._id}>
                       {group.name}
@@ -316,7 +320,7 @@ const ContributionsPage = () => {
                   <SelectValue placeholder="All Members" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Members</SelectItem>
+                  <SelectItem value="all">All Members</SelectItem>
                   {members.map((member) => (
                     <SelectItem key={member._id} value={member._id}>
                       {member.name}

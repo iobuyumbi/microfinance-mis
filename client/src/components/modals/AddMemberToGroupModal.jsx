@@ -36,10 +36,14 @@ const AddMemberToGroupModal = ({ isOpen, onClose, groupId, onSuccess }) => {
   const fetchAvailableMembers = async () => {
     try {
       const response = await memberService.getMembers();
-      // Filter out members who are already in this group
-      const availableMembers = response.data.data.filter(
-        (member) => !member.groups?.some((group) => group.id === groupId)
-      );
+      const list = response.data?.data || [];
+      // Filter out members who are already in this group (support both _id and id keys)
+      const availableMembers = list.filter((member) => {
+        const memberships = member.groups || member.groupMemberships || [];
+        return !memberships.some(
+          (group) => (group._id || group.id) === groupId
+        );
+      });
       setMembers(availableMembers);
     } catch (error) {
       console.error("Error fetching members:", error);
@@ -55,13 +59,19 @@ const AddMemberToGroupModal = ({ isOpen, onClose, groupId, onSuccess }) => {
 
     setLoading(true);
     try {
-      await memberService.addMemberToGroup(selectedMemberId, groupId, selectedRole);
+      await memberService.addMemberToGroup(
+        selectedMemberId,
+        groupId,
+        selectedRole
+      );
       toast.success("Member added to group successfully");
       if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
       console.error("Error adding member to group:", error);
-      toast.error(error.response?.data?.message || "Failed to add member to group");
+      toast.error(
+        error.response?.data?.message || "Failed to add member to group"
+      );
     } finally {
       setLoading(false);
     }
@@ -102,12 +112,15 @@ const AddMemberToGroupModal = ({ isOpen, onClose, groupId, onSuccess }) => {
               <SelectContent>
                 {members.length > 0 ? (
                   members.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
+                    <SelectItem
+                      key={member._id || member.id}
+                      value={(member._id || member.id).toString()}
+                    >
                       {member.name}
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="no-members" disabled>
                     No available members
                   </SelectItem>
                 )}
