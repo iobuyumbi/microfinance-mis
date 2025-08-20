@@ -29,6 +29,44 @@ const {
 // All contribution routes are protected
 router.use(protect);
 
+// --- Group-Specific Contribution Routes (must come before /:id) ---
+router.get('/groups/:groupId',
+  validateObjectId,
+  authorizeGroupAccess('groupId'), // Ensure user has access to this group
+  filterDataByRole('Transaction'), // Further filter transactions within the group
+  getGroupContributions // REMOVED asyncHandler wrapper
+);
+
+router.get('/groups/:groupId/summary',
+  validateObjectId,
+  authorizeGroupAccess('groupId'), // Ensure user has access to this group
+  filterDataByRole('Transaction'), // Further filter transactions within the group
+  getContributionSummary // REMOVED asyncHandler wrapper
+);
+
+router.post('/groups/:groupId/bulk',
+  validateObjectId,
+  authorize('admin', 'officer'), // Bulk import is a powerful admin/officer tool
+  bulkImportContributions // REMOVED asyncHandler wrapper
+);
+
+router.get('/groups/:groupId/export',
+  validateObjectId,
+  authorizeGroupAccess('groupId'), // Ensure user has access to this group
+  authorize('admin', 'officer', 'leader'), // Only admin, officer, and leader can export
+  filterDataByRole('Transaction'), // Further filter transactions within the group
+  exportContributions // REMOVED asyncHandler wrapper
+);
+
+// --- Member-Specific Contribution Routes (must come before /:id) ---
+router.get('/members/:memberId/contributions',
+  validateObjectId,
+  // Authorize access to the member's data (either self, admin, officer, or leader if in same group)
+  authorizeOwnerOrAdmin('memberId'), // Assumes memberId is in req.params
+  filterDataByRole('Transaction'), // Further filter transactions related to the member
+  getMemberContributionHistory // REMOVED asyncHandler wrapper
+);
+
 // --- General Contribution Routes ---
 router
   .route('/')
@@ -61,42 +99,5 @@ router
     filterDataByRole('Transaction'), // Ensures they delete an accessible transaction
     deleteContribution // REMOVED asyncHandler wrapper
   );
-
-// --- Group-Specific Contribution Routes ---
-router.route('/groups/:groupId/contributions').get(
-  validateObjectId,
-  authorizeGroupAccess('groupId'), // Ensure user has access to this group
-  filterDataByRole('Transaction'), // Further filter transactions within the group
-  getGroupContributions // REMOVED asyncHandler wrapper
-);
-
-router.route('/groups/:groupId/contributions/summary').get(
-  validateObjectId,
-  authorizeGroupAccess('groupId'), // Ensure user has access to this group
-  filterDataByRole('Transaction'), // Further filter transactions within the group
-  getContributionSummary // REMOVED asyncHandler wrapper
-);
-
-router.route('/groups/:groupId/contributions/bulk').post(
-  validateObjectId,
-  authorize('admin', 'officer'), // Bulk import is a powerful admin/officer tool
-  bulkImportContributions // REMOVED asyncHandler wrapper
-);
-
-router.route('/groups/:groupId/contributions/export').get(
-  validateObjectId,
-  authorizeGroupAccess('groupId'), // Ensure user has access to this group
-  filterDataByRole('Transaction'), // Further filter transactions within the group
-  exportContributions // REMOVED asyncHandler wrapper
-);
-
-// --- Member-Specific Contribution Routes ---
-router.route('/members/:memberId/contributions').get(
-  validateObjectId,
-  // Authorize access to the member's data (either self, admin, officer, or leader if in same group)
-  authorizeOwnerOrAdmin('memberId'), // Assumes memberId is in req.params
-  filterDataByRole('Transaction'), // Further filter transactions related to the member
-  getMemberContributionHistory // REMOVED asyncHandler wrapper
-);
 
 module.exports = router;

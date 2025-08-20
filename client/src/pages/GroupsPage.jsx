@@ -26,6 +26,7 @@ import { groupService } from "../services/groupService";
 import { toast } from "sonner";
 import FormModal from "../components/modals/FormModal";
 import GroupForm from "../components/forms/GroupForm";
+import AddMemberToGroupModal from "../components/modals/AddMemberToGroupModal";
 import {
   Building2,
   Plus,
@@ -39,16 +40,20 @@ import {
   TrendingUp,
   CheckCircle,
   Clock,
+  UserPlus,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const GroupsPage = () => {
+  const { user, hasRole } = useAuth();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
 
   // Fetch groups from API
   useEffect(() => {
@@ -82,10 +87,19 @@ const GroupsPage = () => {
   const handleCreateGroup = async (groupData) => {
     try {
       console.log("Creating group with data:", groupData);
-      await groupService.create(groupData);
+      const payload = {
+        ...groupData,
+        leaderId: groupData.leaderId || user?._id || user?.id,
+      };
+      const res = await groupService.create(payload);
+      const created = res?.data?.data;
       toast.success("Group created successfully");
       setIsCreateGroupOpen(false);
-      fetchGroups();
+      if (created) {
+        setGroups((prev) => [created, ...prev]);
+      } else {
+        fetchGroups();
+      }
     } catch (error) {
       console.error("Error creating group:", error);
       console.error("Error response:", error.response?.data);
@@ -97,7 +111,10 @@ const GroupsPage = () => {
   // Handle group update
   const handleUpdateGroup = async (groupData) => {
     try {
-      await groupService.update(selectedGroup.id, groupData);
+      await groupService.update(
+        selectedGroup._id || selectedGroup.id,
+        groupData
+      );
       toast.success("Group updated successfully");
       setIsEditGroupOpen(false);
       fetchGroups();
@@ -132,13 +149,15 @@ const GroupsPage = () => {
             Manage microfinance groups and their members
           </p>
         </div>
-        <Button
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-          onClick={() => setIsCreateGroupOpen(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Group
-        </Button>
+        {hasRole(["admin", "officer"]) && (
+          <Button
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+            onClick={() => setIsCreateGroupOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Group
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -210,17 +229,11 @@ const GroupsPage = () => {
             <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
               No Groups Found
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-gray-600 dark:text-gray-400">
               {searchTerm
                 ? "Try adjusting your search criteria"
-                : "Get started by creating your first group"}
+                : "Click Create Group at the top-right to add your first group"}
             </p>
-            <Button
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-              onClick={() => setIsCreateGroupOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Create Group
-            </Button>
           </FacebookCardContent>
         </FacebookCard>
       ) : (
@@ -262,7 +275,7 @@ const GroupsPage = () => {
                   {groups && groups.length > 0 ? (
                     groups.map((group) => (
                       <TableRow
-                        key={group.id}
+                        key={group._id || group.id}
                         className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
                       >
                         <TableCell>
@@ -311,7 +324,7 @@ const GroupsPage = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem>
                                 <Link
-                                  to={`/groups/${group.id}`}
+                                  to={`/groups/${group._id || group.id}`}
                                   className="flex items-center w-full"
                                 >
                                   <Eye className="mr-2 h-4 w-4" />
@@ -328,8 +341,19 @@ const GroupsPage = () => {
                                 Edit Group
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedGroup(group);
+                                  setIsAddMemberOpen(true);
+                                }}
+                              >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Add Member to Group
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 className="text-red-600"
-                                onClick={() => handleDeleteGroup(group.id)}
+                                onClick={() =>
+                                  handleDeleteGroup(group._id || group.id)
+                                }
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Delete Group
@@ -372,6 +396,16 @@ const GroupsPage = () => {
       >
         <GroupForm onSubmit={handleUpdateGroup} initialData={selectedGroup} />
       </FormModal>
+
+      {/* Add Member to Group Modal */}
+      {selectedGroup && (
+        <AddMemberToGroupModal
+          isOpen={isAddMemberOpen}
+          onClose={() => setIsAddMemberOpen(false)}
+          groupId={selectedGroup._id || selectedGroup.id}
+          onSuccess={fetchGroups}
+        />
+      )}
     </div>
   );
 };

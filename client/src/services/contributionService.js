@@ -47,8 +47,8 @@ export const contributionService = {
     api.post(ENDPOINTS.CONTRIBUTIONS.BULK_IMPORT(groupId), contributions),
 
   // Get contribution statistics
-  getStats: (params) => api.get("/contributions/stats", { params }),
+  // getStats removed: no matching server route
 
   // Get contribution reports
-  getReports: (params) => api.get("/contributions/reports", { params }),
+  // getReports removed: no matching server route
 };

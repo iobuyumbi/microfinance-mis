@@ -136,9 +136,9 @@ app.get('/api-docs', (req, res) => {
         routes: [
           'GET /api/contributions - Get all contributions',
           'POST /api/contributions - Create contribution',
-          'GET /api/contributions/groups/:groupId/contributions - Get group contributions',
-          'GET /api/contributions/groups/:groupId/contributions/summary - Get group summary',
-          'GET /api/contributions/groups/:groupId/contributions/export - Export contributions',
+          'GET /api/contributions/groups/:groupId - Get group contributions',
+          'GET /api/contributions/groups/:groupId/summary - Get group summary',
+          'GET /api/contributions/groups/:groupId/export - Export contributions',
         ],
       },
       loans: {
@@ -203,137 +203,6 @@ app.get('/info', (req, res) => {
 // Initialize Socket.IO using modularized config
 const io = configureSocket(server);
 app.set('io', io);
-
-// Socket.IO Authentication Middleware (APPLIED ONCE BEFORE CONNECTION HANDLER)
-io.use(async (socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) {
-    return next(new Error('Authentication error: Token not provided'));
-  }
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) {
-      return next(new Error('Authentication error: User not found'));
-    }
-    socket.user = user; // Attach user object to the socket
-    next();
-  } catch (err) {
-    return next(new Error('Authentication error: Invalid token'));
-  }
-});
-
-// Socket.IO Connection Handling (THIS BLOCK SHOULD ONLY APPEAR ONCE)
-io.on('connection', socket => {
-  // console.log(`User connected: ${socket.id}`); // This is handled by the auth middleware's `next()`
-  console.log(
-    `User ${socket.user.name} (${socket.user.id}) connected via socket: ${socket.id}`
-  ); // Join a group chat
-
-  socket.on('join-group', async data => {
-    try {
-      const { groupId } = data; // userId comes from socket.user.id
-      // Ensure group ID is valid before access check
-      if (!groupId || !mongoose.Types.ObjectId.isValid(groupId)) {
-        // Added mongoose for ObjectId check
-        throw new Error('Invalid Group ID format provided for joining.');
-      }
-
-      await checkGroupAccess(groupId, socket.user.id, socket.user.role);
-      socket.join(`group-${groupId}`); // Room name should be consistent, e.g., 'group-XYZ'
-      console.log(`User ${socket.user.id} joined group room: group-${groupId}`);
-    } catch (error) {
-      console.error('Error joining group:', error);
-      socket.emit('socket-error', {
-        // Use a generic 'socket-error' event for client-side display
-        event: 'join-group',
-        message: error.message || 'Failed to join group.',
-      });
-    }
-  }); // Leave a group chat
-
-  socket.on('leave-group', data => {
-    const { groupId } = data; // Room name should be consistent with how it was joined
-    socket.leave(`group-${groupId}`);
-    console.log(`User ${socket.user.id} left group room: group-${groupId}`);
-  }); // Handle chat messages
-
-  socket.on('send-message', async data => {
-    try {
-      // Client needs to send: message (content), chatId, chatType, and optionally groupId
-      const { message: content, chatId, chatType, groupId } = data; // Validate essential data
-
-      if (!content || content.trim() === '' || !chatId || !chatType) {
-        throw new Error(
-          'Message content, chat ID, and chat type are required.'
-        );
-      } // Perform access control for real-time messages using socket.user
-
-      if (chatType === 'group') {
-        if (!groupId) {
-          throw new Error('Group ID is required for group chats.');
-        }
-        await checkGroupAccess(groupId, socket.user.id, socket.user.role);
-      } else if (chatType === 'admin') {
-        if (chatId !== 'admin-chat') {
-          throw new Error('Invalid chat ID for admin chat type.');
-        }
-        if (!['member', 'officer', 'admin'].includes(socket.user.role)) {
-          throw new Error(
-            'You are not authorized to send messages to admin support.'
-          );
-        }
-      } else if (chatType === 'direct') {
-        // TODO: Implement access check for direct messages (e.g., check if chatId contains current user's ID)
-        // For now, let's allow it for demonstration, but this needs security.
-        // Example:
-        // const participantIds = chatId.split('_'); // Assuming chatId is like 'user1id_user2id'
-        // if (!participantIds.includes(socket.user.id.toString())) {
-        //      throw new Error('Not authorized to send direct message to this chat.');
-        // }
-      } else {
-        throw new Error('Invalid chat type specified.');
-      } // Use the extracted function to create and save the message
-
-      const savedMessage = await createAndSaveChatMessage(
-        socket.user.id, // Sender ID from authenticated socket
-        content,
-        chatType,
-        chatId,
-        groupId // groupId is optional in the model if chatType is not 'group'
-      ); // Broadcast to the specific chat room using the consistent chatId
-
-      io.to(chatId).emit('new_message', {
-        message: savedMessage.toJSON(), // Ensure populated sender and virtuals are included
-        chatId,
-        chatType,
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
-      socket.emit('socket-error', {
-        // Use a generic 'socket-error' event for client-side display
-        event: 'send-message',
-        message: error.message || 'Failed to send message',
-      });
-    }
-  }); // Handle typing indicators
-
-  socket.on('typing', data => {
-    const { chatId, isTyping } = data; // Client should send chatId (e.g., 'group-XYZ' or 'admin-chat')
-    // Emit to others in the room, excluding the sender
-    socket.to(chatId).emit('user-typing', { userId: socket.user.id, isTyping });
-  });
-
-  socket.on('disconnect', reason => {
-    console.log(
-      `User ${socket.user?.name || socket.id} disconnected: ${reason}`
-    ); // You might want to emit an 'user_offline' event here if you track online status
-  }); // Add a generic error listener for debugging client-side emits without a listener
-
-  socket.on('error', err => {
-    console.error('Socket error (from client or internal):', err);
-  });
-});
 
 // Security middleware (keep these in order)
 app.use(
@@ -525,6 +394,7 @@ try {
 }
 
 try {
+  // Re-enabled after fixing path-to-regexp error
   app.use('/api/contributions', contributionRoutes);
   console.log('  ✅ /api/contributions registered');
 } catch (error) {
@@ -533,14 +403,15 @@ try {
 
 // Debug: Log all registered routes
 console.log('🔍 Registered API routes:');
+// Simplified route logging to avoid path-to-regexp error
 try {
   app._router?.stack?.forEach((r, i) => {
     if (r.route && r.route.path) {
       console.log(
         `  ${i}: ${Object.keys(r.route.methods).join('|').toUpperCase()} ${r.route.path}`
       );
-    } else if (r.regexp) {
-      console.log(`  ${i}: Middleware: ${r.regexp}`);
+    } else if (r.regexp && r.name) {
+      console.log(`  ${i}: Middleware: ${r.name}`);
     }
   });
 } catch (error) {
@@ -548,7 +419,7 @@ try {
 }
 
 // Catch-all route for undefined paths (must be before error handling)
-app.use('*', (req, res) => {
+app.use(/(.*)/, (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.originalUrl} not found`,
@@ -560,7 +431,7 @@ app.use('*', (req, res) => {
       info: '/info',
       apiHealth: '/api/health',
       apiDocs: '/api-docs',
-      api: '/api/*',
+      api: '/api/(.*)',
     },
     timestamp: new Date().toISOString(),
   });

@@ -12,7 +12,7 @@ export const groupService = {
 
   delete: (id) => api.delete(ENDPOINTS.GROUPS.BY_ID(id)),
 
-  getMembers: (groupId) => api.get(ENDPOINTS.GROUPS.MEMBERS(groupId)),
+  getMembers: (groupId) => api.get(ENDPOINTS.GROUPS.MEMBERS(groupId)), // Mounted at /api/users/groups/:groupId/members
 
   addMember: (groupId, memberData) =>
     api.post(ENDPOINTS.GROUPS.MEMBERS(groupId), memberData),

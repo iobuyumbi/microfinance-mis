@@ -2,13 +2,5 @@
   "rewrites": [{ "source": "/(.*)", "destination": "/" }],
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "npm install -g pnpm@8 && pnpm install --frozen-lockfile",
-  "devCommand": "pnpm run dev",
-  "build": {
-    "env": {
-      "ESLINT_NO_DEV_ERRORS": "true",
-      "NODE_VERSION": "20"
-    }
-  }
+  "framework": "vite"
 }

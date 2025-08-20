@@ -529,10 +529,21 @@ const MembersPage = () => {
         onClose={() => setIsEditMemberOpen(false)}
         title="Edit Member"
       >
-        <MemberForm
-          onSubmit={handleUpdateMember}
-          initialData={selectedMember}
-        />
+        {selectedMember && (
+          <MemberForm
+            onSubmit={handleUpdateMember}
+            initialData={{
+              id: selectedMember.id,
+              name: selectedMember.name,
+              email: selectedMember.email,
+              phone: selectedMember.phone,
+              gender: selectedMember.gender,
+              address: selectedMember.address,
+              nationalID: selectedMember.nationalID,
+              status: selectedMember.status
+            }}
+          />
+        )}
       </FormModal>
     </div>
   );

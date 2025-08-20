@@ -45,7 +45,7 @@ export const ENDPOINTS = {
   GROUPS: {
     BASE: "/groups", // For getAllGroups, createGroup
     BY_ID: (id) => `/groups/${id}`, // For getGroupById, updateGroup, deleteGroup
-    MEMBERS: (groupId) => `/groups/${groupId}/members`, // For getGroupMembers
+    MEMBERS: (groupId) => `/users/groups/${groupId}/members`, // For getGroupMembers (mounted under /api/users)
     JOIN: (groupId) => `/groups/${groupId}/join`, // For joinGroup
     // Removed other group-member specific routes as they are now under MEMBERS
   },
@@ -99,18 +99,14 @@ export const ENDPOINTS = {
   CONTRIBUTIONS: {
     BASE: "/contributions",
     BY_ID: (id) => `/contributions/${id}`,
-    BY_GROUP: (groupId) => `/contributions/groups/${groupId}/contributions`,
+    BY_GROUP: (groupId) => `/contributions/groups/${groupId}`,
     BY_MEMBER: (memberId) => `/contributions/members/${memberId}/contributions`,
-    SUMMARY: (groupId) =>
-      `/contributions/groups/${groupId}/contributions/summary`,
-    BULK_IMPORT: (groupId) =>
-      `/contributions/groups/${groupId}/contributions/bulk`,
+    SUMMARY: (groupId) => `/contributions/groups/${groupId}/summary`,
+    BULK_IMPORT: (groupId) => `/contributions/groups/${groupId}/bulk`,
     EXPORT: (groupId, format = "csv") =>
-      `/contributions/groups/${groupId}/contributions/export?format=${format}`,
+      `/contributions/groups/${groupId}/export?format=${format}`,
     MEMBER_HISTORY: (memberId) =>
       `/contributions/members/${memberId}/contributions`,
-    STATS: "/contributions/stats",
-    REPORTS: "/contributions/reports",
   },
 
   // Meetings

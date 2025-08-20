@@ -143,8 +143,8 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
   // req.dataFilter is set by the filterDataByRole middleware
   // This endpoint should primarily return User documents based on global roles/status.
   // For group-specific member lists, use the memberController.getMembers endpoint with groupId.
+  // For listing system users, admins/officers see all users; others are filtered by middleware.
   const query = req.dataFilter || {};
-
   const users = await User.find(query)
     .select('-password -__v') // Exclude password hash and version key
     .sort({ createdAt: -1 });

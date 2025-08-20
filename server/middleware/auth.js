@@ -713,19 +713,21 @@ exports.filterDataByRole = modelName => {
       });
     }
 
-    // Admins and Officers see all data
+    // Admins and Officers see all data (do not force a `deleted: false` filter on models
+    // that don't have that field like `User` and `Group`).
     if (req.user.role === 'admin' || req.user.role === 'officer') {
       // For 'Report' type, admins/officers see everything across models
       if (modelName === 'Report') {
         req.dataFilter = {
           Loan: { deleted: false },
           Transaction: { deleted: false },
-          User: { role: 'member', deleted: false },
-          Group: { deleted: false },
-          Account: { deleted: false }, // Added Account to Report filter
+          User: {},
+          Group: { status: { $ne: 'dissolved' } },
+          Account: { deleted: false },
         };
       } else {
-        req.dataFilter = { deleted: false }; // Default filter for non-deleted items
+        // No global filter for admins/officers. Controllers can add their own if needed.
+        req.dataFilter = {};
       }
       devLog(
         `Data filter: ${req.user.role} sees all data for model ${modelName}.`

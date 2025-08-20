@@ -139,7 +139,9 @@ exports.createMember = asyncHandler(async (req, res, next) => {
  */
 exports.getMembers = asyncHandler(async (req, res, next) => {
   // req.dataFilter is set by the filterDataByRole middleware
-  const members = await User.find(req.dataFilter || {})
+  // Ensure only members (role: 'member') are returned for member listing
+  const baseFilter = { role: 'member' };
+  const members = await User.find({ ...(req.dataFilter || {}), ...baseFilter })
     .select('-password')
     .sort({ name: 1 });
 
@@ -296,36 +298,39 @@ exports.getMemberStats = asyncHandler(async (req, res, next) => {
   try {
     // Apply data filters based on user role (set by middleware)
     const filter = req.dataFilter || {};
-    
+
     // Get total count
-    const totalMembers = await User.countDocuments({ ...filter, role: 'member' });
-    
+    const totalMembers = await User.countDocuments({
+      ...filter,
+      role: 'member',
+    });
+
     // Get active members count
-    const activeMembers = await User.countDocuments({ 
-      ...filter, 
-      role: 'member', 
-      status: 'active' 
+    const activeMembers = await User.countDocuments({
+      ...filter,
+      role: 'member',
+      status: 'active',
     });
-    
+
     // Get pending members count
-    const pendingMembers = await User.countDocuments({ 
-      ...filter, 
-      role: 'member', 
-      status: 'pending' 
+    const pendingMembers = await User.countDocuments({
+      ...filter,
+      role: 'member',
+      status: 'pending',
     });
-    
+
     // Get inactive members count
-    const inactiveMembers = await User.countDocuments({ 
-      ...filter, 
-      role: 'member', 
-      status: 'inactive' 
+    const inactiveMembers = await User.countDocuments({
+      ...filter,
+      role: 'member',
+      status: 'inactive',
     });
-    
+
     res.status(200).json({
       totalMembers,
       activeMembers,
       pendingMembers,
-      inactiveMembers
+      inactiveMembers,
     });
   } catch (error) {
     console.error('Error fetching member stats:', error);

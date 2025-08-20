@@ -2,24 +2,31 @@ import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { User, Mail, Phone } from "lucide-react";
+import { User, Mail, Phone, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
-const MemberForm = () => {
+const MemberForm = ({ initialData, onSubmit }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    gender: "",
-    occupation: "",
+    name: initialData?.name || "",
+    email: initialData?.email || "",
+    password: "",
+    phone: initialData?.phone || "",
+    gender: initialData?.gender || "",
+    address: initialData?.address || "",
+    nationalID: initialData?.nationalID || "",
   });
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -27,20 +34,47 @@ const MemberForm = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/members", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        toast.success("Member registered successfully!");
-        setFormData({ firstName: "", lastName: "", email: "", phone: "", gender: "", occupation: "" });
+      if (onSubmit) {
+        // Use the onSubmit prop if provided
+        await onSubmit(formData);
+        if (!initialData) {
+          // Reset form only for new member creation
+          setFormData({
+            name: "",
+            email: "",
+            password: "",
+            phone: "",
+            gender: "",
+            address: "",
+            nationalID: "",
+          });
+        }
       } else {
-        toast.error("Failed to register member");
+        // Fallback to direct API call if no onSubmit provided
+        const res = await fetch("/api/members", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (res.ok) {
+          toast.success("Member registered successfully!");
+          setFormData({
+            name: "",
+            email: "",
+            password: "",
+            phone: "",
+            gender: "",
+            address: "",
+            nationalID: "",
+          });
+        } else {
+          const data = await res.json().catch(() => ({}));
+          toast.error(data?.message || "Failed to register member");
+        }
       }
     } catch (error) {
       toast.error("Error registering member");
@@ -59,27 +93,15 @@ const MemberForm = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                placeholder="Enter first name"
-                value={formData.firstName}
-                onChange={(e) => handleChange("firstName", e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                placeholder="Enter last name"
-                value={formData.lastName}
-                onChange={(e) => handleChange("lastName", e.target.value)}
-                required
-              />
-            </div>
+          <div>
+            <Label htmlFor="name">Full Name</Label>
+            <Input
+              id="name"
+              placeholder="Enter full name"
+              value={formData.name}
+              onChange={(e) => handleChange("name", e.target.value)}
+              required
+            />
           </div>
 
           <div>
@@ -115,7 +137,10 @@ const MemberForm = () => {
 
           <div>
             <Label htmlFor="gender">Gender</Label>
-            <Select value={formData.gender} onValueChange={(value) => handleChange("gender", value)}>
+            <Select
+              value={formData.gender}
+              onValueChange={(value) => handleChange("gender", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select gender" />
               </SelectTrigger>
@@ -128,19 +153,15 @@ const MemberForm = () => {
           </div>
 
           <div>
-            <Label htmlFor="occupation">Occupation</Label>
-            <div className="relative">
-              <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="occupation"
-                placeholder="Enter occupation"
-                value={formData.occupation}
-                onChange={(e) => handleChange("occupation", e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Label htmlFor="nationalID">National ID</Label>
+            <Input
+              id="nationalID"
+              placeholder="Enter national ID"
+              value={formData.nationalID}
+              onChange={(e) => handleChange("nationalID", e.target.value)}
+            />
           </div>
-          
+
           <div>
             <Label htmlFor="address">Address</Label>
             <div className="relative">
@@ -154,12 +175,12 @@ const MemberForm = () => {
               />
             </div>
           </div>
-          
+
           {initialData && (
             <div>
               <Label htmlFor="status">Status</Label>
               <Select
-                value={formData.status}
+                value={formData.status || initialData.status || ""}
                 onValueChange={(value) => handleChange("status", value)}
               >
                 <SelectTrigger>
@@ -174,12 +195,16 @@ const MemberForm = () => {
             </div>
           )}
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
           >
-            {loading ? "Saving..." : initialData ? "Update Member" : "Register Member"}
+            {loading
+              ? "Saving..."
+              : initialData
+              ? "Update Member"
+              : "Register Member"}
           </Button>
         </form>
       </CardContent>

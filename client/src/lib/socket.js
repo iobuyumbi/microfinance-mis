@@ -14,22 +14,21 @@ class SocketService {
       return this.socket;
     }
 
-    // --- CRITICAL CORRECTION HERE ---
-    // Your .env has VITE_API_BASE_URL=http://localhost:5000/api
-    // Socket.IO usually connects to the root of the server, e.g., http://localhost:5000
-    // So, we need to strip the '/api' from the base URL.
-    const serverUrl =
-      import.meta.env.VITE_API_BASE_URL.replace("/api", "") ||
-      "http://localhost:5000";
-    // ---------------------------------
+    // Resolve server URL from envs, stripping trailing /api if present
+    const base =
+      (typeof import.meta !== "undefined" &&
+        import.meta.env &&
+        (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL)) ||
+      "http://localhost:5000/api";
+    const serverUrl = base.replace(/\/?api\/?$/, "");
 
     this.socket = io(serverUrl, {
       auth: {
-        token: token, // Pass the token for authentication
+        token: token,
       },
       transports: ["websocket", "polling"],
       timeout: 20000,
-      forceNew: true, // Useful for ensuring a fresh connection, especially after disconnects
+      forceNew: true,
     });
 
     this.setupEventListeners();

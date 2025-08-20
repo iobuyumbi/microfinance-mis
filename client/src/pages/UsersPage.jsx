@@ -23,11 +23,16 @@ import {
 import FormModal from "../components/modals/FormModal";
 import { userService } from "../services/userService";
 import { toast } from "sonner";
-import { Users, Plus, MoreHorizontal } from "lucide-react";
+import { Users, Plus, MoreHorizontal, Building2 } from "lucide-react";
+import { Badge } from "../components/ui/badge";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
+  const [userGroups, setUserGroups] = useState({});
   const [loading, setLoading] = useState(false);
+  const [loadingGroups, setLoadingGroups] = useState({});
   const [search, setSearch] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -47,11 +52,30 @@ const UsersPage = () => {
       setLoading(true);
       const res = await userService.getAll();
       setUsers(res.data.data || []);
+      
+      // For each user, fetch their groups
+      const usersData = res.data.data || [];
+      usersData.forEach(user => {
+        fetchUserGroups(user._id);
+      });
     } catch (err) {
       console.error("Failed to load users", err);
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const fetchUserGroups = async (userId) => {
+    try {
+      setLoadingGroups(prev => ({ ...prev, [userId]: true }));
+      const res = await userService.getUserGroups(userId);
+      setUserGroups(prev => ({ ...prev, [userId]: res.data.data || [] }));
+    } catch (err) {
+      console.error(`Failed to load groups for user ${userId}`, err);
+      // Don't show toast for each user to avoid spamming
+    } finally {
+      setLoadingGroups(prev => ({ ...prev, [userId]: false }));
     }
   };
 
@@ -166,6 +190,7 @@ const UsersPage = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Groups</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -173,7 +198,7 @@ const UsersPage = () => {
                 {loading ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-8 text-center text-muted-foreground"
                     >
                       Loading users...
@@ -182,7 +207,7 @@ const UsersPage = () => {
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-8 text-center text-muted-foreground"
                     >
                       No users found
@@ -201,6 +226,50 @@ const UsersPage = () => {
                       <TableCell className="capitalize">{u.role}</TableCell>
                       <TableCell className="capitalize">
                         {u.status || "active"}
+                      </TableCell>
+                      <TableCell>
+                        {loadingGroups[u._id] ? (
+                          <span className="text-sm text-muted-foreground">Loading...</span>
+                        ) : userGroups[u._id] && userGroups[u._id].length > 0 ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Building2 className="mr-2 h-4 w-4" />
+                                {userGroups[u._id].length} {userGroups[u._id].length === 1 ? 'Group' : 'Groups'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0">
+                              <div className="p-4 border-b">
+                                <h4 className="font-medium">Groups for {u.name}</h4>
+                                <p className="text-sm text-muted-foreground">User is a member of the following groups</p>
+                              </div>
+                              <ScrollArea className="h-72">
+                                <div className="p-4 space-y-2">
+                                  {userGroups[u._id].map((group) => (
+                                    <div key={group.groupId} className="border rounded-md p-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="font-medium">{group.groupName}</div>
+                                        <Badge variant={group.groupStatus === 'active' ? 'success' : 'secondary'}>
+                                          {group.groupStatus}
+                                        </Badge>
+                                      </div>
+                                      <div className="text-sm text-muted-foreground mt-1">{group.groupDescription}</div>
+                                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                        <div className="flex items-center">
+                                          <Users className="mr-1 h-3 w-3" />
+                                          {group.membersCount || 0} members
+                                        </div>
+                                        <div>Role: {group.userRoleInGroup}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </ScrollArea>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No groups</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

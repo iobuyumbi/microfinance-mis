@@ -133,7 +133,11 @@ exports.createGroup = asyncHandler(async (req, res, next) => {
  */
 exports.getGroups = asyncHandler(async (req, res, next) => {
   // req.dataFilter is set by the filterDataByRole middleware
-  const groups = await Group.find(req.dataFilter || {})
+  // Always exclude dissolved groups from normal listings
+  const groups = await Group.find({
+    ...(req.dataFilter || {}),
+    status: { $ne: 'dissolved' },
+  })
     .populate('leader', 'name email')
     .populate('account')
     .sort({ name: 1 });

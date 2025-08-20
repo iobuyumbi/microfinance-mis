@@ -4,9 +4,13 @@ const mongoose = require('mongoose');
 
 // Validate MongoDB ObjectId
 const validateObjectId = (req, res, next) => {
-  const { id } = req.params;
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return next(new ErrorResponse('Invalid ID format', 400));
+  // Check all parameters that might be ObjectIds
+  const idParams = ['id', 'memberId', 'groupId', 'loanId', 'userId', 'accountId', 'transactionId', 'meetingId', 'notificationId', 'reportId', 'settingId', 'guarantorId', 'repaymentId', 'assessmentId', 'messageId', 'contributionId'];
+  
+  for (const param of idParams) {
+    if (req.params[param] && !mongoose.Types.ObjectId.isValid(req.params[param])) {
+      return next(new ErrorResponse(`Invalid ${param} format`, 400));
+    }
   }
   next();
 };
