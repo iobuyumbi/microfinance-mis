@@ -102,7 +102,7 @@ const MembersPage = () => {
     try {
       const response = await memberService.getMemberStats();
       setStats(
-        response || {
+        response?.data || {
           totalMembers: 0,
           activeMembers: 0,
           pendingMembers: 0,
@@ -232,22 +232,22 @@ const MembersPage = () => {
   const statsData = [
     {
       title: "Total Members",
-      value: stats.totalMembers.toString(),
+      value: String(stats.totalMembers ?? 0),
       icon: Users,
     },
     {
       title: "Active Members",
-      value: stats.activeMembers.toString(),
+      value: String(stats.activeMembers ?? 0),
       icon: UserCheck,
     },
     {
       title: "Group Leaders",
-      value: members.filter((m) => m.role === "leader").length.toString(),
+      value: String(members.filter((m) => m.role === "leader").length ?? 0),
       icon: Building2,
     },
     {
       title: "Pending Applications",
-      value: stats.pendingMembers.toString(),
+      value: String(stats.pendingMembers ?? 0),
       icon: Clock,
     },
   ];
@@ -540,7 +540,7 @@ const MembersPage = () => {
               gender: selectedMember.gender,
               address: selectedMember.address,
               nationalID: selectedMember.nationalID,
-              status: selectedMember.status
+              status: selectedMember.status,
             }}
           />
         )}
