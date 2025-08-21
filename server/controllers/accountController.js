@@ -91,28 +91,62 @@ exports.createAccount = asyncHandler(async (req, res, next) => {
 // @route   GET /api/accounts
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAccounts = asyncHandler(async (req, res, next) => {
-  // req.dataFilter is set by the filterDataByRole middleware
-  const query = req.dataFilter || {};
-  // const currency = await getCurrency(); // Not directly needed here, virtual handles it
+	// Base filter from role-based middleware
+	const roleFilter = req.dataFilter || {};
 
-  const accounts = await Account.find(query)
-    .populate('owner', 'name email') // Populate owner details
-    .sort({ createdAt: -1 });
+	// Build query filters from request query params
+	const { type, ownerModel, owner, status, search, sortBy, sortOrder } = req.query || {};
+	const queryFilters = {};
 
-  // Await async virtuals for formatting
-  const formattedAccounts = await Promise.all(
-    accounts.map(async acc => {
-      const obj = acc.toObject({ virtuals: true });
-      obj.formattedBalance = await acc.formattedBalance;
-      return obj;
-    })
-  );
+	if (type) {
+		queryFilters.type = type;
+	}
+	if (ownerModel) {
+		queryFilters.ownerModel = ownerModel;
+	}
+	if (owner) {
+		if (!mongoose.Types.ObjectId.isValid(owner)) {
+			return next(new ErrorResponse('Invalid owner ID format.', 400));
+		}
+		queryFilters.owner = owner;
+	}
+	if (status) {
+		queryFilters.status = status;
+	}
+	if (search) {
+		// Match by accountNumber or name (if present) using case-insensitive regex
+		const regex = new RegExp(search, 'i');
+		queryFilters.$or = [{ accountNumber: regex }, { name: regex }];
+	}
 
-  res.status(200).json({
-    success: true,
-    count: formattedAccounts.length,
-    data: formattedAccounts,
-  });
+	// Merge role filter and query filters
+	const finalFilter = Object.keys(roleFilter).length
+		? { $and: [roleFilter, queryFilters] }
+		: queryFilters;
+
+	// Sorting options
+	const sortField = sortBy || 'createdAt';
+	const sortDirection = (sortOrder === 'asc' ? 1 : -1);
+	const sortSpec = { [sortField]: sortDirection };
+
+	const accounts = await Account.find(finalFilter)
+		.populate('owner', 'name email')
+		.sort(sortSpec);
+
+	// Await async virtuals for formatting
+	const formattedAccounts = await Promise.all(
+		accounts.map(async acc => {
+			const obj = acc.toObject({ virtuals: true });
+			obj.formattedBalance = await acc.formattedBalance;
+			return obj;
+		})
+	);
+
+	res.status(200).json({
+		success: true,
+		count: formattedAccounts.length,
+		data: formattedAccounts,
+	});
 });
 
 // @desc    Get a single account by ID
