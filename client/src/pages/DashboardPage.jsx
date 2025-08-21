@@ -28,7 +28,7 @@ import GroupForm from "../components/forms/GroupForm";
 import TransactionForm from "../components/forms/TransactionForm";
 import { dashboardService } from "../services/dashboardService";
 import { useAuth } from "../hooks/useAuth";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import { toast } from "sonner";
 
 const DashboardPage = () => {

@@ -6,7 +6,7 @@ const Account = require('../models/Account'); // For loan disbursement
 const Transaction = require('../models/Transaction'); // For loan disbursement transaction
 
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const { ErrorResponse } = require('../utils'); // Import custom error class
+const { ErrorResponse, withTransaction } = require('../utils'); // Import custom error class and transaction helper
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // Helper to get currency from settings (async virtuals need this in controllers)
@@ -350,23 +350,22 @@ exports.disburseLoan = asyncHandler(async (req, res, next) => {
   const { processLoanDisbursement } = require('../utils/financialUtils');
 
   try {
-    // Process the loan disbursement using the utility function
-    const { transaction, account, success } = await processLoanDisbursement(
-      loan,
-      req.user.id,
-      { disbursementMethod }
-    );
+    // Run account update, transaction creation, and loan status update atomically
+    const { transaction, account } = await withTransaction(async session => {
+      const result = await processLoanDisbursement(loan, req.user.id, {
+        disbursementMethod,
+        session,
+      });
 
-    if (!success) {
-      throw new Error('Failed to process loan disbursement');
-    }
+      // Update loan status to disbursed within the same session
+      loan.status = 'disbursed';
+      loan.disbursedAt = new Date();
+      loan.disbursedBy = req.user.id;
+      loan.disbursementMethod = disbursementMethod;
+      await loan.save({ session });
 
-    // Update loan status to disbursed
-    loan.status = 'disbursed';
-    loan.disbursedAt = new Date();
-    loan.disbursedBy = req.user.id;
-    loan.disbursementMethod = disbursementMethod;
-    await loan.save();
+      return { transaction: result.transaction, account: result.account };
+    });
 
     // Populate for response
     await loan.populate('borrower', 'name email');

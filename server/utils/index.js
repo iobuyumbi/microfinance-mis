@@ -4,6 +4,7 @@ const jwt = require('./jwt');
 const blacklist = require('./blacklist');
 const settingsHelper = require('./settingsHelper');
 const currencyUtils = require('./currencyUtils');
+const mongoose = require('mongoose');
 
 // Generate unique account number
 const generateAccountNumber = async () => {
@@ -31,6 +32,22 @@ const generateAccountNumber = async () => {
   return accountNumber;
 };
 
+// Run a function within a MongoDB transaction session (ACID across multiple writes)
+const withTransaction = async fn => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const result = await fn(session);
+    await session.commitTransaction();
+    session.endSession();
+    return result;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 module.exports = {
   ErrorResponse,
   sendEmail,
@@ -39,4 +56,5 @@ module.exports = {
   settingsHelper,
   currencyUtils,
   generateAccountNumber,
+  withTransaction,
 };

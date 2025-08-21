@@ -5,7 +5,7 @@ const User = require('../models/User'); // For populating member details
 const Group = require('../models/Group'); // For populating group details
 const UserGroupMembership = require('../models/UserGroupMembership'); // For authorization checks
 const asyncHandler = require('../middleware/asyncHandler'); // Ensure this is correctly imported
-const { ErrorResponse } = require('../utils'); // Import custom error class
+const { ErrorResponse, withTransaction } = require('../utils'); // Import custom error class and transaction helper
 const { getCurrencyFromSettings } = require('../utils/currencyUtils'); // <<< ADD THIS IMPORT
 const mongoose = require('mongoose');
 
@@ -236,40 +236,57 @@ exports.createContribution = asyncHandler(async (req, res, next) => {
   }
 
   try {
-    // Find or create the member's savings account
-    let memberAccount = await Account.findOne({
-      owner: memberId,
-      ownerModel: 'User',
-      type: 'savings',
-      status: 'active',
-    });
-
-    if (!memberAccount) {
-      // Create account for member if it doesn't exist
-      memberAccount = await Account.create({
+    const result = await withTransaction(async session => {
+      // Find or create the member's savings account atomically within the session
+      let memberAccount = await Account.findOne({
         owner: memberId,
         ownerModel: 'User',
         type: 'savings',
-        accountNumber: `SAV-${memberId.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`,
-        balance: 0,
         status: 'active',
-      });
-    }
+      }).session(session);
 
-    // Create the financial transaction using the utility function
-    const { transaction, account } = await createFinancialTransaction({
-      type: 'savings_contribution',
-      amount: amount,
-      description: description || `Savings contribution to ${group.name}`,
-      member: memberId,
-      group: groupId,
-      account: memberAccount._id,
-      status: 'completed',
-      createdBy: req.user.id,
-      paymentMethod: paymentMethod || 'cash',
-      relatedEntity: memberAccount._id,
-      relatedEntityType: 'Account',
+      if (!memberAccount) {
+        // Create account for member if it doesn't exist
+        memberAccount = await Account.create(
+          [
+            {
+              owner: memberId,
+              ownerModel: 'User',
+              type: 'savings',
+              accountNumber: `SAV-${memberId.toString().substring(0, 8)}-${Date.now()
+                .toString()
+                .slice(-4)}`,
+              balance: 0,
+              status: 'active',
+            },
+          ],
+          { session }
+        );
+        memberAccount = memberAccount[0];
+      }
+
+      // Create the financial transaction using the utility function (within session)
+      const { transaction, account } = await createFinancialTransaction(
+        {
+          type: 'savings_contribution',
+          amount: amount,
+          description: description || `Savings contribution to ${group.name}`,
+          member: memberId,
+          group: groupId,
+          account: memberAccount._id,
+          status: 'completed',
+          createdBy: req.user.id,
+          paymentMethod: paymentMethod || 'cash',
+          relatedEntity: memberAccount._id,
+          relatedEntityType: 'Account',
+        },
+        { session }
+      );
+
+      return { transaction, account };
     });
+
+    const { transaction } = result;
 
     // Populate necessary fields for response
     await transaction.populate([
@@ -334,8 +351,9 @@ exports.updateContribution = asyncHandler(async (req, res, next) => {
   // Only allow updates to description, status, paymentMethod, etc.
   const allowedUpdates = ['description', 'status', 'paymentMethod'];
   const updates = {};
-  allowedUpdates.forEach(field => {
-    if (req.body[field] !== undefined) {
+  const updateKeys = Object.keys(req.body || {});
+  updateKeys.forEach(field => {
+    if (allowedUpdates.includes(field)) {
       updates[field] = req.body[field];
     }
   });
