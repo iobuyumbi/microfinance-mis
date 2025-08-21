@@ -3,7 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { CreditCard, Search, Plus, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  CreditCard,
+  Search,
+  Plus,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
+import { formatCurrency, formatDate } from "../../utils/formatters";
 import { toast } from "sonner";
 import { transactionService } from "../../services/transactionService";
 
@@ -22,41 +29,69 @@ const TransactionList = () => {
       setTransactions(data.data || []);
     } catch (error) {
       console.error("Error loading transactions:", error);
-      toast.error(error.response?.data?.message || "Failed to load transactions");
+      toast.error(
+        error.response?.data?.message || "Failed to load transactions"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredTransactions = transactions.filter(transaction =>
-    transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTransactions = transactions.filter(
+    (transaction) =>
+      transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (type) => {
     switch (type) {
-      case "deposit": return "bg-green-100 text-green-800";
-      case "withdrawal": return "bg-red-100 text-red-800";
-      case "transfer": return "bg-blue-100 text-blue-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "savings_contribution":
+        return "bg-green-100 text-green-800";
+      case "savings_withdrawal":
+        return "bg-red-100 text-red-800";
+      case "loan_disbursement":
+        return "bg-purple-100 text-purple-800";
+      case "loan_repayment":
+        return "bg-teal-100 text-teal-800";
+      case "transfer_in":
+      case "transfer_out":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getAmountColor = (type) => {
     switch (type) {
-      case "deposit": return "text-green-600";
-      case "withdrawal": return "text-red-600";
-      case "transfer": return "text-blue-600";
-      default: return "text-gray-600";
+      case "savings_contribution":
+      case "loan_disbursement":
+        return "text-green-600";
+      case "savings_withdrawal":
+      case "loan_repayment":
+        return "text-red-600";
+      case "transfer_in":
+      case "transfer_out":
+        return "text-blue-600";
+      default:
+        return "text-gray-600";
     }
   };
 
   const getIcon = (type) => {
     switch (type) {
-      case "deposit": return TrendingUp;
-      case "withdrawal": return TrendingDown;
-      case "transfer": return CreditCard;
-      default: return CreditCard;
+      case "savings_contribution":
+        return TrendingUp;
+      case "savings_withdrawal":
+        return TrendingDown;
+      case "loan_disbursement":
+        return CreditCard;
+      case "loan_repayment":
+        return CreditCard;
+      case "transfer_in":
+      case "transfer_out":
+        return CreditCard;
+      default:
+        return CreditCard;
     }
   };
 
@@ -109,23 +144,35 @@ const TransactionList = () => {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getStatusColor(transaction.type)}`}>
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${getStatusColor(
+                        transaction.type
+                      )}`}
+                    >
                       <TransactionIcon className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="font-medium">{transaction.type}</h3>
-                      <p className="text-sm text-muted-foreground">{transaction.description}</p>
-                      <p className={`text-sm font-medium ${getAmountColor(transaction.type)}`}>
-                        ${transaction.amount}
+                      <h3 className="font-medium">
+                        {transaction.typeLabel || transaction.type}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {transaction.description}
+                      </p>
+                      <p
+                        className={`text-sm font-medium ${getAmountColor(
+                          transaction.type
+                        )}`}
+                      >
+                        {formatCurrency(transaction.amount, "USD")}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={getStatusColor(transaction.type)}>
-                      {transaction.type}
+                      {transaction.typeLabel || transaction.type}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(transaction.date).toLocaleDateString()}
+                      {formatDate(transaction.createdAt, "short")}
                     </span>
                     <Button size="sm" variant="outline">
                       View

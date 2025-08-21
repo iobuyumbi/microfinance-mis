@@ -123,12 +123,15 @@ export const ENDPOINTS = {
   REPORTS: {
     BASE: "/reports",
     DASHBOARD: "/reports/dashboard",
+    TOTAL_LOANS: "/reports/total-loans",
     LOANS: "/reports/loans",
     SAVINGS: "/reports/savings",
     TRANSACTIONS: "/reports/transactions",
     MEMBERS: "/reports/members",
     GROUPS: "/reports/groups",
-    EXPORT: (type) => `/reports/${type}/export`,
+    DEFAULTERS: "/reports/defaulters",
+    EXPORT: (type, format = "csv") =>
+      `/reports/${type}/export?format=${format}`,
     RECENT_ACTIVITY: "/reports/recent-activity",
     UPCOMING_REPAYMENTS: "/reports/upcoming-repayments",
     FINANCIAL_SUMMARY: "/reports/financial-summary",

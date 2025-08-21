@@ -62,20 +62,22 @@ async function createFinancialTransaction(transactionData, options = {}) {
     }
 
     // Determine if this is a credit or debit to the account
+    // Classification is from the perspective of the linked Account (payer/payee).
+    // For member/group savings accounts:
+    // - Contributions and loan disbursements increase balance (credit)
+    // - Repayments and withdrawals decrease balance (debit)
     const creditTypes = [
       'savings_contribution',
-      'loan_repayment',
+      'loan_disbursement',
       'interest_earned',
       'refund',
       'transfer_in',
-      'penalty_paid',
-      'fee_paid',
       'adjustment_credit',
     ];
 
     const debitTypes = [
       'savings_withdrawal',
-      'loan_disbursement',
+      'loan_repayment',
       'interest_charged',
       'penalty_incurred',
       'fee_incurred',
