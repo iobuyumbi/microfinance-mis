@@ -37,6 +37,46 @@ const calculateRepaymentSchedule = (amount, interestRate, loanTermInMonths) => {
   });
 };
 
+// @desc    Get loan statistics
+// @route   GET /api/loans/stats
+// @access  Private (filterDataByRole middleware handles access)
+exports.getLoanStats = asyncHandler(async (req, res, next) => {
+  const loanFilter = req.dataFilter || {};
+
+  const [
+    totalLoans,
+    approvedLoans,
+    pendingLoans,
+    disbursedLoans,
+    amountsAgg,
+  ] = await Promise.all([
+    Loan.countDocuments(loanFilter),
+    Loan.countDocuments({ status: { $in: ['approved', 'disbursed'] }, ...loanFilter }),
+    Loan.countDocuments({ status: 'pending', ...loanFilter }),
+    Loan.countDocuments({ status: 'disbursed', ...loanFilter }),
+    Loan.aggregate([
+      { $match: { ...loanFilter, status: { $in: ['approved', 'disbursed'] } } },
+      { $group: { _id: null, totalAmount: { $sum: { $ifNull: ['$amountApproved', 0] } }, count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const totalAmount = amountsAgg[0]?.totalAmount || 0;
+  const approvedCount = amountsAgg[0]?.count || 0;
+  const averageLoanAmount = approvedCount > 0 ? totalAmount / approvedCount : 0;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totalLoans,
+      totalAmount,
+      approvedLoans,
+      pendingLoans,
+      disbursedLoans,
+      averageLoanAmount,
+    },
+  });
+});
+
 // @desc    Apply for a loan
 // @route   POST /api/loans
 // @access  Private (Member for self, Leader for group members, Admin/Officer for any)

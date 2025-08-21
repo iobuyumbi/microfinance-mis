@@ -6,6 +6,7 @@ const {
   getAllLoans,
   getLoanById,
   approveLoan,
+  getLoanStats,
   updateLoan,
   deleteLoan,
 } = require('../controllers/loanController');
@@ -54,6 +55,15 @@ router.get(
   '/',
   filterDataByRole('Loan'), // Apply data filtering based on user role/group membership
   getAllLoans
+);
+
+// @route   GET /api/loans/stats
+// @desc    Get loan statistics
+// @access  Private (filtered by role)
+router.get(
+  '/stats',
+  filterDataByRole('Loan'),
+  getLoanStats
 );
 
 // @route   GET /api/loans/:id
