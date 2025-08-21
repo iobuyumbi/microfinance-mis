@@ -25,37 +25,16 @@ async function getCurrency() {
   return appSettings.general.currency;
 }
 
-// Helper function to calculate repayment schedule
+// Import financial utilities
+const { calculateLoanSchedule } = require('../utils/financialUtils');
+
+// Helper function to calculate repayment schedule (using the centralized utility)
 const calculateRepaymentSchedule = (amount, interestRate, loanTermInMonths) => {
-  // Basic flat interest calculation for simplicity.
-  // For more complex (e.g., reducing balance) calculations, use a dedicated library or more complex logic.
-  const monthlyInterestRate = interestRate / 100 / 12; // This is not used in flat interest calculation below, but good for reference.
-  const totalAmountToRepay = amount * (1 + interestRate / 100); // Principal + total interest
-
-  if (loanTermInMonths <= 0) {
-    // If loan term is 0 or less, assume immediate full repayment or an error case
-    return [
-      {
-        dueDate: new Date(),
-        amount: parseFloat(totalAmountToRepay.toFixed(2)),
-        status: 'pending',
-      },
-    ];
-  }
-
-  const monthlyPayment = totalAmountToRepay / loanTermInMonths;
-  const schedule = [];
-  let currentDate = new Date();
-
-  for (let i = 0; i < loanTermInMonths; i++) {
-    currentDate.setMonth(currentDate.getMonth() + 1); // Move to next month
-    schedule.push({
-      dueDate: new Date(currentDate), // Create new Date object to avoid reference issues
-      amount: parseFloat(monthlyPayment.toFixed(2)), // Round to 2 decimal places
-      status: 'pending',
-    });
-  }
-  return schedule;
+  return calculateLoanSchedule({
+    amount,
+    interestRate,
+    loanTerm: loanTermInMonths,
+  });
 };
 
 // @desc    Apply for a loan
@@ -199,7 +178,8 @@ exports.getLoanById = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin, Officer)
 exports.approveLoan = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const { status, amountApproved, repaymentSchedule } = req.body;
+  const { status, amountApproved, repaymentSchedule, disbursementMethod } =
+    req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return next(new ErrorResponse('Invalid Loan ID format.', 400));
@@ -235,6 +215,11 @@ exports.approveLoan = asyncHandler(async (req, res, next) => {
     );
   }
 
+  // Store disbursement method if provided
+  if (status === 'approved' && disbursementMethod) {
+    loan.disbursementMethod = disbursementMethod;
+  }
+
   // Update loan details
   loan.status = status || loan.status; // Allow status update
   loan.approver = req.user._id; // Set the approver
@@ -252,56 +237,6 @@ exports.approveLoan = asyncHandler(async (req, res, next) => {
       );
     }
     loan.repaymentSchedule = finalRepaymentSchedule;
-
-    // --- DISBURSEMENT LOGIC ---
-    // 1. Find the borrower's account
-    let borrowerAccount = await Account.findOne({
-      owner: loan.borrower,
-      ownerModel: loan.borrowerModel,
-      type: 'savings', // Assuming loan is disbursed to their savings account
-      status: 'active',
-    });
-
-    if (!borrowerAccount) {
-      // If no existing savings account, create one for the borrower
-      // In a real system, you might want to ensure consistency or have specific account creation flows.
-      borrowerAccount = await Account.create({
-        owner: loan.borrower,
-        ownerModel: loan.borrowerModel,
-        type: 'savings',
-        accountNumber: `SAV-${loan.borrower.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`,
-        balance: 0,
-      });
-    }
-
-    // 2. Update borrower's account balance
-    const newBalance = borrowerAccount.balance + loan.amountApproved;
-    borrowerAccount.balance = newBalance;
-    await borrowerAccount.save();
-
-    // 3. Create a 'loan_disbursement' transaction record
-    await Transaction.create({
-      type: 'loan_disbursement',
-      member: loan.borrowerModel === 'User' ? loan.borrower : null, // If borrower is a user
-      group: loan.borrowerModel === 'Group' ? loan.borrower : null, // If borrower is a group
-      amount: loan.amountApproved,
-      description: `Loan disbursement for Loan ID: ${loan._id}`,
-      status: 'completed',
-      balanceAfter: newBalance, // Balance after this disbursement
-      createdBy: req.user._id,
-      relatedEntity: loan._id,
-      relatedEntityType: 'Loan',
-    });
-
-    // 4. Optionally, update group's totalLoansOutstanding if borrower is a group
-    if (loan.borrowerModel === 'Group') {
-      const group = await Group.findById(loan.borrower);
-      if (group) {
-        group.totalLoansOutstanding =
-          (group.totalLoansOutstanding || 0) + loan.amountApproved;
-        await group.save();
-      }
-    }
   } else if (loan.status === 'rejected') {
     // If rejected, ensure amountApproved is null/0 and repaymentSchedule is empty
     loan.amountApproved = 0;
@@ -324,6 +259,310 @@ exports.approveLoan = asyncHandler(async (req, res, next) => {
     message: `Loan status updated to '${loan.status}'.`,
     data: formattedLoan,
   });
+});
+
+// @desc    Disburse an approved loan
+// @route   POST /api/loans/:id/disburse
+// @access  Private (Admin, Officer)
+exports.disburseLoan = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { disbursementMethod = 'mobile' } = req.body; // Default to mobile if not specified
+
+  // Validate loan ID format
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new ErrorResponse('Invalid loan ID format.', 400));
+  }
+
+  // Find the loan with borrower details
+  const loan = await Loan.findById(id)
+    .populate({
+      path: 'borrower',
+      select: 'name email',
+    })
+    .populate('approver', 'name email');
+
+  if (!loan) {
+    return next(new ErrorResponse('Loan not found.', 404));
+  }
+
+  // Check if loan is approved
+  if (loan.status !== 'approved') {
+    return next(
+      new ErrorResponse(
+        `Loan is not approved. Current status: ${loan.status}.`,
+        400
+      )
+    );
+  }
+
+  // Check if loan has already been disbursed
+  if (loan.status === 'disbursed') {
+    return next(new ErrorResponse('Loan has already been disbursed.', 400));
+  }
+
+  // Import financial utilities
+  const { processLoanDisbursement } = require('../utils/financialUtils');
+
+  try {
+    // Process the loan disbursement using the utility function
+    const { transaction, account, success } = await processLoanDisbursement(
+      loan,
+      req.user.id,
+      { disbursementMethod }
+    );
+
+    if (!success) {
+      throw new Error('Failed to process loan disbursement');
+    }
+
+    // Update loan status to disbursed
+    loan.status = 'disbursed';
+    loan.disbursedAt = new Date();
+    loan.disbursedBy = req.user.id;
+    loan.disbursementMethod = disbursementMethod;
+    await loan.save();
+
+    // Populate for response
+    await loan.populate('borrower', 'name email');
+    await loan.populate('approver', 'name email');
+    await loan.populate('disbursedBy', 'name email');
+
+    // Await async virtuals
+    const formattedLoan = loan.toObject({ virtuals: true });
+    formattedLoan.formattedAmountRequested =
+      await loan.formattedAmountRequested;
+    formattedLoan.formattedAmountApproved = await loan.formattedAmountApproved;
+
+    res.status(200).json({
+      success: true,
+      message: 'Loan disbursed successfully.',
+      data: {
+        loan: formattedLoan,
+        transaction: {
+          id: transaction._id,
+          amount: transaction.amount,
+          type: transaction.type,
+          description: transaction.description,
+          receiptNumber: transaction.receiptNumber,
+        },
+        account: {
+          id: account._id,
+          accountNumber: account.accountNumber,
+          newBalance: account.balance,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Error disbursing loan:', error);
+    return next(
+      new ErrorResponse(`Failed to disburse loan: ${error.message}`, 500)
+    );
+  }
+});
+
+// @desc    Process loan repayment
+// @route   POST /api/loans/:id/repay
+// @access  Private (Admin, Officer, Member)
+exports.repayLoan = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const { amount, paymentMethod = 'mobile', installmentId } = req.body;
+
+  // Import financial utilities
+  const { createFinancialTransaction } = require('../utils/financialUtils');
+
+  // Validate loan ID format
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new ErrorResponse('Invalid loan ID format.', 400));
+  }
+
+  // Validate amount
+  if (!amount || amount <= 0) {
+    return next(
+      new ErrorResponse('Please provide a valid payment amount.', 400)
+    );
+  }
+
+  // Find the loan with borrower details
+  const loan = await Loan.findById(id).populate({
+    path: 'borrower',
+    select: 'name email _id',
+  });
+
+  if (!loan) {
+    return next(new ErrorResponse('Loan not found.', 404));
+  }
+
+  // Check if loan is in a status that allows repayment
+  if (loan.status !== 'disbursed' && loan.status !== 'partially_paid') {
+    return next(
+      new ErrorResponse(
+        `Loan cannot be repaid. Current status: ${loan.status}`,
+        400
+      )
+    );
+  }
+
+  // Find the group account if this is a group loan
+  let account;
+  const borrowerType = loan.borrowerModel.toLowerCase();
+
+  try {
+    if (borrowerType === 'group') {
+      const group = await Group.findById(loan.borrower._id).populate('account');
+      if (!group) {
+        return next(new ErrorResponse('Group not found', 404));
+      }
+      account = group.account;
+    } else {
+      // For individual loans, find the user's personal account
+      const user = await User.findById(loan.borrower._id);
+      if (!user) {
+        return next(new ErrorResponse('User not found', 404));
+      }
+      // Find the user's personal account
+      account = await Account.findOne({
+        owner: user._id,
+        ownerModel: 'User',
+        type: 'savings',
+      });
+    }
+
+    if (!account) {
+      return next(
+        new ErrorResponse(`No account found for the ${borrowerType}`, 404)
+      );
+    }
+
+    // Start a database session for transaction atomicity
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Find the specific installment if provided
+      let installmentToUpdate = null;
+      if (installmentId && mongoose.Types.ObjectId.isValid(installmentId)) {
+        // Find the specific installment in the repayment schedule
+        installmentToUpdate = loan.repaymentSchedule.id(installmentId);
+        if (!installmentToUpdate) {
+          await session.abortTransaction();
+          session.endSession();
+          return next(new ErrorResponse('Installment not found.', 404));
+        }
+      }
+
+      // Create a loan repayment transaction
+      const transactionResult = await createFinancialTransaction({
+        type: 'loan_repayment',
+        amount: amount,
+        account: account._id,
+        description: `Loan repayment for ${loan.borrowerModel} ${loan.borrower.name}${installmentToUpdate ? ' - Installment ' + installmentToUpdate.installmentNumber : ''}`,
+        relatedEntity: {
+          model: 'Loan',
+          id: loan._id,
+        },
+        paymentMethod,
+        createdBy: req.user._id,
+        session,
+      });
+
+      // Update the loan installment if specified
+      if (installmentToUpdate) {
+        const remainingAmount = installmentToUpdate.amount - amount;
+
+        if (remainingAmount <= 0) {
+          // Mark installment as paid
+          installmentToUpdate.status = 'paid';
+          installmentToUpdate.paidAmount = installmentToUpdate.amount;
+          installmentToUpdate.paidDate = new Date();
+          installmentToUpdate.transaction = transactionResult.transaction._id;
+        } else {
+          // Mark installment as partially paid
+          installmentToUpdate.status = 'partially_paid';
+          installmentToUpdate.paidAmount =
+            (installmentToUpdate.paidAmount || 0) + amount;
+          installmentToUpdate.lastPaymentDate = new Date();
+          installmentToUpdate.transactions =
+            installmentToUpdate.transactions || [];
+          installmentToUpdate.transactions.push(
+            transactionResult.transaction._id
+          );
+        }
+      } else {
+        // If no specific installment, apply payment to the earliest unpaid installment
+        let remainingPayment = amount;
+        for (const installment of loan.repaymentSchedule) {
+          if (installment.status !== 'paid' && remainingPayment > 0) {
+            const installmentRemaining =
+              installment.amount - (installment.paidAmount || 0);
+            const paymentForThisInstallment = Math.min(
+              remainingPayment,
+              installmentRemaining
+            );
+
+            installment.paidAmount =
+              (installment.paidAmount || 0) + paymentForThisInstallment;
+            installment.transactions = installment.transactions || [];
+            installment.transactions.push(transactionResult.transaction._id);
+
+            if (installment.paidAmount >= installment.amount) {
+              installment.status = 'paid';
+              installment.paidDate = new Date();
+            } else {
+              installment.status = 'partially_paid';
+              installment.lastPaymentDate = new Date();
+            }
+
+            remainingPayment -= paymentForThisInstallment;
+          }
+        }
+      }
+
+      // Update loan status based on repayment schedule
+      const allPaid = loan.repaymentSchedule.every(
+        installment => installment.status === 'paid'
+      );
+      const anyPaid = loan.repaymentSchedule.some(
+        installment =>
+          installment.status === 'paid' ||
+          installment.status === 'partially_paid'
+      );
+
+      if (allPaid) {
+        loan.status = 'paid';
+      } else if (anyPaid) {
+        loan.status = 'partially_paid';
+      }
+
+      // Save the updated loan
+      await loan.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(200).json({
+        success: true,
+        data: {
+          loan,
+          transaction: transactionResult.transaction,
+        },
+      });
+    } catch (error) {
+      // Abort transaction on error
+      await session.abortTransaction();
+      session.endSession();
+      return next(
+        new ErrorResponse(
+          `Failed to process loan repayment: ${error.message}`,
+          500
+        )
+      );
+    }
+  } catch (error) {
+    return next(
+      new ErrorResponse(`Error finding account: ${error.message}`, 500)
+    );
+  }
 });
 
 // @desc    Update loan request (only pending + access-controlled)

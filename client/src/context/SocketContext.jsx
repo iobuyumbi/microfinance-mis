@@ -1,95 +1,99 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "./AuthContext";
 import { io } from "socket.io-client";
+import { useAuth } from "./AuthContext";
+import { toast } from "sonner";
+import { chatService } from "../services/chatService";
 
 const SocketContext = createContext();
 
-export const useSocket = () => {
-  const context = useContext(SocketContext);
-  if (!context) {
-    throw new Error("useSocket must be used within a SocketProvider");
-  }
-  return context;
-};
+export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      // Prefer dedicated socket URL, else derive from API and strip trailing /api
-      const rawUrl =
-        import.meta.env.VITE_SOCKET_URL ||
-        import.meta.env.VITE_API_URL ||
-        "http://localhost:5000";
-      const serverUrl = rawUrl.replace(/\/?api\/?$/, "");
-
-      const newSocket = io(serverUrl, {
-        auth: {
-          token: localStorage.getItem("token"),
-        },
-        transports: ["websocket", "polling"],
-        timeout: 20000,
-        forceNew: true,
-        autoConnect: true,
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
-      });
-
-      newSocket.on("connect", () => {
-        console.log("Socket connected");
-        setIsConnected(true);
-      });
-
-      newSocket.on("disconnect", () => {
-        console.log("Socket disconnected");
+    if (!isAuthenticated || !user) {
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
         setIsConnected(false);
-      });
-
-      // Align with server event names
-      newSocket.on("notification", (notification) => {
-        setNotifications((prev) => [notification, ...prev]);
-      });
-
-      newSocket.on("new_message", (message) => {
-        // Handle incoming chat messages
-        console.log("New chat message:", message);
-      });
-
-      newSocket.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-      });
-
-      setSocket(newSocket);
-
-      return () => {
-        if (newSocket && newSocket.connected) {
-          newSocket.close();
-        }
-      };
+      }
+      return;
     }
+
+    // Initialize socket connection
+    const socketInstance = io(process.env.REACT_APP_API_URL || "", {
+      withCredentials: true,
+      transports: ["websocket"],
+      auth: {
+        token: localStorage.getItem("token"),
+      },
+    });
+
+    socketInstance.on("connect", () => {
+      console.log("Socket connected");
+      setIsConnected(true);
+    });
+
+    socketInstance.on("disconnect", () => {
+      console.log("Socket disconnected");
+      setIsConnected(false);
+    });
+
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setIsConnected(false);
+    });
+
+    socketInstance.on("notification", (data) => {
+      console.log("Notification received:", data);
+      setNotifications((prev) => [data, ...prev]);
+      
+      // Show toast notification
+      toast(data.title, {
+        description: data.message,
+      });
+    });
+
+    socketInstance.on("new_message", (data) => {
+      // This is handled in the ChatInterface component
+      console.log("New message received:", data);
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
+    };
   }, [isAuthenticated, user]);
 
-  const sendMessage = (payload) => {
-    if (socket && isConnected) {
-      socket.emit("send-message", payload);
+  const sendMessage = async (messageData) => {
+    if (!socket || !isConnected) {
+      throw new Error("Socket not connected");
+    }
+
+    try {
+      const response = await chatService.sendMessage(messageData);
+      return response.data;
+    } catch (error) {
+      console.error("Error sending message:", error);
+      throw error;
     }
   };
 
   const joinGroup = (groupId) => {
-    if (socket && isConnected) {
-      socket.emit("join-group", { groupId });
-    }
+    if (!socket || !isConnected) return;
+    socket.emit("join-group", { groupId });
   };
 
   const leaveGroup = (groupId) => {
-    if (socket && isConnected) {
-      socket.emit("leave-group", { groupId });
-    }
+    if (!socket || !isConnected) return;
+    socket.emit("leave-group", { groupId });
   };
 
   const markNotificationAsRead = (notificationId) => {
@@ -106,18 +110,20 @@ export const SocketProvider = ({ children }) => {
     setNotifications([]);
   };
 
-  const value = {
-    socket,
-    isConnected,
-    notifications,
-    sendMessage,
-    joinGroup,
-    leaveGroup,
-    markNotificationAsRead,
-    clearNotifications,
-  };
-
   return (
-    <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
+    <SocketContext.Provider
+      value={{
+        socket,
+        isConnected,
+        notifications,
+        sendMessage,
+        joinGroup,
+        leaveGroup,
+        markNotificationAsRead,
+        clearNotifications,
+      }}
+    >
+      {children}
+    </SocketContext.Provider>
   );
 };

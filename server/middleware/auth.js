@@ -353,8 +353,8 @@ exports.authorizeGroupAccess = (groupIdParam = 'groupId') => {
       });
     }
 
-    // Admin and officers can access all groups
-    if (req.user.role === 'admin' || req.user.role === 'officer') {
+    // Admin, officers, and leaders can access all groups
+    if (req.user.role === 'admin' || req.user.role === 'officer' || req.user.role === 'leader') {
       devLog(
         `Access granted for system role (${req.user.role}) to group access.`
       );

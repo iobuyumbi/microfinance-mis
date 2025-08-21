@@ -33,21 +33,39 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
   if (amount <= 0) {
     return next(new ErrorResponse('Amount must be positive.', 400));
   }
-  if (!mongoose.Types.ObjectId.isValid(member)) {
+  
+  // Validate member ID if provided
+  if (member && !mongoose.Types.ObjectId.isValid(member)) {
     return next(new ErrorResponse('Invalid member ID format.', 400));
   }
-  if (!mongoose.Types.ObjectId.isValid(group)) {
+  
+  // Validate group ID if provided
+  if (group && !mongoose.Types.ObjectId.isValid(group)) {
     return next(new ErrorResponse('Invalid group ID format.', 400));
   }
-  if (!mongoose.Types.ObjectId.isValid(account)) {
+  
+  // Account is required and must be valid
+  if (!account || !mongoose.Types.ObjectId.isValid(account)) {
     return next(new ErrorResponse('Invalid account ID format.', 400));
   }
 
   // Verify existence of linked entities
-  const targetMember = await User.findById(member);
-  if (!targetMember) return next(new ErrorResponse('Member not found.', 404));
-  const targetGroup = await Group.findById(group);
-  if (!targetGroup) return next(new ErrorResponse('Group not found.', 404));
+  let targetMember = null;
+  let targetGroup = null;
+  
+  // Only verify member if provided
+  if (member) {
+    targetMember = await User.findById(member);
+    if (!targetMember) return next(new ErrorResponse('Member not found.', 404));
+  }
+  
+  // Only verify group if provided
+  if (group) {
+    targetGroup = await Group.findById(group);
+    if (!targetGroup) return next(new ErrorResponse('Group not found.', 404));
+  }
+  
+  // Account is always required
   const targetAccount = await Account.findById(account);
   if (!targetAccount)
     return next(new ErrorResponse('Target account not found.', 404));

@@ -49,8 +49,9 @@ const configureSocket = (server) => {
         }
 
         await checkGroupAccess(groupId, socket.user.id, socket.user.role);
-        socket.join(`group-${groupId}`);
-        console.log(`User ${socket.user.id} joined group room: group-${groupId}`);
+        const roomId = `group-${groupId}`;
+        socket.join(roomId);
+        console.log(`User ${socket.user.id} joined group room: ${roomId}`);
       } catch (error) {
         console.error('Error joining group:', error);
         socket.emit('socket-error', {
@@ -62,9 +63,22 @@ const configureSocket = (server) => {
 
     // Leave a group chat
     socket.on('leave-group', data => {
-      const { groupId } = data;
-      socket.leave(`group-${groupId}`);
-      console.log(`User ${socket.user.id} left group room: group-${groupId}`);
+      try {
+        const { groupId } = data;
+        if (!groupId || !mongoose.Types.ObjectId.isValid(groupId)) {
+          throw new Error('Invalid Group ID format provided for leaving.');
+        }
+
+        const roomId = `group-${groupId}`;
+        socket.leave(roomId);
+        console.log(`User ${socket.user.id} left group room: ${roomId}`);
+      } catch (error) {
+        console.error('Error leaving group:', error);
+        socket.emit('socket-error', {
+          event: 'leave-group',
+          message: error.message || 'Failed to leave group.',
+        });
+      }
     });
 
     // Handle chat messages
@@ -90,14 +104,17 @@ const configureSocket = (server) => {
         }
 
         const savedMessage = await createAndSaveChatMessage({
+          userId: socket.user.id,
           content,
-          sender: socket.user.id,
-          chatId,
           chatType,
-          groupId: chatType === 'group' ? groupId : undefined,
+          chatId,
+          groupId: chatType === 'group' ? groupId : undefined
         });
+        
+        // Emit to the correct room based on chat type
+        const roomId = chatType === 'group' ? `group-${groupId}` : chatId;
 
-        io.to(chatId).emit('new_message', {
+        io.to(roomId).emit('new_message', {
           message: savedMessage.toJSON(),
           chatId,
           chatType,

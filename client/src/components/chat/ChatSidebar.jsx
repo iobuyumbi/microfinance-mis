@@ -7,29 +7,11 @@ import { Badge } from "../ui/badge";
 import { ScrollArea } from "../ui/scroll-area";
 import { MessageCircle, Search, Plus, Users, Shield } from "lucide-react";
 import { toast } from "sonner";
-import { chatService } from "../../services/chatService";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
-const ChatSidebar = ({ selectedChannel, onChannelSelect }) => {
-  const [channels, setChannels] = useState([]);
-  const [loading, setLoading] = useState(false);
+const ChatSidebar = ({ selectedChannel, onChannelSelect, channels = [], loading = false }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { user } = useAuth();
-
-  useEffect(() => {
-    loadChannels();
-  }, []);
-
-  const loadChannels = async () => {
-    setLoading(true);
-    try {
-      const response = await chatService.getChatChannels();
-      setChannels(response.data.data || []);
-    } catch (error) {
-      toast.error("Failed to load channels");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user, isAdmin, isOfficer, isLeader, isMember } = useAuth();
 
   const filteredChannels = channels.filter(channel =>
     channel.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -65,9 +47,20 @@ const ChatSidebar = ({ selectedChannel, onChannelSelect }) => {
             <MessageCircle className="h-5 w-5" />
             Messages
           </span>
-          <Button size="sm" variant="outline">
-            <Plus className="h-4 w-4" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {(isAdmin() || isOfficer()) && (
+                  <Button size="sm" variant="outline">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create new chat channel</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
         <div className="relative">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />

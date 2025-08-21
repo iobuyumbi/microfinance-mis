@@ -282,166 +282,242 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
   thirtyDaysFromNow.setDate(now.getDate() + 30);
 
   // Filters derived from req.dataFilter middleware for different models
-  // For Loan and Transaction models, req.dataFilter should already contain a merged $or query for access
-  const loanQueryFilter = req.dataFilter?.Loan || {}; // Assuming filterDataByRole sets specific model filters
+  const loanQueryFilter = req.dataFilter?.Loan || {};
   const transactionQueryFilter = req.dataFilter?.Transaction || {};
   const userQueryFilter = req.dataFilter?.User || {};
   const groupQueryFilter = req.dataFilter?.Group || {};
 
-  const [
-    totalMembers,
-    totalLoans,
-    approvedLoans,
-    pendingLoans,
-    totalSavingsResult,
-    recentLoans,
-    recentRepayments,
-  ] = await Promise.all([
-    User.countDocuments({ role: 'member', ...userQueryFilter }), // Count members based on filter
-    Loan.countDocuments(loanQueryFilter),
-    Loan.countDocuments({
-      status: { $in: ['approved', 'disbursed'] },
-      ...loanQueryFilter,
-    }), // Include disbursed
-    Loan.countDocuments({ status: 'pending', ...loanQueryFilter }),
-    // Calculate total savings from Account balances (for users/groups within accessible scope)
-    Account.aggregate([
-      {
-        $match: {
-          status: 'active',
-          $or: [
-            {
-              ownerModel: 'User',
-              owner: userQueryFilter._id
-                ? { $in: userQueryFilter._id }
-                : { $exists: true }, // Assuming userQueryFilter.id is an array
-            },
-            {
-              ownerModel: 'Group',
-              type: 'group_savings',
-              owner: groupQueryFilter._id
-                ? { $in: groupQueryFilter._id }
-                : { $exists: true }, // Assuming groupQueryFilter.id is an array
-            },
-          ],
+  try {
+    const [
+      totalMembers,
+      totalGroups,
+      totalLoans,
+      approvedLoans,
+      pendingLoans,
+      disbursedLoans,
+      totalSavingsResult,
+      recentLoans,
+      recentTransactions,
+      overdueLoans,
+      monthlyContributions,
+      monthlyRepayments,
+    ] = await Promise.all([
+      // Total members
+      User.countDocuments({ role: 'member', ...userQueryFilter }),
+
+      // Total groups
+      Group.countDocuments(groupQueryFilter),
+
+      // Total loans
+      Loan.countDocuments(loanQueryFilter),
+
+      // Approved loans
+      Loan.countDocuments({
+        status: { $in: ['approved', 'disbursed'] },
+        ...loanQueryFilter,
+      }),
+
+      // Pending loans
+      Loan.countDocuments({ status: 'pending', ...loanQueryFilter }),
+
+      // Disbursed loans
+      Loan.countDocuments({ status: 'disbursed', ...loanQueryFilter }),
+
+      // Calculate total savings from Account balances
+      Account.aggregate([
+        {
+          $match: {
+            status: 'active',
+            type: 'savings',
+            $or: [
+              {
+                ownerModel: 'User',
+                owner: userQueryFilter._id
+                  ? { $in: userQueryFilter._id }
+                  : { $exists: true },
+              },
+              {
+                ownerModel: 'Group',
+                owner: groupQueryFilter._id
+                  ? { $in: groupQueryFilter._id }
+                  : { $exists: true },
+              },
+            ],
+          },
         },
-      },
-      { $group: { _id: null, total: { $sum: '$balance' } } },
-    ]),
-    Loan.find({
-      createdAt: { $gte: startOfMonth },
-      ...loanQueryFilter,
-    })
-      .populate('borrower', 'name')
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean(),
-    Transaction.find({
-      type: 'loan_repayment',
-      createdAt: { $gte: startOfMonth },
-      ...transactionQueryFilter, // This filter should apply to transaction.member/group/loan
-    })
-      .populate('loan', 'borrower borrowerModel') // Populate loan to get borrower for display
-      .populate('member', 'name') // Populate member directly if it's a user repayment
-      .populate('group', 'name') // Populate group if it's a group repayment
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean(),
-  ]);
+        { $group: { _id: null, total: { $sum: '$balance' } } },
+      ]),
 
-  const totalSavings = totalSavingsResult[0]?.total || 0;
+      // Recent loans (last 5)
+      Loan.find({
+        createdAt: { $gte: startOfMonth },
+        ...loanQueryFilter,
+      })
+        .populate('borrower', 'name')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean(),
 
-  // Get overdue payments
-  const overdueLoansRaw = await Loan.find({
-    ...loanQueryFilter, // Apply loan filter here
-    status: { $in: ['approved', 'overdue', 'disbursed'] }, // All active loans
-    repaymentSchedule: {
-      $elemMatch: {
-        dueDate: { $lt: now },
-        status: 'pending',
-      },
-    },
-  })
-    .populate('borrower', 'name')
-    .lean();
+      // Recent transactions (last 10)
+      Transaction.find({
+        createdAt: { $gte: startOfMonth },
+        ...transactionQueryFilter,
+      })
+        .populate('member', 'name')
+        .populate('group', 'name')
+        .populate('createdBy', 'name')
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean(),
 
-  const overduePaymentsCount = overdueLoansRaw.length;
-  let totalOverdueAmount = 0;
-  overdueLoansRaw.forEach(loan => {
-    totalOverdueAmount += loan.repaymentSchedule
-      .filter(item => item.dueDate < now && item.status === 'pending')
-      .reduce((sum, item) => sum + item.amount, 0);
-  });
+      // Overdue loans
+      Loan.find({
+        ...loanQueryFilter,
+        status: { $in: ['approved', 'disbursed'] },
+        repaymentSchedule: {
+          $elemMatch: {
+            dueDate: { $lt: now },
+            status: 'pending',
+          },
+        },
+      })
+        .populate('borrower', 'name')
+        .lean(),
 
-  // Format recent activity
-  const activity = [
-    ...recentLoans.map(loan => ({
-      description: `New loan application from ${loan.borrower?.name || 'Unknown'} for ${currency} ${loan.amountRequested.toFixed(2)}`,
-      timestamp: loan.createdAt,
-      type: 'loan_application',
-    })),
-    ...recentRepayments.map(repayment => ({
-      description: `Payment received of ${currency} ${repayment.amount.toFixed(2)} for loan ${repayment.loan ? repayment.loan._id.toString().substring(0, 6) : 'Unknown'} by ${repayment.member?.name || repayment.group?.name || 'Unknown'}`,
-      timestamp: repayment.createdAt,
-      type: 'loan_repayment',
-    })),
-  ]
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 10);
+      // Monthly contributions
+      Transaction.aggregate([
+        {
+          $match: {
+            type: 'savings_contribution',
+            createdAt: { $gte: startOfMonth },
+            ...transactionQueryFilter,
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
 
-  // Get upcoming payments (due in next 30 days) from loan schedules
-  const loansWithUpcomingPayments = await Loan.find({
-    ...loanQueryFilter, // Apply loan filter here
-    status: { $in: ['approved', 'overdue', 'disbursed'] },
-    repaymentSchedule: {
-      $elemMatch: {
-        dueDate: { $gte: now, $lte: thirtyDaysFromNow },
-        status: 'pending',
-      },
-    },
-  })
-    .populate('borrower', 'name')
-    .lean(); // Use lean() for performance
+      // Monthly repayments
+      Transaction.aggregate([
+        {
+          $match: {
+            type: 'loan_repayment',
+            createdAt: { $gte: startOfMonth },
+            ...transactionQueryFilter,
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+    ]);
 
-  let upcomingPaymentsList = [];
-  loansWithUpcomingPayments.forEach(loan => {
-    loan.repaymentSchedule.forEach(installment => {
-      if (
-        installment.status === 'pending' &&
-        installment.dueDate >= now &&
-        installment.dueDate <= thirtyDaysFromNow
-      ) {
-        upcomingPaymentsList.push({
+    const totalSavings = totalSavingsResult[0]?.total || 0;
+    const monthlyContributionsTotal = monthlyContributions[0]?.total || 0;
+    const monthlyRepaymentsTotal = monthlyRepayments[0]?.total || 0;
+    const overduePaymentsCount = overdueLoans.length;
+
+    // Calculate overdue amount
+    let totalOverdueAmount = 0;
+    overdueLoans.forEach(loan => {
+      const overdueInstallments =
+        loan.repaymentSchedule?.filter(
+          installment =>
+            installment.dueDate < now && installment.status === 'pending'
+        ) || [];
+      totalOverdueAmount += overdueInstallments.reduce(
+        (sum, installment) => sum + installment.amount,
+        0
+      );
+    });
+
+    // Format recent activities
+    const recentActivities = recentTransactions.map(transaction => ({
+      id: transaction._id,
+      type: transaction.type,
+      title: getTransactionTitle(transaction),
+      description: transaction.description,
+      amount: transaction.amount,
+      member: transaction.member?.name,
+      group: transaction.group?.name,
+      createdBy: transaction.createdBy?.name,
+      createdAt: transaction.createdAt,
+    }));
+
+    // Format upcoming payments
+    const upcomingPayments = overdueLoans
+      .map(loan => {
+        const overdueInstallments =
+          loan.repaymentSchedule?.filter(
+            installment =>
+              installment.dueDate < now && installment.status === 'pending'
+          ) || [];
+
+        return overdueInstallments.map(installment => ({
           loanId: loan._id,
-          borrowerName: loan.borrower?.name || 'Unknown',
+          borrower: loan.borrower?.name,
           amount: installment.amount,
           dueDate: installment.dueDate,
-          formattedAmount: `${loan.currency || currency} ${installment.amount.toFixed(2)}`,
-        });
-      }
-    });
-  });
-  upcomingPaymentsList.sort((a, b) => a.dueDate - b.dueDate).slice(0, 10); // Limit to 10 for dashboard
+          daysOverdue: Math.floor(
+            (now - installment.dueDate) / (1000 * 60 * 60 * 24)
+          ),
+        }));
+      })
+      .flat()
+      .sort((a, b) => a.dueDate - b.dueDate)
+      .slice(0, 10);
 
-  res.status(200).json({
-    success: true,
-    data: {
-      stats: {
+    res.status(200).json({
+      success: true,
+      data: {
+        // Basic counts
         totalMembers,
-        totalLoans: totalLoans,
+        totalGroups,
+        totalLoans,
         approvedLoans,
-        pendingApplications: pendingLoans,
-        totalSavings: totalSavings,
-        formattedTotalSavings: `${currency} ${totalSavings.toFixed(2)}`,
-        overduePaymentsCount: overduePaymentsCount,
-        totalOverdueAmount: totalOverdueAmount,
-        formattedTotalOverdueAmount: `${currency} ${totalOverdueAmount.toFixed(2)}`,
+        pendingLoans,
+        disbursedLoans,
+        totalSavings,
+        overduePaymentsCount,
+        totalOverdueAmount,
+
+        // Monthly totals
+        monthlyContributions: monthlyContributionsTotal,
+        monthlyRepayments: monthlyRepaymentsTotal,
+
+        // Recent data
+        recentLoans: recentLoans.slice(0, 5),
+        recentActivities: recentActivities.slice(0, 5),
+        upcomingPayments,
+
+        // Currency info
+        currency,
       },
-      recentActivity: activity,
-      upcomingPayments: upcomingPaymentsList,
-    },
-  });
+    });
+  } catch (error) {
+    console.error('Error getting dashboard stats:', error);
+    return next(new ErrorResponse('Failed to get dashboard statistics', 500));
+  }
 });
+
+// Helper function to generate transaction titles
+function getTransactionTitle(transaction) {
+  const titles = {
+    savings_contribution: 'Savings Contribution',
+    savings_withdrawal: 'Savings Withdrawal',
+    loan_disbursement: 'Loan Disbursement',
+    loan_repayment: 'Loan Repayment',
+    interest_earned: 'Interest Earned',
+    interest_charged: 'Interest Charged',
+    penalty_incurred: 'Penalty Incurred',
+    penalty_paid: 'Penalty Paid',
+    fee_incurred: 'Fee Incurred',
+    fee_paid: 'Fee Paid',
+    transfer_in: 'Transfer In',
+    transfer_out: 'Transfer Out',
+    refund: 'Refund',
+    adjustment: 'Adjustment',
+  };
+
+  return titles[transaction.type] || transaction.type;
+}
 
 // @desc    Get recent activity endpoint
 // @route   GET /api/reports/recent-activity

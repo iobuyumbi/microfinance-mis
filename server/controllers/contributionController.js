@@ -125,7 +125,7 @@ exports.getContribution = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Create a new savings contribution
+// @desc    Create a new contribution
 // @route   POST /api/contributions
 // @access  Private (Admin, Officer, Leader - or Member for self-contribution)
 exports.createContribution = asyncHandler(async (req, res, next) => {
@@ -211,90 +211,76 @@ exports.createContribution = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // --- CRITICAL IMPROVEMENT: Implement Mongoose Session for Atomicity ---
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // Import financial utilities
+  const {
+    createFinancialTransaction,
+    validateTransactionData,
+  } = require('../utils/financialUtils');
 
-  let transaction;
-  let memberAccount;
+  // Validate transaction data
+  const validation = validateTransactionData({
+    type: 'savings_contribution',
+    amount,
+    member: memberId,
+    group: groupId,
+    createdBy: req.user.id,
+  });
+
+  if (!validation.isValid) {
+    return next(
+      new ErrorResponse(
+        `Validation failed: ${validation.errors.join(', ')}`,
+        400
+      )
+    );
+  }
 
   try {
     // Find or create the member's savings account
-    memberAccount = await Account.findOne({
+    let memberAccount = await Account.findOne({
       owner: memberId,
       ownerModel: 'User',
       type: 'savings',
-      deleted: false, // Ensure it's not a soft-deleted account
-    }).session(session); // Pass session to findOne
+      status: 'active',
+    });
 
     if (!memberAccount) {
-      // Create a new savings account for the user if it doesn't exist
-      const memberUser = await User.findById(memberId).session(session); // Fetch member within session
-      if (!memberUser) {
-        throw new ErrorResponse(`User ${memberId} not found.`, 404); // Throw to abort transaction
-      }
-      memberAccount = await Account.create(
-        [
-          {
-            // Use array for create with session
-            owner: memberId,
-            ownerModel: 'User',
-            type: 'savings',
-            accountNumber: `SAV-${memberId.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`, // Simple unique account number
-            balance: 0,
-            accountName: `${memberUser.name}'s Savings`,
-            createdBy: req.user.id,
-          },
-        ],
-        { session }
-      );
-      memberAccount = memberAccount[0]; // Access the created document from the array
+      // Create account for member if it doesn't exist
+      memberAccount = await Account.create({
+        owner: memberId,
+        ownerModel: 'User',
+        type: 'savings',
+        accountNumber: `SAV-${memberId.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`,
+        balance: 0,
+        status: 'active',
+      });
     }
 
-    // Calculate new balance
-    const newBalance = memberAccount.balance + amount;
+    // Create the financial transaction using the utility function
+    const { transaction, account } = await createFinancialTransaction({
+      type: 'savings_contribution',
+      amount: amount,
+      description: description || `Savings contribution to ${group.name}`,
+      member: memberId,
+      group: groupId,
+      account: memberAccount._id,
+      status: 'completed',
+      createdBy: req.user.id,
+      paymentMethod: paymentMethod || 'cash',
+      relatedEntity: memberAccount._id,
+      relatedEntityType: 'Account',
+    });
 
-    // Create the Transaction record
-    transaction = await Transaction.create(
-      [
-        {
-          // Use array for create with session
-          type: 'savings_contribution',
-          member: memberId,
-          group: groupId,
-          account: memberAccount._id, // Link to the specific account
-          amount: amount,
-          description: description || 'Member savings contribution',
-          status: 'completed', // Assuming immediate completion for contributions
-          balanceAfter: newBalance, // Crucial for audit trail
-          createdBy: req.user.id, // User performing the action
-          paymentMethod: paymentMethod || 'cash',
-          relatedEntity: memberAccount._id, // Link to the account
-          relatedEntityType: 'Account',
-        },
-      ],
-      { session }
-    );
-    transaction = transaction[0]; // Access the created document from the array
-
-    // Update the member's account balance
-    memberAccount.balance = newBalance;
-    await memberAccount.save({ session }); // Pass session to save
-
-    await session.commitTransaction();
-    session.endSession();
-
-    // Populate necessary fields for response (outside session after commit)
+    // Populate necessary fields for response
     await transaction.populate([
       { path: 'group', select: 'name' },
       { path: 'member', select: 'name email' },
       { path: 'createdBy', select: 'name' },
-      { path: 'account', select: 'accountNumber accountName type' },
+      { path: 'relatedEntity', select: 'accountNumber type' },
     ]);
 
     const formattedTransaction = transaction.toObject({ virtuals: true });
-    formattedTransaction.formattedAmount =
-      await formattedTransaction.formattedAmount;
+    formattedTransaction.formattedAmount = await transaction.formattedAmount;
 
     res.status(201).json({
       success: true,
@@ -302,10 +288,10 @@ exports.createContribution = asyncHandler(async (req, res, next) => {
       data: formattedTransaction,
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('Error creating savings contribution:', error); // Specific error message
-    next(error); // Pass error to global error handler
+    console.error('Error creating contribution:', error);
+    return next(
+      new ErrorResponse(`Failed to create contribution: ${error.message}`, 500)
+    );
   }
 });
 

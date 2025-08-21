@@ -28,9 +28,9 @@ const checkGroupAccess = async (groupId, userId, userRole) => {
   const isMember = group.members.some(
     memberId => memberId.toString() === userIdString
   );
-  const isCreator = group.createdBy.toString() === userIdString;
+  const isLeader = group.leader.toString() === userIdString;
 
-  if (!(isMember || isCreator) && !['admin', 'officer'].includes(userRole)) {
+  if (!(isMember || isLeader) && !['admin', 'officer'].includes(userRole)) {
     const error = new Error('Access denied to this group chat.');
     error.statusCode = 403;
     throw error;
@@ -103,16 +103,12 @@ exports.getChatMessages = asyncHandler(async (req, res) => {
   });
 });
 
-// NEW: Extracted core message creation logic
-const createAndSaveChatMessage = async (
-  senderId,
-  content,
-  chatType,
-  chatId,
-  groupId
-) => {
+// Extracted core message creation logic
+exports.createAndSaveChatMessage = async (messageData) => {
+  const { userId, content, chatType, chatId, groupId } = messageData;
+  
   const message = new ChatMessage({
-    sender: senderId,
+    sender: userId,
     content: content.trim(),
     chatType,
     chatId,
@@ -152,7 +148,7 @@ exports.sendMessage = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error('Invalid chat ID for admin chat type.');
     }
-    if (!['member', 'officer', 'admin'].includes(req.user.role)) {
+    if (!['member', 'leader', 'officer', 'admin'].includes(req.user.role)) {
       res.status(403);
       throw new Error(
         'You are not authorized to send messages to admin support.'
@@ -163,18 +159,20 @@ exports.sendMessage = asyncHandler(async (req, res) => {
     throw new Error('Invalid chat type specified.');
   }
 
-  const message = await createAndSaveChatMessage(
-    req.user.id,
+  const message = await exports.createAndSaveChatMessage({
+    userId: req.user.id,
     content,
     chatType,
     chatId,
     groupId
-  );
+  });
 
   // Emit real-time message to connected clients
   const io = req.app.get('io');
   if (io) {
-    io.to(chatId).emit('new_message', {
+    // Emit to the correct room based on chat type
+    const roomId = chatType === 'group' ? `group-${groupId}` : chatId;
+    io.to(roomId).emit('new_message', {
       message: message.toJSON(),
       chatId,
       chatType,
@@ -196,7 +194,7 @@ exports.getChatChannels = asyncHandler(async (req, res) => {
 
   // Add admin chat for all users who can interact with admin
   // Consider roles that can initiate or participate in admin chat
-  if (['member', 'officer', 'admin'].includes(req.user.role)) {
+  if (['member', 'leader', 'officer', 'admin'].includes(req.user.role)) {
     channels.push({
       id: 'admin-chat',
       name: 'Admin Support',
@@ -208,8 +206,8 @@ exports.getChatChannels = asyncHandler(async (req, res) => {
 
   // Get user's groups for group chats
   const userGroups = await Group.find({
-    $or: [{ members: req.user.id }, { createdBy: req.user.id }],
-  }).select('name members createdBy'); // Select only necessary fields
+    $or: [{ members: req.user.id }, { leader: req.user.id }],
+  }).select('name members leader'); // Select only necessary fields
 
   const groupChannels = userGroups.map(group => ({
     id: `group-${group._id.toString()}`, // Ensure consistent string ID for client
