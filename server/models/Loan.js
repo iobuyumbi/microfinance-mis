@@ -25,9 +25,6 @@ const repaymentScheduleSchema = new mongoose.Schema(
       enum: ['cash', 'mobile', 'bank'],
       default: 'mobile',
     },
-  },
-  {
-    _id: false, // Prevents creation of an _id for each subdocument
   }
 );
 

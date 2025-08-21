@@ -106,6 +106,7 @@ exports.createSavings = asyncHandler(async (req, res, next) => {
           ownerModel,
           type: 'savings',
           balance: 0, // Initial balance is 0, initialAmount is added as a deposit transaction
+          accountNumber: (await require('../utils').generateAccountNumber()),
           accountName: `${ownerModel === 'User' ? (await User.findById(owner)).name : (await Group.findById(owner)).name}'s Savings`,
           description: description || 'General Savings Account',
           createdBy: req.user.id,
