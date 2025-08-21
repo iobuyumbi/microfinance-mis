@@ -14,10 +14,10 @@ export const savingsService = {
   remove: (id) => api.delete(ENDPOINTS.SAVINGS.BY_ID(id)),
 
   recordDeposit: (accountId, data) =>
-    api.post(`${ENDPOINTS.SAVINGS.BASE}/deposit`, { accountId, ...data }),
+    api.post(ENDPOINTS.SAVINGS.DEPOSIT_ANY(), { accountId, ...data }),
 
   recordWithdrawal: (accountId, data) =>
-    api.post(`${ENDPOINTS.SAVINGS.BASE}/withdraw`, { accountId, ...data }),
+    api.post(ENDPOINTS.SAVINGS.WITHDRAW_ANY(), { accountId, ...data }),
 
   getAccountTransactions: (id, params) =>
     api.get(ENDPOINTS.SAVINGS.TRANSACTIONS(id), { params }),

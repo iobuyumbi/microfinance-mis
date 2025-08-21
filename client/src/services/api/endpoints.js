@@ -68,8 +68,9 @@ export const ENDPOINTS = {
   SAVINGS: {
     BASE: "/savings",
     BY_ID: (id) => `/savings/${id}`,
-    DEPOSIT: (id) => `/savings/${id}/deposit`,
-    WITHDRAW: (id) => `/savings/${id}/withdraw`,
+    // Deposit/withdraw endpoints on backend are POST /savings/deposit and /savings/withdraw
+    DEPOSIT_ANY: () => `/savings/deposit`,
+    WITHDRAW_ANY: () => `/savings/withdraw`,
     TRANSACTIONS: (id) => `/savings/${id}/transactions`,
     STATS: "/savings/stats",
   },
