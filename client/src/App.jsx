@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, createContext, useContext } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
@@ -35,59 +35,91 @@ import ContributionsPage from "./pages/ContributionsPage";
 // Common Components
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import NotFoundPage from "./pages/NotFoundPage";
+import ErrorBoundary from "./components/common/ErrorBoundary";
+import { settingsService } from "./services/settingsService";
 
 // Styles
 import "./index.css";
 
+const SettingsContext = createContext({ currency: "USD" });
+export const useSettings = () => useContext(SettingsContext);
+
 function App() {
+  const [settings, setSettings] = useState({ currency: "USD" });
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await settingsService.get();
+        const data = res?.data?.data || res?.data || res || {};
+        const currency = data?.general?.currency || data?.currency || "USD";
+        setSettings({ currency });
+      } catch (e) {
+        // Fallback to default USD on error; avoid blocking app
+        setSettings({ currency: "USD" });
+      }
+    };
+    loadSettings();
+  }, []);
+
   return (
     <ThemeProvider defaultTheme="light" storageKey="microfinance-theme">
       <AuthProvider>
         <SocketProvider>
           <Router>
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-              <Routes>
-                {/* Auth Routes */}
-                <Route path="/auth" element={<AuthLayout />}>
-                  <Route path="login" element={<LoginPage />} />
-                  <Route path="register" element={<RegisterPage />} />
-                  <Route
-                    path="forgot-password"
-                    element={<ForgotPasswordPage />}
-                  />
-                </Route>
+            <SettingsContext.Provider value={settings}>
+              <ErrorBoundary>
+                <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                  <Routes>
+                    {/* Auth Routes */}
+                    <Route path="/auth" element={<AuthLayout />}>
+                      <Route path="login" element={<LoginPage />} />
+                      <Route path="register" element={<RegisterPage />} />
+                      <Route
+                        path="forgot-password"
+                        element={<ForgotPasswordPage />}
+                      />
+                    </Route>
 
-                {/* Protected Dashboard Routes */}
-                <Route path="/" element={<ProtectedRoute />}>
-                  <Route element={<DashboardLayout />}>
-                    {/* Dashboard */}
-                    <Route index element={<DashboardPage />} />
-                    <Route path="dashboard" element={<DashboardPage />} />
-                    <Route path="profile" element={<ProfilePage />} />
+                    {/* Protected Dashboard Routes */}
+                    <Route path="/" element={<ProtectedRoute />}>
+                      <Route element={<DashboardLayout />}>
+                        {/* Dashboard */}
+                        <Route index element={<DashboardPage />} />
+                        <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="profile" element={<ProfilePage />} />
 
-                    {/* Main Routes */}
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="groups" element={<GroupsPage />} />
-                    <Route path="groups/:id" element={<GroupDetailPage />} />
-                    <Route path="settings" element={<SettingsPage />} />
-                    <Route path="reports" element={<ReportsPage />} />
-                    <Route path="loans" element={<LoansPage />} />
-                    <Route path="savings" element={<SavingsPage />} />
-                    <Route path="transactions" element={<TransactionsPage />} />
-                    <Route path="meetings" element={<MeetingsPage />} />
-                    <Route path="members" element={<MembersPage />} />
-                    <Route path="chat" element={<ChatPage />} />
-                    <Route
-                      path="contributions"
-                      element={<ContributionsPage />}
-                    />
-                  </Route>
-                </Route>
+                        {/* Main Routes */}
+                        <Route path="users" element={<UsersPage />} />
+                        <Route path="groups" element={<GroupsPage />} />
+                        <Route
+                          path="groups/:id"
+                          element={<GroupDetailPage />}
+                        />
+                        <Route path="settings" element={<SettingsPage />} />
+                        <Route path="reports" element={<ReportsPage />} />
+                        <Route path="loans" element={<LoansPage />} />
+                        <Route path="savings" element={<SavingsPage />} />
+                        <Route
+                          path="transactions"
+                          element={<TransactionsPage />}
+                        />
+                        <Route path="meetings" element={<MeetingsPage />} />
+                        <Route path="members" element={<MembersPage />} />
+                        <Route path="chat" element={<ChatPage />} />
+                        <Route
+                          path="contributions"
+                          element={<ContributionsPage />}
+                        />
+                      </Route>
+                    </Route>
 
-                {/* Fallback */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </div>
+                    {/* Fallback */}
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </div>
+              </ErrorBoundary>
+            </SettingsContext.Provider>
           </Router>
           <Toaster
             position="top-right"

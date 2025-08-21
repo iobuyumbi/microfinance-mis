@@ -27,7 +27,7 @@ const mongoose = require('mongoose'); // Added mongoose to validate ObjectId
 const User = require('./models/User');
 
 // Configuration
-const { connectDB } = require('./config');
+const { connectDB, validateEnv } = require('./config');
 const configureSocket = require('./config/socket');
 
 // Middleware
@@ -67,7 +67,10 @@ const server = http.createServer(app);
 // CORS configuration - MUST be applied early, before routes
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? process.env.CLIENT_URL
+        : process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -473,6 +476,10 @@ process.on('uncaughtException', err => {
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
+    // Validate env in production
+    if (process.env.NODE_ENV === 'production') {
+      validateEnv();
+    }
     // Connect to database
     await connectDB();
     console.log('✅ MongoDB connected successfully'); // Start server
