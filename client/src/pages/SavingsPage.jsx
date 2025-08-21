@@ -46,7 +46,7 @@ import {
 import { toast } from "sonner";
 import { financialService } from "../services/financialService";
 import SavingsForm from "../components/forms/SavingsForm";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
 import {
   Card,

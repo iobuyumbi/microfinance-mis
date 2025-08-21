@@ -51,7 +51,7 @@ import {
 import { toast } from "sonner";
 import { financialService } from "../services/financialService";
 import TransactionForm from "../components/forms/TransactionForm";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
 
 const TransactionsPage = () => {

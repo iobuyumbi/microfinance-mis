@@ -35,7 +35,7 @@ import LoanForm from "../components/forms/LoanForm";
 import { financialService } from "../services/financialService";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
 import {
   Card,
