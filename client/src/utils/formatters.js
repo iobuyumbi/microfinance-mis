@@ -2,25 +2,36 @@
  * Utility functions for formatting data
  */
 
+// Resolve default currency from settings bootstrap (set in App)
+const getDefaultCurrency = () => {
+  try {
+    const stored = localStorage.getItem("appCurrency");
+    if (stored && typeof stored === "string") return stored;
+  } catch (_) {}
+  return "KES";
+};
+
 // Currency formatting with dynamic currency from settings
-export const formatCurrency = (amount, currency = "KES") => {
+export const formatCurrency = (amount, currency) => {
   if (amount === null || amount === undefined) return "N/A";
+  const cur = currency || getDefaultCurrency() || "USD";
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency,
+    currency: cur,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
 };
 
 // Compact currency formatting (e.g., 1.2K, 1.5M)
-export const formatCompactCurrency = (amount, currency = "KES") => {
+export const formatCompactCurrency = (amount, currency) => {
   if (amount === null || amount === undefined) return "N/A";
+  const cur = currency || getDefaultCurrency() || "USD";
 
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: currency,
+    currency: cur,
     notation: "compact",
     maximumFractionDigits: 1,
   });
@@ -132,11 +143,17 @@ export const formatPhoneNumber = (phone) => {
 
   // Format based on length
   if (cleaned.length === 10) {
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(
+      6
+    )}`;
   } else if (cleaned.length === 11 && cleaned.startsWith("1")) {
-    return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(
+      7
+    )}`;
   } else if (cleaned.length === 12 && cleaned.startsWith("254")) {
-    return `+254 ${cleaned.slice(3, 6)} ${cleaned.slice(6, 9)} ${cleaned.slice(9)}`;
+    return `+254 ${cleaned.slice(3, 6)} ${cleaned.slice(6, 9)} ${cleaned.slice(
+      9
+    )}`;
   }
 
   return phone; // Return original if no pattern matches

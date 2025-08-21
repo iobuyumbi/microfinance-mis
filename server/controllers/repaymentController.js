@@ -6,7 +6,7 @@ const User = require('../models/User'); // For populating
 const Group = require('../models/Group'); // For populating
 
 const asyncHandler = require('../middleware/asyncHandler'); // Import asyncHandler
-const { ErrorResponse } = require('../utils'); // Import custom error class
+const { ErrorResponse, withTransaction } = require('../utils'); // Import custom error class and tx helper
 const mongoose = require('mongoose'); // For ObjectId validation
 
 // Helper to get currency from settings (async virtuals need this in controllers)
@@ -38,129 +38,109 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Amount paid must be positive.', 400));
   }
 
-  // Start a Mongoose session for atomicity
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { createFinancialTransaction } = require('../utils/financialUtils');
 
   try {
-    const loan = await Loan.findById(loanId).session(session);
-    if (!loan) {
-      throw new ErrorResponse('Loan not found.', 404);
-    }
+    const { transaction: repaymentTx } = await withTransaction(
+      async session => {
+        const loan = await Loan.findById(loanId).session(session);
+        if (!loan) {
+          throw new ErrorResponse('Loan not found.', 404);
+        }
 
-    // Ensure loan is in a repayable status (e.g., 'approved', 'overdue', 'disbursed')
-    if (!['approved', 'overdue', 'disbursed'].includes(loan.status)) {
-      throw new ErrorResponse(
-        `Loan is not in a repayable status. Current status: ${loan.status}.`,
-        400
-      );
-    }
+        // Ensure loan is in a repayable status (e.g., 'approved', 'overdue', 'disbursed')
+        if (!['approved', 'overdue', 'disbursed'].includes(loan.status)) {
+          throw new ErrorResponse(
+            `Loan is not in a repayable status. Current status: ${loan.status}.`,
+            400
+          );
+        }
 
-    // 2. Find the borrower's account (assuming the loan's borrower is linked to an account)
-    // Repayments typically originate from a savings/current account or cash.
-    // Assuming 'savings' for now, but in a real system, you'd allow payment from various sources
-    // and link to the relevant account type.
-    let borrowerAccount = await Account.findOne({
-      owner: loan.borrower,
-      ownerModel: loan.borrowerModel,
-      type: 'savings', // Assuming repayments come from their savings account
-      status: 'active',
-    }).session(session);
+        // 2. Find the borrower's account (assuming the loan's borrower is linked to an account)
+        // Repayments typically originate from a savings/current account or cash.
+        // Assuming 'savings' for now, but in a real system, you'd allow payment from various sources
+        // and link to the relevant account type.
+        let borrowerAccount = await Account.findOne({
+          owner: loan.borrower,
+          ownerModel: loan.borrowerModel,
+          type: 'savings', // Assuming repayments come from their savings account
+          status: 'active',
+        }).session(session);
 
-    if (!borrowerAccount) {
-      throw new ErrorResponse(
-        'Borrower does not have an active savings account to make repayment from. (Or cash payment is not yet supported)',
-        400
-      );
-    }
+        if (!borrowerAccount) {
+          throw new ErrorResponse(
+            'Borrower does not have an active savings account to make repayment from. (Or cash payment is not yet supported)',
+            400
+          );
+        }
 
-    // 3. Calculate new balance for the borrower's account
-    // Repayment DECREASES the borrower's account balance
-    const newBorrowerBalance = borrowerAccount.balance - amountPaid;
-    if (newBorrowerBalance < 0) {
-      throw new ErrorResponse(
-        "Insufficient funds in borrower's account for this repayment.",
-        400
-      );
-    }
-
-    // 4. Update the borrower's account balance
-    borrowerAccount.balance = newBorrowerBalance;
-    await borrowerAccount.save({ session });
-
-    // 5. Update the Loan's repayment schedule and total amount repaid
-    loan.amountRepaid = (loan.amountRepaid || 0) + amountPaid;
-
-    let remainingPaymentToApply = amountPaid;
-    for (const installment of loan.repaymentSchedule) {
-      if (installment.status === 'pending' && remainingPaymentToApply > 0) {
-        const amountDueForInstallment =
-          installment.amount - (installment.amountPaid || 0);
-        const amountToApply = Math.min(
-          remainingPaymentToApply,
-          amountDueForInstallment
+        // Create a loan_repayment transaction and let utility update balances atomically
+        const { transaction } = await createFinancialTransaction(
+          {
+            type: 'loan_repayment',
+            amount: amountPaid,
+            account: borrowerAccount._id,
+            description: `Loan repayment for Loan ID: ${loan._id}`,
+            relatedEntity: loan._id,
+            relatedEntityType: 'Loan',
+            paymentMethod: paymentMethod || 'cash',
+            createdBy: req.user.id,
+          },
+          { session }
         );
 
-        installment.amountPaid = (installment.amountPaid || 0) + amountToApply;
-        remainingPaymentToApply -= amountToApply;
+        // 5. Update the Loan's repayment schedule and total amount repaid
+        loan.amountRepaid = (loan.amountRepaid || 0) + amountPaid;
 
-        if (installment.amountPaid >= installment.amount) {
-          installment.status = 'paid';
-          installment.paidAt = new Date();
-        } else if (installment.amountPaid > 0) {
-          // If partially paid, you might want a 'partially_paid' status
-          // For now, it remains 'pending' if not fully paid, which is acceptable for simple logic
+        let remainingPaymentToApply = amountPaid;
+        for (const installment of loan.repaymentSchedule) {
+          if (installment.status === 'pending' && remainingPaymentToApply > 0) {
+            const amountDueForInstallment =
+              installment.amount - (installment.amountPaid || 0);
+            const amountToApply = Math.min(
+              remainingPaymentToApply,
+              amountDueForInstallment
+            );
+
+            installment.amountPaid =
+              (installment.amountPaid || 0) + amountToApply;
+            remainingPaymentToApply -= amountToApply;
+
+            if (installment.amountPaid >= installment.amount) {
+              installment.status = 'paid';
+              installment.paidAt = new Date();
+            } else if (installment.amountPaid > 0) {
+              // If partially paid, you might want a 'partially_paid' status
+              // For now, it remains 'pending' if not fully paid, which is acceptable for simple logic
+            }
+          }
         }
+
+        // Update loan status based on total outstanding
+        const totalOutstanding = loan.repaymentSchedule
+          .filter(r => r.status === 'pending')
+          .reduce((sum, r) => sum + (r.amount - (r.amountPaid || 0)), 0); // Calculate actual remaining debt
+
+        if (totalOutstanding <= 0 && loan.amountRepaid >= loan.amountApproved) {
+          loan.status = 'completed';
+        } else if (loan.status === 'disbursed' && totalOutstanding > 0) {
+          // Loan remains 'disbursed' or becomes 'overdue' (handled by a separate job typically)
+          // No change needed here unless there's an immediate status update rule.
+        } else if (loan.status === 'approved' && totalOutstanding > 0) {
+          // A loan usually transitions from 'approved' to 'disbursed' *before* repayments.
+          // If a repayment comes in while status is 'approved', it's unusual.
+          // Let's assume it should move to 'disbursed' if it wasn't already.
+          loan.status = 'disbursed'; // Or keep it as is, depending on your workflow
+        }
+
+        await loan.save({ session });
+
+        return { transaction };
       }
-    }
-
-    // Update loan status based on total outstanding
-    const totalOutstanding = loan.repaymentSchedule
-      .filter(r => r.status === 'pending')
-      .reduce((sum, r) => sum + (r.amount - (r.amountPaid || 0)), 0); // Calculate actual remaining debt
-
-    if (totalOutstanding <= 0 && loan.amountRepaid >= loan.amountApproved) {
-      loan.status = 'completed';
-    } else if (loan.status === 'disbursed' && totalOutstanding > 0) {
-      // Loan remains 'disbursed' or becomes 'overdue' (handled by a separate job typically)
-      // No change needed here unless there's an immediate status update rule.
-    } else if (loan.status === 'approved' && totalOutstanding > 0) {
-      // A loan usually transitions from 'approved' to 'disbursed' *before* repayments.
-      // If a repayment comes in while status is 'approved', it's unusual.
-      // Let's assume it should move to 'disbursed' if it wasn't already.
-      loan.status = 'disbursed'; // Or keep it as is, depending on your workflow
-    }
-
-    await loan.save({ session });
-
-    // 6. Create the 'loan_repayment' Transaction record
-    const repaymentTransaction = await Transaction.create(
-      [
-        {
-          type: 'loan_repayment',
-          member: loan.borrowerModel === 'User' ? loan.borrower : null,
-          group: loan.borrowerModel === 'Group' ? loan.borrower : null,
-          account: borrowerAccount._id, // Link to the account from which payment was made
-          amount: amountPaid,
-          description: `Loan repayment for Loan ID: ${loan._id}`,
-          status: 'completed',
-          balanceAfter: newBorrowerBalance, // Balance after this repayment
-          createdBy: req.user.id, // User recording the repayment
-          paymentMethod: paymentMethod || 'cash',
-          penalty: penalty || 0, // Store penalty if any
-          relatedEntity: loan._id,
-          relatedEntityType: 'Loan',
-          paymentDate: paymentDate ? new Date(paymentDate) : new Date(), // Use provided date or current
-        },
-      ],
-      { session }
     );
 
-    await session.commitTransaction();
-    session.endSession();
-
     // Populate for response (outside session after commit)
-    await repaymentTransaction[0].populate([
+    await repaymentTx.populate([
       // Access the created document from the array
       {
         path: 'relatedEntity', // Use relatedEntity instead of 'loan' directly if schema uses that
@@ -175,7 +155,7 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     ]);
 
     // Await async virtuals
-    const formattedRepayment = repaymentTransaction[0].toObject({
+    const formattedRepayment = repaymentTx.toObject({
       virtuals: true,
     }); // Access the created document
     formattedRepayment.formattedAmount =
@@ -187,8 +167,6 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
       data: formattedRepayment,
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error('Error recording loan repayment:', error);
     next(error); // Pass error to global error handler
   }

@@ -54,9 +54,15 @@ function App() {
         const data = res?.data?.data || res?.data || res || {};
         const currency = data?.general?.currency || data?.currency || "USD";
         setSettings({ currency });
+        try {
+          localStorage.setItem("appCurrency", currency);
+        } catch (_) {}
       } catch (e) {
         // Fallback to default USD on error; avoid blocking app
         setSettings({ currency: "USD" });
+        try {
+          localStorage.setItem("appCurrency", "USD");
+        } catch (_) {}
       }
     };
     loadSettings();
