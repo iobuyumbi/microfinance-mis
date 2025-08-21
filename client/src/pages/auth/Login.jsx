@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LoadingSpinner } from "@/components/custom/LoadingSpinner";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { Eye, EyeOff, Mail, Lock, Building2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -57,7 +57,7 @@ export default function Login() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        "Login failed. Please check your credentials and try again."
+          "Login failed. Please check your credentials and try again."
       );
     } finally {
       setLoading(false);
@@ -172,7 +172,7 @@ export default function Login() {
                 >
                   {loading ? (
                     <>
-                      <LoadingSpinner size="sm" className="mr-2" />
+                      <LoadingSpinner size="sm" text="" />
                       Signing in...
                     </>
                   ) : (

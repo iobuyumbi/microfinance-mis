@@ -1,4 +1,4 @@
- import { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LoadingSpinner } from "@/components/custom/LoadingSpinner";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { User, Mail, Phone, Lock, Building2, Eye, EyeOff } from "lucide-react";
 
 const registerSchema = z.object({
@@ -71,8 +71,7 @@ export default function Register() {
       });
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-        "Registration failed. Please try again."
+        err.response?.data?.message || "Registration failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -87,7 +86,9 @@ export default function Register() {
           <div className="mx-auto h-16 w-16 bg-primary rounded-full flex items-center justify-center mb-4">
             <Building2 className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Join Our Community</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Join Our Community
+          </h1>
           <p className="mt-2 text-sm text-gray-600">
             Create your account to get started
           </p>
@@ -250,7 +251,7 @@ export default function Register() {
                 >
                   {loading ? (
                     <>
-                      <LoadingSpinner size="sm" className="mr-2" />
+                      <LoadingSpinner size="sm" text="" />
                       Creating Account...
                     </>
                   ) : (
