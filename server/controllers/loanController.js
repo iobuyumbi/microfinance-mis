@@ -43,22 +43,28 @@ const calculateRepaymentSchedule = (amount, interestRate, loanTermInMonths) => {
 exports.getLoanStats = asyncHandler(async (req, res, next) => {
   const loanFilter = req.dataFilter || {};
 
-  const [
-    totalLoans,
-    approvedLoans,
-    pendingLoans,
-    disbursedLoans,
-    amountsAgg,
-  ] = await Promise.all([
-    Loan.countDocuments(loanFilter),
-    Loan.countDocuments({ status: { $in: ['approved', 'disbursed'] }, ...loanFilter }),
-    Loan.countDocuments({ status: 'pending', ...loanFilter }),
-    Loan.countDocuments({ status: 'disbursed', ...loanFilter }),
-    Loan.aggregate([
-      { $match: { ...loanFilter, status: { $in: ['approved', 'disbursed'] } } },
-      { $group: { _id: null, totalAmount: { $sum: { $ifNull: ['$amountApproved', 0] } }, count: { $sum: 1 } } },
-    ]),
-  ]);
+  const [totalLoans, approvedLoans, pendingLoans, disbursedLoans, amountsAgg] =
+    await Promise.all([
+      Loan.countDocuments(loanFilter),
+      Loan.countDocuments({
+        status: { $in: ['approved', 'disbursed'] },
+        ...loanFilter,
+      }),
+      Loan.countDocuments({ status: 'pending', ...loanFilter }),
+      Loan.countDocuments({ status: 'disbursed', ...loanFilter }),
+      Loan.aggregate([
+        {
+          $match: { ...loanFilter, status: { $in: ['approved', 'disbursed'] } },
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: { $ifNull: ['$amountApproved', 0] } },
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
 
   const totalAmount = amountsAgg[0]?.totalAmount || 0;
   const approvedCount = amountsAgg[0]?.count || 0;

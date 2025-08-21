@@ -60,11 +60,7 @@ router.get(
 // @route   GET /api/loans/stats
 // @desc    Get loan statistics
 // @access  Private (filtered by role)
-router.get(
-  '/stats',
-  filterDataByRole('Loan'),
-  getLoanStats
-);
+router.get('/stats', filterDataByRole('Loan'), getLoanStats);
 
 // @route   GET /api/loans/:id
 // @desc    Get a single loan by ID with access control

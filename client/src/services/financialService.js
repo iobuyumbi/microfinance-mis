@@ -11,6 +11,7 @@ export const financialService = {
     api.get(ENDPOINTS.REPORTS.FINANCIAL_SUMMARY, { params }),
 
   // Account Management
+  getAccounts: (params = {}) => api.get(ENDPOINTS.ACCOUNTS.BASE, { params }),
   getAccountBalance: (accountId) =>
     api.get(ENDPOINTS.ACCOUNTS.BY_ID(accountId)),
 

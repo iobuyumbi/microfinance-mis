@@ -1,6 +1,6 @@
 // server\models\Transaction.js
 const mongoose = require('mongoose');
-const { getCurrencyFromSettings } = require('../utils/currencyUtils'); // <<< ADD THIS IMPORT
+const { getCurrencyFromSettings } = require('../utils/currencyUtils');
 
 // REMOVE THE OLD getCurrency FUNCTION DEFINITION FROM HERE
 // // Function to get currency from Settings (to avoid hardcoding)
@@ -39,8 +39,17 @@ const transactionSchema = new mongoose.Schema(
         'transfer_out', // For transfers out of an account
         'refund',
         'adjustment', // For manual balance corrections
+        'adjustment_credit',
+        'adjustment_debit',
       ],
       required: true,
+    },
+    account: {
+      // The account affected by this transaction
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Account',
+      required: true,
+      index: true,
     },
     member: {
       // The primary member involved in the transaction (can be null for group-level transactions)
@@ -105,6 +114,14 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       enum: ['cash', 'mobile', 'bank', 'cheque', 'system_generated'], // 'system_generated' for interest, fees
     },
+    // Soft delete fields
+    deleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: { type: Date },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true,
@@ -126,6 +143,7 @@ transactionSchema.index({ group: 1, createdAt: -1 });
 transactionSchema.index({ type: 1, createdAt: -1 });
 transactionSchema.index({ status: 1, createdAt: -1 });
 transactionSchema.index({ relatedEntity: 1, relatedEntityType: 1 }); // Compound for polymorphic
+transactionSchema.index({ deleted: 1 });
 
 // Virtual for formatted amount (now dynamic based on Settings)
 transactionSchema.virtual('formattedAmount').get(async function () {

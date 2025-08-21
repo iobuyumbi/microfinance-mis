@@ -70,10 +70,10 @@ const loanSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'completed', 'overdue'], // Added 'overdue'
+      enum: ['pending', 'approved', 'rejected', 'disbursed', 'partially_paid', 'paid', 'completed', 'overdue'],
       default: 'pending',
       required: true,
-      index: true, // Added index
+      index: true,
     },
     approver: {
       type: mongoose.Schema.Types.ObjectId,
@@ -81,6 +81,9 @@ const loanSchema = new mongoose.Schema(
       index: true, // Added index
     },
     repaymentSchedule: [repaymentScheduleSchema],
+    deleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields
@@ -98,12 +101,12 @@ loanSchema.methods.getOutstandingBalance = function () {
 };
 
 // Virtual for formatted loan amount
-loanSchema.virtual('formattedAmount').get(async function () {
+loanSchema.virtual('formattedAmountRequested').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
-  }).format(this.amount);
+  }).format(this.amountRequested);
 });
 
 // Virtual for formatted approved amount

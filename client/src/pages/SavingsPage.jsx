@@ -99,11 +99,8 @@ const SavingsPage = () => {
   const fetchSavingsAccounts = async (params = {}) => {
     try {
       setLoading(true);
-      const response = await financialService.getAccountsByOwner(
-        "",
-        "User",
-        params
-      );
+      const query = { type: "savings", ...params };
+      const response = await financialService.getAccounts(query);
       const data = Array.isArray(response.data?.data) ? response.data.data : [];
       setSavingsAccounts(data);
     } catch (error) {
@@ -118,7 +115,7 @@ const SavingsPage = () => {
     try {
       const [dashboardResponse, accountsResponse] = await Promise.all([
         financialService.getDashboardStats(),
-        financialService.getAccountsByOwner("", "User"),
+        financialService.getAccounts({ type: "savings" }),
       ]);
 
       const dashboardData = dashboardResponse.data?.data || {};

@@ -8,7 +8,7 @@ const accountSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'ownerModel',
       required: true,
-      unique: true, // Each User/Group should have only one account
+      unique: true, // Each User/Group should have only one savings account
     },
     ownerModel: {
       type: String,
@@ -37,6 +37,13 @@ const accountSchema = new mongoose.Schema(
       enum: ['savings', 'loan_fund', 'operating_expense', 'revenue'],
       default: 'savings',
     },
+    deleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedAt: { type: Date },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   {
     timestamps: true,

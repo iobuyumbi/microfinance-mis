@@ -429,44 +429,39 @@ exports.recordSavingsDeposit = asyncHandler(async (req, res, next) => {
     }
   }
 
-  // 2. Update account balance
-  const newBalance = account.balance + amount;
-  account.balance = newBalance;
-  await account.save(); // This part should be wrapped in a session already as per previous advice
-
-  // 3. Create a new 'deposit' Transaction record
-  const depositTransaction = await Transaction.create({
-    type: 'deposit', // This should be 'savings_contribution' to match enum from previous advice
+  // Use centralized financial transaction utility for atomicity
+  const { createFinancialTransaction } = require('../utils/financialUtils');
+  const { transaction, account: updatedAccount } = await createFinancialTransaction({
+    type: 'savings_contribution',
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
-    account: account._id, // Link to the specific account
+    account: account._id,
     amount: amount,
     description:
       description ||
       `Deposit into ${account.ownerModel === 'User' ? 'personal' : 'group'} savings account`,
     status: 'completed',
-    balanceAfter: newBalance,
     createdBy: req.user.id,
     paymentMethod: paymentMethod || 'cash',
-  }); // This part should be wrapped in a session already as per previous advice
+  });
 
   // Populate for response
-  await depositTransaction.populate(
+  await transaction.populate(
     'account',
     'accountNumber owner ownerModel type'
   );
-  await depositTransaction.populate('member', 'name email');
-  await depositTransaction.populate('group', 'name');
-  await depositTransaction.populate('createdBy', 'name email');
+  await transaction.populate('member', 'name email');
+  await transaction.populate('group', 'name');
+  await transaction.populate('createdBy', 'name email');
 
   // Await async virtuals for formatting
-  const formattedDeposit = depositTransaction.toObject({ virtuals: true });
-  formattedDeposit.formattedAmount = await depositTransaction.formattedAmount;
+  const formattedDeposit = transaction.toObject({ virtuals: true });
+  formattedDeposit.formattedAmount = await transaction.formattedAmount;
 
   res.status(201).json({
     success: true,
     message: 'Deposit recorded successfully.',
-    data: formattedDeposit,
+    data: { ...formattedDeposit, account: updatedAccount },
   });
 });
 
@@ -533,8 +528,8 @@ exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
     } else {
       return next(
         new ErrorResponse(
-          'Access denied. You are not authorized to withdraw from this account.',
-          403
+        'Access denied. You are not authorized to withdraw from this account.',
+        403
         )
       );
     }
@@ -550,26 +545,21 @@ exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // 3. Update account balance
-  const newBalance = account.balance - amount;
-  account.balance = newBalance;
-  await account.save(); // This part should be wrapped in a session already as per previous advice
-
-  // 4. Create a new 'withdrawal' Transaction record
-  const withdrawalTransaction = await Transaction.create({
-    type: 'withdrawal', // This should be 'savings_withdrawal' to match enum from previous advice
+  // Use centralized financial utility for atomicity
+  const { createFinancialTransaction: createTx } = require('../utils/financialUtils');
+  const { transaction: withdrawalTransaction, account: updated } = await createTx({
+    type: 'savings_withdrawal',
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
-    account: account._id, // Link to the specific account
+    account: account._id,
     amount: amount,
     description:
       description ||
       `Withdrawal from ${account.ownerModel === 'User' ? 'personal' : 'group'} savings account`,
     status: 'completed',
-    balanceAfter: newBalance,
     createdBy: req.user.id,
     paymentMethod: paymentMethod || 'cash',
-  }); // This part should be wrapped in a session already as per previous advice
+  });
 
   // Populate for response
   await withdrawalTransaction.populate(
@@ -584,13 +574,12 @@ exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
   const formattedWithdrawal = withdrawalTransaction.toObject({
     virtuals: true,
   });
-  formattedWithdrawal.formattedAmount =
-    await withdrawalTransaction.formattedAmount;
+  formattedWithdrawal.formattedAmount = await withdrawalTransaction.formattedAmount;
 
   res.status(200).json({
     success: true,
     message: 'Withdrawal recorded successfully.',
-    data: formattedWithdrawal,
+    data: { ...formattedWithdrawal, account: updated },
   });
 });
 

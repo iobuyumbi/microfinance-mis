@@ -16,7 +16,7 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
   // dedicated controllers (e.g., contributionController, loanController, withdrawalController)
   // should be used, as they contain specific business logic and authorization.
 
-  const {
+  let {
     type,
     amount,
     description,
@@ -133,59 +133,40 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Start a Mongoose session for atomicity (crucial for financial operations)
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
+  // Use centralized financial utility
+  const { createFinancialTransaction } = require('../utils/financialUtils');
   try {
-    // Create the Transaction record
-    const transaction = await Transaction.create(
-      [
-        {
-          type,
-          amount,
-          description,
-          member,
-          group,
-          account,
-          status: status || 'completed', // Default to completed for general transactions
-          paymentMethod: paymentMethod || 'system',
-          balanceAfter: newBalance, // Crucial for audit trail
-          createdBy: req.user.id,
-          relatedEntity, // Optional for linking to other entities like loans
-          relatedEntityType,
-        },
-      ],
-      { session }
-    );
-
-    // Update the account balance
-    targetAccount.balance = newBalance;
-    await targetAccount.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
+    const { transaction, account: updatedAccount } = await createFinancialTransaction({
+      type,
+      amount,
+      description,
+      member,
+      group,
+      account,
+      status: status || 'completed',
+      paymentMethod: paymentMethod || 'system',
+      createdBy: req.user.id,
+      relatedEntity,
+      relatedEntityType,
+    });
 
     // Populate for response
-    await transaction[0].populate([
+    await transaction.populate([
       { path: 'member', select: 'name email' },
       { path: 'group', select: 'name' },
       { path: 'account', select: 'accountNumber accountName type' },
       { path: 'createdBy', select: 'name' },
     ]);
 
-    const formattedTransaction = transaction[0].toObject({ virtuals: true });
-    formattedTransaction.formattedAmount =
-      await formattedTransaction.formattedAmount;
+    const formattedTransaction = transaction.toObject({ virtuals: true });
+    formattedTransaction.formattedAmount = await transaction.formattedAmount;
 
     res.status(201).json({
       success: true,
       message: 'Transaction created successfully.',
-      data: formattedTransaction,
+      data: { ...formattedTransaction, account: updatedAccount },
     });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     console.error('Error creating transaction:', error);
     next(error); // Pass error to global error handler
   }
