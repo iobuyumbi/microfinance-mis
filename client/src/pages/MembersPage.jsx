@@ -28,6 +28,7 @@ import FormModal from "../components/modals/FormModal";
 import MemberForm from "../components/forms/MemberForm";
 import { memberService } from "../services/memberService";
 import { toast } from "sonner";
+import { PageHeader } from "../components/custom/PageHeader";
 import {
   Users,
   Plus,
@@ -254,26 +255,21 @@ const MembersPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Members
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage microfinance members and their information
-          </p>
-        </div>
-        {hasRole(["admin", "officer"]) && (
-          <Button
-            onClick={() => setIsAddMemberOpen(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Member
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Members"
+        description="Manage microfinance members and their information"
+        action={
+          hasRole(["admin", "officer"]) && (
+            <Button
+              onClick={() => setIsAddMemberOpen(true)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Member
+            </Button>
+          )
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

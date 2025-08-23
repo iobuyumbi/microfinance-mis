@@ -62,6 +62,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { handleApiError } from "../utils/errorHandler";
+import { PageHeader } from "../components/custom/PageHeader";
 import TransactionForm from "../components/forms/TransactionForm";
 
 const SavingsPage = () => {
@@ -197,19 +198,16 @@ const SavingsPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Savings Accounts</h1>
-          <p className="text-muted-foreground">
-            Manage and track savings accounts for members and groups
-          </p>
-        </div>
-        <Button onClick={handleCreateSavings}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Savings Account
-        </Button>
-      </div>
+      <PageHeader
+        title="Savings Accounts"
+        description="Manage and track savings accounts for members and groups"
+        action={
+          <Button onClick={handleCreateSavings}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Savings Account
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

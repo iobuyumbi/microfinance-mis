@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { PageHeader } from "../components/custom/PageHeader";
 
 const GroupsPage = () => {
   const { user, hasRole } = useAuth();
@@ -140,25 +141,21 @@ const GroupsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Groups Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage microfinance groups and their members
-          </p>
-        </div>
-        {hasRole(["admin", "officer"]) && (
-          <Button
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-            onClick={() => setIsCreateGroupOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Group
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Groups Management"
+        description="Manage microfinance groups and their members"
+        action={
+          hasRole(["admin", "officer"]) && (
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+              onClick={() => setIsCreateGroupOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Group
+            </Button>
+          )
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-3">

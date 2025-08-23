@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { useAuth } from "../hooks/useAuth";
+import { PageHeader } from "../components/custom/PageHeader";
 import {
   Card,
   CardContent,
@@ -220,19 +221,16 @@ const LoansPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Loan Management</h1>
-          <p className="text-muted-foreground">
-            Manage loan applications, approvals, and portfolio health
-          </p>
-        </div>
-        <Button onClick={handleCreateLoan}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Loan Application
-        </Button>
-      </div>
+      <PageHeader
+        title="Loan Management"
+        description="Manage loan applications, approvals, and portfolio health"
+        action={
+          <Button onClick={handleCreateLoan}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Loan Application
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
