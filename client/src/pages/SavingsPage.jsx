@@ -74,7 +74,7 @@ const SavingsPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterOwner, setFilterOwner] = useState("");
+  const [filterOwner, setFilterOwner] = useState("all");
   const [isCreateSavingsOpen, setIsCreateSavingsOpen] = useState(false);
   const [isEditSavingsOpen, setIsEditSavingsOpen] = useState(false);
   const [currentSavings, setCurrentSavings] = useState(null);
@@ -92,7 +92,7 @@ const SavingsPage = () => {
   useEffect(() => {
     const params = {};
     if (searchTerm) params.search = searchTerm;
-    if (filterOwner) params.ownerModel = filterOwner;
+    if (filterOwner && filterOwner !== 'all') params.ownerModel = filterOwner;
     fetchSavingsAccounts(params);
   }, [searchTerm, filterOwner]);
 
@@ -292,7 +292,7 @@ const SavingsPage = () => {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="User">Individual</SelectItem>
                   <SelectItem value="Group">Group</SelectItem>
                 </SelectContent>
@@ -303,7 +303,7 @@ const SavingsPage = () => {
                 variant="outline"
                 onClick={() => {
                   setSearchTerm("");
-                  setFilterOwner("");
+                  setFilterOwner("all");
                   fetchSavingsAccounts();
                 }}
                 className="w-full"

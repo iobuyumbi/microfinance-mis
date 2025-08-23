@@ -94,11 +94,20 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
   };
 
   const markMessagesAsRead = async () => {
-    if (!selectedChannel) return;
+    if (!selectedChannel || !messages.length) return;
     
     try {
+      // Extract message IDs from messages that aren't from the current user
+      const messageIds = messages
+        .filter(message => message.sender._id !== user.id)
+        .map(message => message._id);
+      
+      // Only proceed if there are messages to mark as read
+      if (messageIds.length === 0) return;
+      
       const result = await chatService.markAsRead({
         chatId: selectedChannel.id,
+        messageIds: messageIds,
         chatType: selectedChannel.type,
         groupId: selectedChannel.groupId,
       });

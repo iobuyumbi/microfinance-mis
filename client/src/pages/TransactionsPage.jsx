@@ -65,7 +65,7 @@ const TransactionsPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -84,7 +84,7 @@ const TransactionsPage = () => {
   useEffect(() => {
     const params = {};
     if (searchTerm) params.search = searchTerm;
-    if (filterType) params.type = filterType;
+    if (filterType && filterType !== 'all') params.type = filterType;
     if (dateRange.start) params.startDate = dateRange.start;
     if (dateRange.end) params.endDate = dateRange.end;
     if (sortBy) params.sortBy = sortBy;
@@ -323,7 +323,7 @@ const TransactionsPage = () => {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="savings_contribution">
                     Savings Contribution
                   </SelectItem>
@@ -374,6 +374,20 @@ const TransactionsPage = () => {
                 }
                 className="mt-1"
               />
+            </div>
+            <div className="col-span-4 mt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setFilterType("all");
+                  setDateRange({ start: "", end: "" });
+                  fetchTransactions();
+                }}
+                className="w-full"
+              >
+                Clear Filters
+              </Button>
             </div>
           </div>
         </CardContent>
