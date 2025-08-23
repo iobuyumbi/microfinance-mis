@@ -61,6 +61,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { handleApiError } from "../utils/errorHandler";
+import TransactionForm from "../components/forms/TransactionForm";
 
 const SavingsPage = () => {
   const [savingsAccounts, setSavingsAccounts] = useState([]);
@@ -104,8 +106,12 @@ const SavingsPage = () => {
       const data = Array.isArray(response.data?.data) ? response.data.data : [];
       setSavingsAccounts(data);
     } catch (error) {
-      console.error("Error fetching savings accounts:", error);
-      toast.error("Failed to fetch savings accounts");
+      // Use our improved error handling utility
+      handleApiError(error, 'savings', {
+        showToast: true,
+        logError: true,
+        rethrow: false
+      });
     } finally {
       setLoading(false);
     }
@@ -140,7 +146,12 @@ const SavingsPage = () => {
         averageBalance,
       });
     } catch (error) {
-      console.error("Error fetching savings stats:", error);
+      // Use our improved error handling utility
+      handleApiError(error, 'savings', {
+        showToast: true,
+        logError: true,
+        rethrow: false
+      });
     }
   };
 
@@ -473,8 +484,12 @@ const AccountTransactions = ({ account }) => {
       const data = Array.isArray(response.data?.data) ? response.data.data : [];
       setTransactions(data);
     } catch (error) {
-      console.error("Error fetching transactions:", error);
-      toast.error("Failed to fetch transactions");
+      // Use our improved error handling utility
+      handleApiError(error, 'transactions', {
+        showToast: true,
+        logError: true,
+        rethrow: false
+      });
     } finally {
       setLoading(false);
     }
