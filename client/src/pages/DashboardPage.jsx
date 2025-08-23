@@ -30,10 +30,9 @@ import { dashboardService } from "../services/dashboardService";
 import { useAuth } from "../hooks/useAuth";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { toast } from "sonner";
+import { handleApiError } from "../utils/errorHandler";
 
 const DashboardPage = () => {
-  const [activeModal, setActiveModal] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalMembers: 0,
     activeLoans: 0,
@@ -44,7 +43,9 @@ const DashboardPage = () => {
   });
   const [recentActivities, setRecentActivities] = useState([]);
   const [upcomingPayments, setUpcomingPayments] = useState([]);
-  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [activeModal, setActiveModal] = useState(null);
+  const { user, hasRole } = useAuth();
 
   useEffect(() => {
     loadDashboardData();
@@ -79,8 +80,12 @@ const DashboardPage = () => {
         setUpcomingPayments(paymentsData.data.data || []);
       }
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      toast.error("Failed to load dashboard data");
+      // Use our improved error handling utility
+      handleApiError(error, 'dashboard', {
+        showToast: true,
+        logError: true,
+        rethrow: false
+      });
     } finally {
       setLoading(false);
     }

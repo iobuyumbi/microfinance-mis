@@ -278,16 +278,31 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
   const currency = await settingsHelper.getCurrency();
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(now.getDate() + 30);
 
-  // Filters derived from req.dataFilter middleware for different models
-  const loanQueryFilter = req.dataFilter?.Loan || {};
-  const transactionQueryFilter = req.dataFilter?.Transaction || {};
-  const userQueryFilter = req.dataFilter?.User || {};
-  const groupQueryFilter = req.dataFilter?.Group || {};
+  // Handle the filterDataByRole middleware structure properly
+  let loanQueryFilter = {};
+  let transactionQueryFilter = {};
+  let userQueryFilter = {};
+  let groupQueryFilter = {};
+
+  if (req.dataFilter) {
+    // If dataFilter is set by filterDataByRole middleware
+    if (req.dataFilter.Loan) {
+      loanQueryFilter = req.dataFilter.Loan;
+    }
+    if (req.dataFilter.Transaction) {
+      transactionQueryFilter = req.dataFilter.Transaction;
+    }
+    if (req.dataFilter.User) {
+      userQueryFilter = req.dataFilter.User;
+    }
+    if (req.dataFilter.Group) {
+      groupQueryFilter = req.dataFilter.Group;
+    }
+  }
 
   try {
+    // Simplified queries to avoid complex aggregations
     const [
       totalMembers,
       totalGroups,
@@ -295,12 +310,9 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
       approvedLoans,
       pendingLoans,
       disbursedLoans,
-      totalSavingsResult,
       recentLoans,
       recentTransactions,
       overdueLoans,
-      monthlyContributions,
-      monthlyRepayments,
     ] = await Promise.all([
       // Total members
       User.countDocuments({ role: 'member', ...userQueryFilter }),
@@ -322,31 +334,6 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
 
       // Disbursed loans
       Loan.countDocuments({ status: 'disbursed', ...loanQueryFilter }),
-
-      // Calculate total savings from Account balances
-      Account.aggregate([
-        {
-          $match: {
-            status: 'active',
-            type: 'savings',
-            $or: [
-              {
-                ownerModel: 'User',
-                owner: userQueryFilter._id
-                  ? { $in: userQueryFilter._id }
-                  : { $exists: true },
-              },
-              {
-                ownerModel: 'Group',
-                owner: groupQueryFilter._id
-                  ? { $in: groupQueryFilter._id }
-                  : { $exists: true },
-              },
-            ],
-          },
-        },
-        { $group: { _id: null, total: { $sum: '$balance' } } },
-      ]),
 
       // Recent loans (last 5)
       Loan.find({
@@ -383,35 +370,51 @@ exports.getDashboardStats = asyncHandler(async (req, res, next) => {
       })
         .populate('borrower', 'name')
         .lean(),
-
-      // Monthly contributions
-      Transaction.aggregate([
-        {
-          $match: {
-            type: 'savings_contribution',
-            createdAt: { $gte: startOfMonth },
-            ...transactionQueryFilter,
-          },
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-      ]),
-
-      // Monthly repayments
-      Transaction.aggregate([
-        {
-          $match: {
-            type: 'loan_repayment',
-            createdAt: { $gte: startOfMonth },
-            ...transactionQueryFilter,
-          },
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-      ]),
     ]);
 
-    const totalSavings = totalSavingsResult[0]?.total || 0;
-    const monthlyContributionsTotal = monthlyContributions[0]?.total || 0;
-    const monthlyRepaymentsTotal = monthlyRepayments[0]?.total || 0;
+    // Calculate total savings from accounts (simplified)
+    let totalSavings = 0;
+    try {
+      const savingsAccounts = await Account.find({
+        status: 'active',
+        type: 'savings',
+        deleted: false,
+      }).lean();
+      
+      totalSavings = savingsAccounts.reduce((sum, account) => sum + (account.balance || 0), 0);
+    } catch (accountError) {
+      console.log('Error calculating total savings:', accountError.message);
+      totalSavings = 0;
+    }
+
+    // Calculate monthly totals (simplified)
+    let monthlyContributionsTotal = 0;
+    let monthlyRepaymentsTotal = 0;
+    
+    try {
+      const monthlyContributions = await Transaction.find({
+        type: 'savings_contribution',
+        createdAt: { $gte: startOfMonth },
+        ...transactionQueryFilter,
+      }).lean();
+      
+      monthlyContributionsTotal = monthlyContributions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    } catch (error) {
+      console.log('Error calculating monthly contributions:', error.message);
+    }
+
+    try {
+      const monthlyRepayments = await Transaction.find({
+        type: 'loan_repayment',
+        createdAt: { $gte: startOfMonth },
+        ...transactionQueryFilter,
+      }).lean();
+      
+      monthlyRepaymentsTotal = monthlyRepayments.reduce((sum, t) => sum + (t.amount || 0), 0);
+    } catch (error) {
+      console.log('Error calculating monthly repayments:', error.message);
+    }
+
     const overduePaymentsCount = overdueLoans.length;
 
     // Calculate overdue amount

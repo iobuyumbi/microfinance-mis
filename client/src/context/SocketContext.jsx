@@ -24,28 +24,55 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    // Initialize socket connection
-    const socketInstance = io(import.meta.env.VITE_SOCKET_URL || "", {
+    // Initialize socket connection with better error handling
+    const socketInstance = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
       withCredentials: true,
-      transports: ["websocket"],
+      transports: ["websocket", "polling"], // Fallback to polling if websocket fails
+      timeout: 20000, // 20 second timeout
+      forceNew: true, // Force new connection
       auth: {
         token: localStorage.getItem("token"),
       },
     });
 
+    let connectionTimeout;
+
     socketInstance.on("connect", () => {
-      console.log("Socket connected");
+      console.log("Socket connected successfully");
       setIsConnected(true);
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
     });
 
-    socketInstance.on("disconnect", () => {
-      console.log("Socket disconnected");
+    socketInstance.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
       setIsConnected(false);
+      
+      // Only show error for unexpected disconnections
+      if (reason === "io server disconnect" || reason === "io client disconnect") {
+        console.log("Socket disconnected by server or client");
+      } else {
+        console.log("Socket disconnected due to:", reason);
+      }
     });
 
     socketInstance.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
+      console.log("Socket connection error (this is normal during initial connection):", error.message);
       setIsConnected(false);
+      
+      // Clear any existing timeout
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
+      
+      // Set a timeout to retry connection
+      connectionTimeout = setTimeout(() => {
+        if (socketInstance && !socketInstance.connected) {
+          console.log("Retrying socket connection...");
+          socketInstance.connect();
+        }
+      }, 5000); // Retry after 5 seconds
     });
 
     socketInstance.on("notification", (data) => {
@@ -66,6 +93,9 @@ export const SocketProvider = ({ children }) => {
     setSocket(socketInstance);
 
     return () => {
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
       if (socketInstance) {
         socketInstance.disconnect();
       }
