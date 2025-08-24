@@ -8,6 +8,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import { Badge } from "./badge";
 import { FinancialDisplay } from "../../utils/financialUtils";
+import { formatDate } from "../../utils/formatters";
 import { cn } from "../../lib/utils";
 
 const TransactionList = ({
@@ -42,23 +43,6 @@ const TransactionList = ({
       adjustment: "⚖️",
     };
     return icons[type] || "💱";
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) return "Today";
-    if (diffDays === 2) return "Yesterday";
-    if (diffDays <= 7) return `${diffDays - 1} days ago`;
-
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-    });
   };
 
   if (!transactions.length) {
@@ -124,7 +108,7 @@ const TransactionList = ({
                       </p>
                     )}
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      {formatDate(transaction.createdAt)}
+                      {formatDate(transaction.createdAt, "short")}
                     </p>
                   </div>
                 </div>
