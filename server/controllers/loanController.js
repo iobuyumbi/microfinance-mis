@@ -11,6 +11,8 @@ const mongoose = require('mongoose'); // For ObjectId validation
 
 // Helper to get currency from settings (async virtuals need this in controllers)
 let appSettings = null;
+const Constants = require('../utils/constants'); // Import constants
+
 async function getCurrency() {
   if (!appSettings) {
     const Settings =
@@ -18,11 +20,11 @@ async function getCurrency() {
       mongoose.model('Settings', require('../models/Settings').schema);
     appSettings = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
+      console.warn(`Settings document not found. Using default currency ${Constants.DEFAULT_CURRENCY}.`);
+      appSettings = { general: { currency: Constants.DEFAULT_CURRENCY } }; // Fallback
     }
   }
-  return appSettings.general.currency;
+  return appSettings.general.currency || Constants.FALLBACK_CURRENCY;
 }
 
 // Import financial utilities

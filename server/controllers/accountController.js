@@ -4,6 +4,7 @@ const Account = require('../models/Account');
 const Transaction = require('../models/Transaction'); // Will be used for checks
 const Loan = require('../models/Loan'); // Will be used for checks
 const Settings = require('../models/Settings'); // Import Settings model directly
+const Constants = require('../utils/constants'); // Import constants
 
 const asyncHandler = require('../middleware/asyncHandler');
 const { ErrorResponse } = require('../utils');
@@ -15,11 +16,11 @@ async function getCurrency() {
   if (!appSettingsCache) {
     appSettingsCache = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettingsCache) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettingsCache = { general: { currency: 'USD' } }; // Fallback
+      console.warn(`Settings document not found. Using default currency ${Constants.DEFAULT_CURRENCY}.`);
+      appSettingsCache = { general: { currency: Constants.DEFAULT_CURRENCY } }; // Fallback
     }
   }
-  return appSettingsCache.general?.currency || 'USD'; // Ensure default if general is missing
+  return appSettingsCache.general?.currency || Constants.FALLBACK_CURRENCY; // Ensure default if general is missing
 }
 
 // @desc    Create a new account

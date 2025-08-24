@@ -2,9 +2,12 @@
 // Middleware index file - exports all middleware functions
 
 const auth = require('./auth');
-const errorHandler = require('./errorHandler');
-const asyncHandler = require('./asyncHandler');
-const notFound = require('./notFound');
+const {
+  errorHandler,
+  asyncHandler,
+  notFound,
+  setupGlobalErrorHandlers,
+} = require('./errorHandler');
 const validate = require('./validate');
 
 module.exports = {
@@ -13,4 +16,5 @@ module.exports = {
   asyncHandler,
   notFound,
   validate,
+  setupGlobalErrorHandlers,
 };

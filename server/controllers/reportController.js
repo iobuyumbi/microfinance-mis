@@ -5,6 +5,7 @@ const Account = require('../models/Account'); // For savings balances
 const Group = require('../models/Group');
 const User = require('../models/User'); // For member counts
 const UserGroupMembership = require('../models/UserGroupMembership'); // To get user's accessible groups
+const Constants = require('../utils/constants'); // Import constants
 
 const asyncHandler = require('../middleware/asyncHandler');
 const { ErrorResponse, settingsHelper } = require('../utils');
@@ -597,18 +598,30 @@ exports.getRecentActivity = asyncHandler(async (req, res, next) => {
       formattedAmount: `${currency} ${repayment.amount.toFixed(2)}`,
     })),
     ...recentSavingsDeposits.map(deposit => ({
-      description: `Savings deposit of ${currency} ${deposit.amount.toFixed(2)} by ${deposit.member?.name || deposit.group?.name || 'Unknown'}`,
+      description: `Savings deposit of ${new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || Constants.FALLBACK_CURRENCY
+      }).format(deposit.amount)} by ${deposit.member?.name || deposit.group?.name || 'Unknown'}`,
       timestamp: deposit.createdAt,
       type: 'deposit',
       amount: deposit.amount,
-      formattedAmount: `${currency} ${deposit.amount.toFixed(2)}`,
+      formattedAmount: new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || Constants.FALLBACK_CURRENCY
+      }).format(deposit.amount),
     })),
     ...recentWithdrawals.map(withdrawal => ({
-      description: `Savings withdrawal of ${currency} ${withdrawal.amount.toFixed(2)} by ${withdrawal.member?.name || withdrawal.group?.name || 'Unknown'}`,
+      description: `Savings withdrawal of ${new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || Constants.FALLBACK_CURRENCY
+      }).format(withdrawal.amount)} by ${withdrawal.member?.name || withdrawal.group?.name || 'Unknown'}`,
       timestamp: withdrawal.createdAt,
       type: 'withdrawal',
       amount: withdrawal.amount,
-      formattedAmount: `${currency} ${withdrawal.amount.toFixed(2)}`,
+      formattedAmount: new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || Constants.FALLBACK_CURRENCY
+      }).format(withdrawal.amount),
     })),
   ]
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))

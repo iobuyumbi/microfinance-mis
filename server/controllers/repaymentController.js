@@ -11,6 +11,8 @@ const mongoose = require('mongoose'); // For ObjectId validation
 
 // Helper to get currency from settings (async virtuals need this in controllers)
 // Re-read settings each time for potential updates, or implement a caching mechanism
+const Constants = require('../utils/constants'); // Import constants
+
 async function getCurrency() {
   // Moved appSettings inside, or consider a proper caching strategy
   const Settings =
@@ -18,8 +20,8 @@ async function getCurrency() {
     mongoose.model('Settings', require('../models/Settings').schema);
   const appSettings = await Settings.findOne({ settingsId: 'app_settings' });
   if (!appSettings) {
-    console.warn('Settings document not found. Using default currency USD.');
-    return 'USD'; // Fallback
+    console.warn(`Settings document not found. Using default currency ${Constants.DEFAULT_CURRENCY}.`);
+    return Constants.DEFAULT_CURRENCY; // Fallback
   }
   return appSettings.general.currency;
 }

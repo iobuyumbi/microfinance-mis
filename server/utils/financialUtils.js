@@ -1,6 +1,12 @@
 // server\utils\financialUtils.js
 const mongoose = require('mongoose');
-const { getCurrencyFromSettings } = require('./currencyUtils');
+const Constants = require('./constants');
+const currencyUtils = require('./currencyUtils');
+
+/**
+ * Consolidated financial utilities for server-side operations
+ * Ensures consistency, reliability, and ACID compliance for all financial operations
+ */
 
 /**
  * Utility function to create a financial transaction with proper validation and account updates
@@ -152,15 +158,17 @@ async function createFinancialTransaction(transactionData, options = {}) {
           account.balance < amount &&
           !(type === 'loan_disbursement' && account.type === 'loan_fund')
         ) {
-          // Format the error message with currency if possible
+          // Format the error message with proper currency from settings
+          const currency = await currencyUtils.getCurrencyFromSettings();
+          
           const formattedAmount = new Intl.NumberFormat('en-US', { 
             style: 'currency', 
-            currency: 'USD' // Ideally this would come from settings
+            currency
           }).format(amount);
           
           const formattedBalance = new Intl.NumberFormat('en-US', { 
             style: 'currency', 
-            currency: 'USD' // Ideally this would come from settings
+            currency
           }).format(account.balance);
           
           throw new Error(
@@ -485,18 +493,12 @@ async function processLoanRepayment(repaymentData, options = {}) {
     const newBalance = balanceBefore - amount;
     
     if (newBalance < 0) {
-      // Format currency for better error message
-      const formattedAmount = new Intl.NumberFormat('en-US', { 
-        style: 'currency', 
-        currency: 'USD' 
-      }).format(amount);
+      // Format currency for better error message using dynamic currency
+      const currency = await currencyUtils.getCurrencyFromSettings();
+      const formattedAmount = await currencyUtils.formatCurrency(amount);
+      const formattedBalance = await currencyUtils.formatCurrency(balanceBefore);
       
-      const formattedBalance = new Intl.NumberFormat('en-US', { 
-        style: 'currency', 
-        currency: 'USD' 
-      }).format(balanceBefore);
-      
-      throw new Error(`INSUFFICIENT_FUNDS: Cannot complete loan repayment. Required: ${formattedAmount}, Available: ${formattedBalance}`);
+      throw new Error(`INSUFFICIENT_FUNDS: Cannot complete loan repayment. Required: ${formattedAmount}, Available: ${formattedBalance}`);}]}}
     }
 
     // Update borrower's account balance with audit timestamp
@@ -583,14 +585,21 @@ async function processLoanRepayment(repaymentData, options = {}) {
 /**
  * Format a currency amount according to the system settings
  * @param {Number} amount - The amount to format
+ * @param {String} [forceCurrency] - Optional currency code to override settings
  * @returns {Promise<String>} - Formatted currency string
  */
-async function formatCurrency(amount) {
-  const currency = await getCurrencyFromSettings();
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
+async function formatCurrency(amount, forceCurrency = null) {
+  return currencyUtils.formatCurrency(amount, forceCurrency);
+}
+
+/**
+ * Format a currency amount in compact notation (e.g., 1.5K, 2.3M)
+ * @param {Number} amount - The amount to format
+ * @param {String} [forceCurrency] - Optional currency code to override settings
+ * @returns {Promise<String>} - Formatted compact currency string
+ */
+async function formatCompactCurrency(amount, forceCurrency = null) {
+  return currencyUtils.formatCompactCurrency(amount, forceCurrency);
 }
 
 /**
@@ -663,11 +672,22 @@ function validateTransactionData(transactionData) {
 }
 
 module.exports = {
+  // Transaction functions
   createFinancialTransaction,
   processLoanDisbursement,
   processLoanRepayment,
-  formatCurrency,
+  
+  // Calculation functions
   calculateLoanSchedule,
   calculateSavingsInterest,
+  
+  // Validation functions
   validateTransactionData,
+  
+  // Formatting functions
+  formatCurrency,
+  formatCompactCurrency,
+  
+  // Currency utilities (re-exported for convenience)
+  getCurrency: currencyUtils.getCurrencyFromSettings
 };

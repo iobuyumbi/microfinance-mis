@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 // if they are not strictly tied to a schema's virtuals.
 // For now, leaving it as is, assuming a future use or that you're just showing context.
 let appSettings = null;
+const Constants = require('../utils/constants'); // Import constants
+
 async function getCurrency() {
   if (!appSettings) {
     const Settings =
@@ -13,11 +15,11 @@ async function getCurrency() {
       mongoose.model('Settings', require('./Settings').schema);
     appSettings = await Settings.findOne({ settingsId: 'app_settings' });
     if (!appSettings) {
-      console.warn('Settings document not found. Using default currency USD.');
-      appSettings = { general: { currency: 'USD' } }; // Fallback
+      console.warn(`Settings document not found. Using default currency ${Constants.DEFAULT_CURRENCY}.`);
+      appSettings = { general: { currency: Constants.DEFAULT_CURRENCY } }; // Fallback
     }
   }
-  return appSettings.general.currency;
+  return appSettings.general.currency || Constants.FALLBACK_CURRENCY;
 }
 // --- End getCurrency ---
 

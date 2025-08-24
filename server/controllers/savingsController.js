@@ -665,10 +665,11 @@ exports.getSavingsStats = asyncHandler(async (req, res, next) => {
   });
   
   // Format the total savings amount
+  const Constants = require('../utils/constants'); // Import constants
   const currency = await settingsHelper.getCurrency();
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency || 'USD'
+    currency: currency || Constants.FALLBACK_CURRENCY
   });
   
   const formattedTotalSavings = formatter.format(totalSavings);

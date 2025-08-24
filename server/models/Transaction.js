@@ -1,24 +1,7 @@
 // server\models\Transaction.js
 const mongoose = require('mongoose');
-const { getCurrencyFromSettings } = require('../utils/currencyUtils');
-
-// REMOVE THE OLD getCurrency FUNCTION DEFINITION FROM HERE
-// // Function to get currency from Settings (to avoid hardcoding)
-// let appSettings = null; // Will be populated dynamically
-// async function getCurrency() {
-//   if (!appSettings) {
-//     // Lazy load Settings model to prevent circular dependency
-//     const Settings =
-//       mongoose.models.Settings ||
-//       mongoose.model('Settings', require('./Settings').schema);
-//     appSettings = await Settings.findOne({ settingsId: 'app_settings' });
-//     if (!appSettings) {
-//       console.warn('Settings document not found. Using default currency USD.');
-//       appSettings = { general: { currency: 'USD' } }; // Fallback
-//     }
-//   }
-//   return appSettings.general.currency;
-// }
+const Constants = require('../utils/constants');
+const currencyUtils = require('../utils/currencyUtils');
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -147,12 +130,8 @@ transactionSchema.index({ deleted: 1 });
 
 // Virtual for formatted amount (now dynamic based on Settings)
 transactionSchema.virtual('formattedAmount').get(async function () {
-  // Use the imported helper
-  const currency = await getCurrencyFromSettings();
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(this.amount);
+  // Use the centralized currency formatting utility
+  return currencyUtils.formatCurrency(this.amount);
 });
 
 // Virtual for transaction type label

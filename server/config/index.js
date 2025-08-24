@@ -1,4 +1,4 @@
-const connectDB = require('./db');
+const { connectDB } = require('./db');
 
 const validateEnv = () => {
   const requiredVars = ['MONGO_URI', 'JWT_SECRET'];

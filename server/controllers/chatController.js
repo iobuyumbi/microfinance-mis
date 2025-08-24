@@ -207,14 +207,14 @@ exports.getChatChannels = asyncHandler(async (req, res) => {
   // Get user's groups for group chats
   const userGroups = await Group.find({
     $or: [{ members: req.user.id }, { leader: req.user.id }],
-  }).select('name members leader'); // Select only necessary fields
+  }).select('name members membersCount leader'); // Select necessary fields including membersCount
 
   const groupChannels = userGroups.map(group => ({
     id: `group-${group._id.toString()}`, // Ensure consistent string ID for client
     name: group.name,
     type: 'group',
     groupId: group._id.toString(), // Ensure consistent string ID
-    description: `${group.members.length} members`,
+    description: `${group.membersCount || group.members.length || 0} members`, // Use membersCount or fallback to members.length
     unreadCount: 0, // TODO: Implement real-time unread count logic
   }));
 
