@@ -1,226 +1,389 @@
-// src/services/financialService.js
-import { api } from "./api/client";
-import { ENDPOINTS } from "./api/endpoints";
+/**
+ * Centralized Financial Service
+ * Provides consistent financial operations and calculations
+ * Ensures reliability and maintainability across the application
+ */
 
-export const financialService = {
-  // Dashboard and Overview
-  getDashboardStats: (params = {}) =>
-    api.get(ENDPOINTS.REPORTS.DASHBOARD, { params }),
+import api from "./api/api";
+import {
+  FinancialCalculations,
+  FinancialValidation,
+  FinancialDisplay,
+  FinancialConstants,
+} from "../utils/financialUtils";
 
-  getFinancialSummary: (params = {}) =>
-    api.get(ENDPOINTS.REPORTS.FINANCIAL_SUMMARY, { params }),
+class FinancialService {
+  /**
+   * Get financial dashboard data
+   * @param {string} userId - User ID
+   * @param {string} groupId - Group ID (optional)
+   * @returns {Promise<Object>} - Dashboard data
+   */
+  static async getDashboardData(userId, groupId = null) {
+    try {
+      const params = { userId };
+      if (groupId) params.groupId = groupId;
 
-  // Account Management
-  getAccounts: (params = {}) => api.get(ENDPOINTS.ACCOUNTS.BASE, { params }),
-  getAccountBalance: (accountId) =>
-    api.get(ENDPOINTS.ACCOUNTS.BY_ID(accountId)),
+      const response = await api.get("/financial/dashboard", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      throw new Error("Failed to fetch dashboard data");
+    }
+  }
 
-  getAccountsByOwner: (ownerId, ownerModel) =>
-    api.get(ENDPOINTS.ACCOUNTS.BY_OWNER(ownerId, ownerModel)),
+  /**
+   * Process loan application
+   * @param {Object} loanData - Loan application data
+   * @returns {Promise<Object>} - Loan application result
+   */
+  static async processLoanApplication(loanData) {
+    try {
+      // Validate loan data
+      const validation = this.validateLoanData(loanData);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
 
-  // Transaction Management
-  createTransaction: (transactionData) =>
-    api.post(ENDPOINTS.TRANSACTIONS.BASE, transactionData),
+      // Calculate loan details
+      const loanDetails = this.calculateLoanDetails(loanData);
 
-  getTransactions: (params = {}) =>
-    api.get(ENDPOINTS.TRANSACTIONS.BASE, { params }),
-
-  getTransactionsByType: (type, params = {}) =>
-    api.get(ENDPOINTS.TRANSACTIONS.BY_TYPE(type), { params }),
-
-  getTransactionsByDateRange: (startDate, endDate, params = {}) =>
-    api.get(ENDPOINTS.TRANSACTIONS.BY_DATE_RANGE(startDate, endDate), {
-      params,
-    }),
-
-  // Loan Management
-  getLoanPortfolio: (params = {}) => api.get(ENDPOINTS.LOANS.BASE, { params }),
-
-  getLoanStats: () => api.get(ENDPOINTS.LOANS.STATS),
-
-  getUpcomingRepayments: (params = {}) =>
-    api.get(ENDPOINTS.REPORTS.UPCOMING_REPAYMENTS, { params }),
-
-  getLoanDefaulters: () => api.get(ENDPOINTS.REPORTS.ACTIVE_LOAN_DEFAULTERS),
-
-  // Savings Management
-  getSavingsStats: () => api.get(ENDPOINTS.SAVINGS.STATS),
-
-  getSavingsTransactions: (accountId, params = {}) =>
-    api.get(ENDPOINTS.SAVINGS.TRANSACTIONS(accountId), { params }),
-
-  // Contribution Management
-  getContributionSummary: (groupId) =>
-    api.get(ENDPOINTS.CONTRIBUTIONS.SUMMARY(groupId)),
-
-  getMemberContributions: (memberId, params = {}) =>
-    api.get(ENDPOINTS.CONTRIBUTIONS.BY_MEMBER(memberId), { params }),
-
-  // Reports and Analytics
-  getGroupPerformance: () =>
-    api.get(ENDPOINTS.REPORTS.GROUP_SAVINGS_PERFORMANCE),
-
-  getRecentActivity: () => api.get(ENDPOINTS.REPORTS.RECENT_ACTIVITY),
-
-  // Financial Calculations
-  calculateLoanSchedule: (amount, interestRate, term) => {
-    const totalInterest = amount * (interestRate / 100);
-    const totalAmount = amount + totalInterest;
-    const monthlyPayment = totalAmount / term;
-
-    const schedule = [];
-    let currentDate = new Date();
-
-    for (let i = 0; i < term; i++) {
-      currentDate.setMonth(currentDate.getMonth() + 1);
-      schedule.push({
-        dueDate: new Date(currentDate),
-        amount: parseFloat(monthlyPayment.toFixed(2)),
-        status: "pending",
+      // Submit application
+      const response = await api.post("/loans", {
+        ...loanData,
+        ...loanDetails,
       });
+
+      return response.data;
+    } catch (error) {
+      console.error("Error processing loan application:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to process loan application"
+      );
     }
+  }
 
-    return schedule;
-  },
+  /**
+   * Process loan repayment
+   * @param {Object} repaymentData - Repayment data
+   * @returns {Promise<Object>} - Repayment result
+   */
+  static async processLoanRepayment(repaymentData) {
+    try {
+      // Validate repayment data
+      const validation = this.validateRepaymentData(repaymentData);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
 
-  calculateSavingsInterest: (principal, interestRate, days) => {
-    return (principal * interestRate * days) / (100 * 365);
-  },
+      const response = await api.post("/repayments", repaymentData);
+      return response.data;
+    } catch (error) {
+      console.error("Error processing loan repayment:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to process loan repayment"
+      );
+    }
+  }
 
-  // Utility Functions
-  formatCurrency: (amount, currency = "USD") => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-    }).format(amount);
-  },
+  /**
+   * Process savings contribution
+   * @param {Object} contributionData - Contribution data
+   * @returns {Promise<Object>} - Contribution result
+   */
+  static async processSavingsContribution(contributionData) {
+    try {
+      // Validate contribution data
+      const validation = this.validateContributionData(contributionData);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
 
-  formatPercentage: (value) => {
-    return `${(value * 100).toFixed(2)}%`;
-  },
+      const response = await api.post(
+        "/savings/contributions",
+        contributionData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error processing savings contribution:", error);
+      throw new Error(
+        error.response?.data?.message ||
+          "Failed to process savings contribution"
+      );
+    }
+  }
 
-  formatDate: (date) => {
-    return new Date(date).toLocaleDateString();
-  },
+  /**
+   * Process savings withdrawal
+   * @param {Object} withdrawalData - Withdrawal data
+   * @returns {Promise<Object>} - Withdrawal result
+   */
+  static async processSavingsWithdrawal(withdrawalData) {
+    try {
+      // Validate withdrawal data
+      const validation = this.validateWithdrawalData(withdrawalData);
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
 
-  formatDateTime: (date) => {
-    return new Date(date).toLocaleString();
-  },
+      const response = await api.post("/savings/withdrawals", withdrawalData);
+      return response.data;
+    } catch (error) {
+      console.error("Error processing savings withdrawal:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to process savings withdrawal"
+      );
+    }
+  }
 
-  // Financial Health Indicators
-  calculateLoanToValueRatio: (loanAmount, collateralValue) => {
-    if (!collateralValue || collateralValue === 0) return null;
-    return loanAmount / collateralValue;
-  },
+  /**
+   * Get transaction history
+   * @param {Object} filters - Filter parameters
+   * @returns {Promise<Object>} - Transaction history
+   */
+  static async getTransactionHistory(filters = {}) {
+    try {
+      const response = await api.get("/transactions", { params: filters });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching transaction history:", error);
+      throw new Error("Failed to fetch transaction history");
+    }
+  }
 
-  calculateDebtToIncomeRatio: (monthlyDebt, monthlyIncome) => {
-    if (!monthlyIncome || monthlyIncome === 0) return null;
-    return monthlyDebt / monthlyIncome;
-  },
+  /**
+   * Get financial reports
+   * @param {Object} reportParams - Report parameters
+   * @returns {Promise<Object>} - Financial reports
+   */
+  static async getFinancialReports(reportParams = {}) {
+    try {
+      const response = await api.get("/reports/financial", {
+        params: reportParams,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching financial reports:", error);
+      throw new Error("Failed to fetch financial reports");
+    }
+  }
 
-  calculateSavingsRate: (monthlySavings, monthlyIncome) => {
-    if (!monthlyIncome || monthlyIncome === 0) return null;
-    return monthlySavings / monthlyIncome;
-  },
+  /**
+   * Calculate loan details
+   * @param {Object} loanData - Loan data
+   * @returns {Object} - Calculated loan details
+   */
+  static calculateLoanDetails(loanData) {
+    const { amountRequested, interestRate, loanTerm } = loanData;
 
-  // Risk Assessment
-  assessLoanRisk: (loanData) => {
-    const {
-      borrowerCreditScore,
-      loanAmount,
+    // Calculate total interest
+    const totalInterest = FinancialCalculations.calculateSimpleInterest(
+      amountRequested,
+      interestRate,
+      loanTerm / 12
+    );
+
+    // Calculate total amount
+    const totalAmount = amountRequested + totalInterest;
+
+    // Calculate monthly payment
+    const monthlyPayment = FinancialCalculations.calculateLoanPayment(
+      amountRequested,
+      interestRate,
+      loanTerm
+    );
+
+    // Generate repayment schedule
+    const repaymentSchedule = FinancialCalculations.calculateLoanSchedule(
+      amountRequested,
+      interestRate,
       loanTerm,
-      collateralValue,
-      monthlyIncome,
-      existingDebt,
-    } = loanData;
-
-    let riskScore = 0;
-    let riskFactors = [];
-
-    // Credit score assessment
-    if (borrowerCreditScore < 600) {
-      riskScore += 30;
-      riskFactors.push("Low credit score");
-    } else if (borrowerCreditScore < 700) {
-      riskScore += 15;
-      riskFactors.push("Below average credit score");
-    }
-
-    // Loan amount assessment
-    const loanToIncomeRatio = loanAmount / (monthlyIncome * 12);
-    if (loanToIncomeRatio > 0.5) {
-      riskScore += 25;
-      riskFactors.push("High loan-to-income ratio");
-    } else if (loanToIncomeRatio > 0.3) {
-      riskScore += 10;
-      riskFactors.push("Moderate loan-to-income ratio");
-    }
-
-    // Debt-to-income assessment
-    const debtToIncomeRatio = existingDebt / monthlyIncome;
-    if (debtToIncomeRatio > 0.4) {
-      riskScore += 20;
-      riskFactors.push("High debt-to-income ratio");
-    } else if (debtToIncomeRatio > 0.2) {
-      riskScore += 10;
-      riskFactors.push("Moderate debt-to-income ratio");
-    }
-
-    // Collateral assessment
-    if (collateralValue && loanAmount > collateralValue * 0.8) {
-      riskScore += 15;
-      riskFactors.push("Low collateral coverage");
-    }
-
-    // Term assessment
-    if (loanTerm > 36) {
-      riskScore += 10;
-      riskFactors.push("Long loan term");
-    }
-
-    // Risk level determination
-    let riskLevel = "low";
-    if (riskScore >= 60) {
-      riskLevel = "high";
-    } else if (riskScore >= 30) {
-      riskLevel = "medium";
-    }
+      new Date()
+    );
 
     return {
-      riskScore,
-      riskLevel,
-      riskFactors,
-      loanToIncomeRatio,
-      debtToIncomeRatio,
-    };
-  },
-
-  // Portfolio Analysis
-  analyzePortfolio: (loans) => {
-    const totalLoans = loans.length;
-    const totalAmount = loans.reduce(
-      (sum, loan) => sum + (loan.amountApproved || 0),
-      0
-    );
-    const activeLoans = loans.filter((loan) =>
-      ["approved", "disbursed"].includes(loan.status)
-    );
-    const overdueLoans = loans.filter((loan) => loan.status === "overdue");
-    const completedLoans = loans.filter((loan) => loan.status === "completed");
-
-    const averageLoanAmount = totalAmount / totalLoans || 0;
-    const overdueRate = (overdueLoans.length / activeLoans.length) * 100 || 0;
-    const completionRate = (completedLoans.length / totalLoans) * 100 || 0;
-
-    return {
-      totalLoans,
+      totalInterest,
       totalAmount,
-      activeLoans: activeLoans.length,
-      overdueLoans: overdueLoans.length,
-      completedLoans: completedLoans.length,
-      averageLoanAmount,
-      overdueRate,
-      completionRate,
+      monthlyPayment,
+      repaymentSchedule,
     };
-  },
-};
+  }
+
+  /**
+   * Validate loan data
+   * @param {Object} loanData - Loan data to validate
+   * @returns {Object} - Validation result
+   */
+  static validateLoanData(loanData) {
+    const { amountRequested, interestRate, loanTerm } = loanData;
+
+    // Validate amount
+    const amountValidation = FinancialValidation.validateAmount(
+      amountRequested,
+      FinancialConstants.MIN_LOAN_AMOUNT,
+      FinancialConstants.MAX_LOAN_AMOUNT
+    );
+    if (!amountValidation.isValid) {
+      return amountValidation;
+    }
+
+    // Validate interest rate
+    const rateValidation = FinancialValidation.validateInterestRate(
+      interestRate,
+      FinancialConstants.MAX_INTEREST_RATE
+    );
+    if (!rateValidation.isValid) {
+      return rateValidation;
+    }
+
+    // Validate loan term
+    const termValidation = FinancialValidation.validateLoanTerm(
+      loanTerm,
+      FinancialConstants.MIN_LOAN_TERM,
+      FinancialConstants.MAX_LOAN_TERM
+    );
+    if (!termValidation.isValid) {
+      return termValidation;
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Validate repayment data
+   * @param {Object} repaymentData - Repayment data to validate
+   * @returns {Object} - Validation result
+   */
+  static validateRepaymentData(repaymentData) {
+    const { amount, loanId } = repaymentData;
+
+    if (!amount || amount <= 0) {
+      return {
+        isValid: false,
+        error: "Repayment amount must be greater than 0",
+      };
+    }
+
+    if (!loanId) {
+      return { isValid: false, error: "Loan ID is required" };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Validate contribution data
+   * @param {Object} contributionData - Contribution data to validate
+   * @returns {Object} - Validation result
+   */
+  static validateContributionData(contributionData) {
+    const { amount, accountId } = contributionData;
+
+    if (!amount || amount <= 0) {
+      return {
+        isValid: false,
+        error: "Contribution amount must be greater than 0",
+      };
+    }
+
+    if (!accountId) {
+      return { isValid: false, error: "Account ID is required" };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Validate withdrawal data
+   * @param {Object} withdrawalData - Withdrawal data to validate
+   * @returns {Object} - Validation result
+   */
+  static validateWithdrawalData(withdrawalData) {
+    const { amount, accountId, currentBalance } = withdrawalData;
+
+    if (!amount || amount <= 0) {
+      return {
+        isValid: false,
+        error: "Withdrawal amount must be greater than 0",
+      };
+    }
+
+    if (!accountId) {
+      return { isValid: false, error: "Account ID is required" };
+    }
+
+    // Check if sufficient funds are available
+    if (currentBalance && amount > currentBalance) {
+      return { isValid: false, error: "Insufficient funds for withdrawal" };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * Format financial data for display
+   * @param {Object} data - Financial data to format
+   * @param {string} currency - Currency code
+   * @returns {Object} - Formatted data
+   */
+  static formatFinancialData(data, currency = "KES") {
+    return FinancialDisplay.formatAmount(data, currency);
+  }
+
+  /**
+   * Get transaction type information
+   * @param {string} type - Transaction type
+   * @returns {Object} - Transaction type information
+   */
+  static getTransactionTypeInfo(type) {
+    return {
+      label: FinancialDisplay.getTransactionTypeLabel(type),
+      icon: FinancialDisplay.getTransactionIcon(type),
+      color: FinancialDisplay.getTransactionTypeColor(type),
+      amountColor: FinancialDisplay.getAmountColor(type),
+    };
+  }
+
+  /**
+   * Calculate account summary
+   * @param {Array} transactions - Array of transactions
+   * @returns {Object} - Account summary
+   */
+  static calculateAccountSummary(transactions) {
+    if (!transactions || !Array.isArray(transactions)) {
+      return {
+        totalCredits: 0,
+        totalDebits: 0,
+        netBalance: 0,
+        transactionCount: 0,
+      };
+    }
+
+    const summary = transactions.reduce(
+      (acc, transaction) => {
+        const { type, amount } = transaction;
+
+        if (FinancialDisplay.isCreditType(type)) {
+          acc.totalCredits += amount;
+        } else if (FinancialDisplay.isDebitType(type)) {
+          acc.totalDebits += amount;
+        }
+
+        acc.transactionCount += 1;
+        return acc;
+      },
+      {
+        totalCredits: 0,
+        totalDebits: 0,
+        netBalance: 0,
+        transactionCount: 0,
+      }
+    );
+
+    summary.netBalance = summary.totalCredits - summary.totalDebits;
+
+    return summary;
+  }
+}
+
+export default FinancialService;

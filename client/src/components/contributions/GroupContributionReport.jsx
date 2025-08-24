@@ -28,6 +28,7 @@ import {
   PieChart,
 } from "lucide-react";
 import { contributionService } from "../../services/contributionService";
+import { formatCurrency } from "../../utils/formatters";
 
 const GroupContributionReport = ({ group }) => {
   const [reportData, setReportData] = useState({
@@ -124,12 +125,7 @@ const GroupContributionReport = ({ group }) => {
     return "text-red-600";
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+  // Use the imported formatCurrency function that respects app settings
 
   return (
     <div className="space-y-6">

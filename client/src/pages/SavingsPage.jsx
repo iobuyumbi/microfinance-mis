@@ -181,11 +181,12 @@ const SavingsPage = () => {
 
   const getAccountStatusColor = (status) => {
     const colors = {
-      active: "bg-green-100 text-green-800",
-      inactive: "bg-gray-100 text-gray-800",
-      suspended: "bg-red-100 text-red-800",
+      active: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      inactive: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+      suspended: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300"
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   };
 
   const getOwnerTypeLabel = (ownerModel) => {
@@ -211,77 +212,38 @@ const SavingsPage = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Accounts
-            </CardTitle>
-            <PiggyBank className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {savingsStats.totalAccounts}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All savings accounts
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Total Accounts"
+          value={savingsStats.totalAccounts.toString()}
+          icon={PiggyBank}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(savingsStats.totalSavings)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Total balance across all accounts
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Total Savings"
+          value={financialService.formatCurrency(savingsStats.totalSavings)}
+          icon={DollarSign}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Accounts
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {savingsStats.activeAccounts}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Currently active accounts
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Active Accounts"
+          value={savingsStats.activeAccounts.toString()}
+          icon={CheckCircle}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Average Balance
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(savingsStats.averageBalance)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Average per active account
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Average Balance"
+          value={financialService.formatCurrency(savingsStats.averageBalance)}
+          icon={TrendingUp}
+        />
       </div>
 
       {/* Filters */}
       <FacebookCard>
         <FacebookCardHeader>
-          <CardTitle>Filters</CardTitle>
+          <div className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>
+          </div>
         </FacebookCardHeader>
         <FacebookCardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -325,16 +287,20 @@ const SavingsPage = () => {
         </FacebookCardContent>
       </FacebookCard>
 
-      {/* Savings Accounts Table */}
+      {/* Savings Accounts */}
       <FacebookCard>
         <FacebookCardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Savings Accounts</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PiggyBank className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Savings Accounts</h2>
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => fetchSavingsAccounts()}
               disabled={loading}
+              className="hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -346,20 +312,20 @@ const SavingsPage = () => {
         <FacebookCardContent>
           <div className="rounded-md border">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
                 <TableRow>
-                  <TableHead>Account Number</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-blue-50">Account Number</TableHead>
+                  <TableHead className="text-blue-50">Owner</TableHead>
+                  <TableHead className="text-blue-50">Type</TableHead>
+                  <TableHead className="text-blue-50">Balance</TableHead>
+                  <TableHead className="text-blue-50">Status</TableHead>
+                  <TableHead className="text-blue-50">Created</TableHead>
+                  <TableHead className="text-blue-50 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {savingsAccounts.map((account) => (
-                  <TableRow key={account._id}>
+                  <TableRow key={account._id} className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/20 dark:hover:to-purple-900/20">
                     <TableCell className="font-medium">
                       {account.accountNumber}
                     </TableCell>
@@ -388,7 +354,7 @@ const SavingsPage = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -588,32 +554,32 @@ const getTransactionTypeLabel = (type) => {
 
 const getTransactionTypeColor = (type) => {
   const colors = {
-    savings_contribution: "bg-green-100 text-green-800",
-    savings_withdrawal: "bg-red-100 text-red-800",
-    loan_disbursement: "bg-blue-100 text-blue-800",
-    loan_repayment: "bg-green-100 text-green-800",
-    interest_earned: "bg-purple-100 text-purple-800",
-    interest_charged: "bg-orange-100 text-orange-800",
-    penalty_incurred: "bg-red-100 text-red-800",
-    penalty_paid: "bg-green-100 text-green-800",
-    fee_incurred: "bg-red-100 text-red-800",
-    fee_paid: "bg-green-100 text-green-800",
-    transfer_in: "bg-blue-100 text-blue-800",
-    transfer_out: "bg-orange-100 text-orange-800",
-    refund: "bg-green-100 text-green-800",
-    adjustment: "bg-gray-100 text-gray-800",
+    savings_contribution: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    savings_withdrawal: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    loan_disbursement: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+    loan_repayment: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    interest_earned: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+    interest_charged: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+    penalty_incurred: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    penalty_paid: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    fee_incurred: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    fee_paid: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    transfer_in: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+    transfer_out: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+    refund: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    adjustment: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
   };
-  return colors[type] || "bg-gray-100 text-gray-800";
+  return colors[type] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
 };
 
 const getStatusColor = (status) => {
   const colors = {
-    completed: "bg-green-100 text-green-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    failed: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-800",
+    completed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+    failed: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
 };
 
 export default SavingsPage;

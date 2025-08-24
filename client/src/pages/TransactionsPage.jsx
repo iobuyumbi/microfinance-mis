@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { StatsCard } from "../components/ui/stats-card";
 import {
   Card,
   CardContent,
@@ -179,32 +180,32 @@ const TransactionsPage = () => {
 
   const getTransactionTypeColor = (type) => {
     const colors = {
-      savings_contribution: "bg-green-100 text-green-800",
-      savings_withdrawal: "bg-red-100 text-red-800",
-      loan_disbursement: "bg-blue-100 text-blue-800",
-      loan_repayment: "bg-green-100 text-green-800",
-      interest_earned: "bg-purple-100 text-purple-800",
-      interest_charged: "bg-orange-100 text-orange-800",
-      penalty_incurred: "bg-red-100 text-red-800",
-      penalty_paid: "bg-green-100 text-green-800",
-      fee_incurred: "bg-red-100 text-red-800",
-      fee_paid: "bg-green-100 text-green-800",
-      transfer_in: "bg-blue-100 text-blue-800",
-      transfer_out: "bg-orange-100 text-orange-800",
-      refund: "bg-green-100 text-green-800",
-      adjustment: "bg-gray-100 text-gray-800",
+      savings_contribution: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      savings_withdrawal: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      loan_disbursement: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      loan_repayment: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      interest_earned: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+      interest_charged: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+      penalty_incurred: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      penalty_paid: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      fee_incurred: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      fee_paid: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      transfer_in: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      transfer_out: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+      refund: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      adjustment: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
     };
-    return colors[type] || "bg-gray-100 text-gray-800";
+    return colors[type] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      completed: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      failed: "bg-red-100 text-red-800",
-      cancelled: "bg-gray-100 text-gray-800",
+      completed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+      failed: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   };
 
   if (loading && transactions.length === 0) {
@@ -229,75 +230,37 @@ const TransactionsPage = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Transactions
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {transactionStats.totalTransactions}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All time transactions
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Total Transactions"
+          value={transactionStats.totalTransactions.toString()}
+          icon={CreditCard}
+          description="All time transactions"
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(transactionStats.totalAmount)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Total transaction value
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Total Amount"
+          value={financialService.formatCurrency(transactionStats.totalAmount)}
+          icon={DollarSign}
+          description="Total transaction value"
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Monthly Contributions
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(
-                transactionStats.monthlyContributions
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This month's contributions
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Monthly Contributions"
+          value={financialService.formatCurrency(
+            transactionStats.monthlyContributions
+          )}
+          icon={DollarSign}
+          description="This month's contributions"
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Monthly Repayments
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(
-                transactionStats.monthlyRepayments
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This month's repayments
-            </p>
-          </CardContent>
-        </Card>
+        <StatsCard
+          title="Monthly Repayments"
+          value={financialService.formatCurrency(
+            transactionStats.monthlyRepayments
+          )}
+          icon={DollarSign}
+          description="This month's repayments"
+        />
       </div>
 
       {/* Filters */}
@@ -414,34 +377,34 @@ const TransactionsPage = () => {
         <CardContent>
           <div className="rounded-md border">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="text-blue-50">
                     <Button
                       variant="ghost"
                       onClick={() => handleSort("createdAt")}
-                      className="h-auto p-0 font-semibold"
+                      className="h-auto p-0 font-semibold text-blue-50"
                     >
                       Date
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Member/Group</TableHead>
-                  <TableHead>
+                  <TableHead className="text-blue-50">Type</TableHead>
+                  <TableHead className="text-blue-50">Description</TableHead>
+                  <TableHead className="text-blue-50">Member/Group</TableHead>
+                  <TableHead className="text-blue-50">
                     <Button
                       variant="ghost"
                       onClick={() => handleSort("amount")}
-                      className="h-auto p-0 font-semibold"
+                      className="h-auto p-0 font-semibold text-blue-50"
                     >
                       Amount
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Receipt</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-blue-50">Status</TableHead>
+                  <TableHead className="text-blue-50">Receipt</TableHead>
+                  <TableHead className="text-blue-50 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -485,7 +448,7 @@ const TransactionsPage = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

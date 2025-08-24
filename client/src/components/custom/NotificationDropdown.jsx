@@ -132,18 +132,18 @@ export default function NotificationDropdown() {
   
   const getNotificationTypeColor = (type) => {
     const colorMap = {
-      info: "text-blue-600 bg-blue-100",
-      warning: "text-yellow-600 bg-yellow-100",
-      success: "text-green-600 bg-green-100",
-      error: "text-red-600 bg-red-100",
-      alert: "text-orange-600 bg-orange-100",
-      payment: "text-green-600 bg-green-100",
-      group: "text-blue-600 bg-blue-100",
-      meeting: "text-purple-600 bg-purple-100",
-      document: "text-gray-600 bg-gray-100"
+      info: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-950/50",
+      warning: "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-950/50",
+      success: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-950/50",
+      error: "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950/50",
+      alert: "text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-950/50",
+      payment: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-950/50",
+      group: "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-950/50",
+      meeting: "text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-950/50",
+      document: "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800"
     };
     
-    return colorMap[type] || "text-gray-600 bg-gray-100";
+    return colorMap[type] || "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800";
   };
   
   const getNotificationTypeLabel = (type) => {

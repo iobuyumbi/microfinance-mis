@@ -192,14 +192,14 @@ const LoansPage = () => {
 
   const getLoanStatusColor = (status) => {
     const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-blue-100 text-blue-800",
-      disbursed: "bg-green-100 text-green-800",
-      overdue: "bg-red-100 text-red-800",
-      completed: "bg-purple-100 text-purple-800",
-      rejected: "bg-gray-100 text-gray-800",
+      pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+      approved: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      disbursed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      overdue: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      completed: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+      rejected: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   };
 
   const getBorrowerTypeLabel = (borrowerModel) => {
@@ -208,11 +208,11 @@ const LoansPage = () => {
 
   const getRiskLevelColor = (riskLevel) => {
     const colors = {
-      low: "bg-green-100 text-green-800",
-      medium: "bg-yellow-100 text-yellow-800",
-      high: "bg-red-100 text-red-800",
+      low: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      medium: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+      high: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
     };
-    return colors[riskLevel] || "bg-gray-100 text-gray-800";
+    return colors[riskLevel] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
   };
 
   if (loading && loans.length === 0) {
@@ -451,7 +451,7 @@ const LoansPage = () => {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
+                          <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -707,33 +707,33 @@ const LoanDetails = ({ loan }) => {
 // Helper functions
 const getLoanStatusColor = (status) => {
   const colors = {
-    pending: "bg-yellow-100 text-yellow-800",
-    approved: "bg-blue-100 text-blue-800",
-    disbursed: "bg-green-100 text-green-800",
-    overdue: "bg-red-100 text-red-800",
-    completed: "bg-purple-100 text-purple-800",
-    rejected: "bg-gray-100 text-gray-800",
+    pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+    approved: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+    disbursed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    overdue: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    completed: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+    rejected: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
 };
 
 const getRiskLevelColor = (riskLevel) => {
   const colors = {
-    low: "bg-green-100 text-green-800",
-    medium: "bg-yellow-100 text-yellow-800",
-    high: "bg-red-100 text-red-800",
+    low: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    medium: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+    high: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
   };
-  return colors[riskLevel] || "bg-gray-100 text-gray-800";
+  return colors[riskLevel] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
 };
 
 const getStatusColor = (status) => {
   const colors = {
-    completed: "bg-green-100 text-green-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    failed: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-800",
+    completed: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+    pending: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300",
+    failed: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    cancelled: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
 };
 
 export default LoansPage;

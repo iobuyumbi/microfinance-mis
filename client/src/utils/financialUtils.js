@@ -218,7 +218,7 @@ export const FinancialDisplay = {
    * @param {boolean} compact - Whether to use compact format
    * @returns {string} - Formatted amount
    */
-  formatAmount: (amount, currency, compact = false) => {
+  formatAmount: (amount, currency = null, compact = false) => {
     if (amount === null || amount === undefined) return 'N/A';
     return compact ? formatCompactCurrency(amount, currency) : formatCurrency(amount, currency);
   },
@@ -234,22 +234,23 @@ export const FinancialDisplay = {
   },
 
   /**
-   * Get status color for financial status
+   * Get status color for financial status that works in both light and dark modes
    * @param {string} status - Financial status
    * @returns {string} - CSS color class
    */
   getStatusColor: (status) => {
     const statusColors = {
-      active: 'text-green-600 bg-green-100',
-      inactive: 'text-gray-600 bg-gray-100',
-      overdue: 'text-red-600 bg-red-100',
-      pending: 'text-yellow-600 bg-yellow-100',
-      completed: 'text-green-600 bg-green-100',
-      cancelled: 'text-red-600 bg-red-100',
-      default: 'text-gray-600 bg-gray-100'
+      active: 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
+      inactive: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800',
+      overdue: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30',
+      pending: 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30',
+      completed: 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
+      cancelled: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30',
+      defaulted: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30',
+      default: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800'
     };
     
-    return statusColors[status] || statusColors.default;
+    return statusColors[status?.toLowerCase()] || statusColors.default;
   },
 
   /**
@@ -277,6 +278,69 @@ export const FinancialDisplay = {
     };
     
     return icons[type] || 'DollarSign';
+  },
+  
+  /**
+   * Get transaction type color that works in both light and dark modes
+   * @param {string} type - Transaction type
+   * @returns {string} - Tailwind CSS classes for the transaction type
+   */
+  getTransactionTypeColor: (type) => {
+    const colors = {
+      savings_contribution: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      savings_withdrawal: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      loan_disbursement: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      loan_repayment: "bg-teal-100 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300",
+      interest_earned: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300",
+      interest_charged: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+      penalty_incurred: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      penalty_paid: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      fee_incurred: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+      fee_paid: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      transfer_in: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300",
+      transfer_out: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300",
+      refund: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      adjustment: "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300",
+      adjustment_credit: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300",
+      adjustment_debit: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300",
+    };
+    return colors[type] || "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300";
+  },
+  
+  /**
+   * Get amount color based on transaction type that works in both light and dark modes
+   * @param {string} type - Transaction type
+   * @returns {string} - Tailwind CSS classes for the amount color
+   */
+  getAmountColor: (type) => {
+    const creditTypes = [
+      'savings_contribution',
+      'loan_repayment',
+      'interest_earned',
+      'refund',
+      'transfer_in',
+      'adjustment_credit',
+      'penalty_paid',
+      'fee_paid',
+    ];
+
+    const debitTypes = [
+      'savings_withdrawal',
+      'loan_disbursement',
+      'interest_charged',
+      'penalty_incurred',
+      'fee_incurred',
+      'transfer_out',
+      'adjustment_debit',
+    ];
+
+    if (creditTypes.includes(type)) {
+      return "text-green-600 dark:text-green-400";
+    } else if (debitTypes.includes(type)) {
+      return "text-red-600 dark:text-red-400";
+    } else {
+      return "text-gray-600 dark:text-gray-400";
+    }
   }
 };
 
@@ -284,7 +348,7 @@ export const FinancialDisplay = {
  * Financial constants
  */
 export const FinancialConstants = {
-  DEFAULT_CURRENCY: 'USD',
+  DEFAULT_CURRENCY: 'KES',
   MAX_LOAN_AMOUNT: 1000000,
   MIN_LOAN_AMOUNT: 100,
   MAX_INTEREST_RATE: 50,
@@ -302,4 +366,4 @@ export default {
   FinancialValidation,
   FinancialDisplay,
   FinancialConstants
-}; 
+};

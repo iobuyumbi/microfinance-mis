@@ -7,6 +7,9 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 
+// Utils
+import { FinancialConstants } from "./utils/financialUtils";
+
 // Layouts
 import AuthLayout from "./layouts/AuthLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -41,27 +44,37 @@ import { settingsService } from "./services/settingsService";
 // Styles
 import "./index.css";
 
-const SettingsContext = createContext({ currency: "USD" });
+const SettingsContext = createContext({
+  currency: FinancialConstants.DEFAULT_CURRENCY,
+});
 export const useSettings = () => useContext(SettingsContext);
 
 function App() {
-  const [settings, setSettings] = useState({ currency: "USD" });
+  const [settings, setSettings] = useState({
+    currency: FinancialConstants.DEFAULT_CURRENCY,
+  });
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const res = await settingsService.get();
         const data = res?.data?.data || res?.data || res || {};
-        const currency = data?.general?.currency || data?.currency || "USD";
+        const currency =
+          data?.general?.currency ||
+          data?.currency ||
+          FinancialConstants.DEFAULT_CURRENCY;
         setSettings({ currency });
         try {
           localStorage.setItem("appCurrency", currency);
         } catch (_) {}
       } catch (e) {
-        // Fallback to default USD on error; avoid blocking app
-        setSettings({ currency: "USD" });
+        // Fallback to default currency on error; avoid blocking app
+        setSettings({ currency: FinancialConstants.DEFAULT_CURRENCY });
         try {
-          localStorage.setItem("appCurrency", "USD");
+          localStorage.setItem(
+            "appCurrency",
+            FinancialConstants.DEFAULT_CURRENCY
+          );
         } catch (_) {}
       }
     };

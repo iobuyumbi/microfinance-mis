@@ -20,6 +20,7 @@ import {
 import FormModal from "../components/modals/FormModal";
 import { reportService } from "../services/reportService";
 import { formatCurrency, formatNumber } from "../utils/formatters";
+import { FinancialConstants } from "../utils/financialUtils";
 import MemberList from "../components/lists/MemberList";
 import LoanList from "../components/lists/LoanList";
 import SavingsList from "../components/lists/SavingsList";
@@ -91,7 +92,7 @@ const ReportsPage = () => {
       description: "Monitor savings accounts",
       icon: PiggyBank,
       color: "bg-purple-600",
-      count: formatCurrency(counts.totalSavings, "USD"),
+      count: formatCurrency(counts.totalSavings, FinancialConstants.DEFAULT_CURRENCY),
       modalContent: "savings",
     },
     {

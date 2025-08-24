@@ -29,6 +29,7 @@ import {
   ArrowDown,
   Loader2,
 } from "lucide-react";
+import { formatCurrency } from "../../utils/formatters";
 import { cn } from "../../lib/utils";
 
 /**
@@ -175,10 +176,9 @@ export const DataTable = ({
     }
 
     if (column.type === "currency") {
-      return value ? new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: column.currency || "USD",
-      }).format(value) : "N/A";
+      // Use formatCurrency from formatters.js with optional currency parameter
+      // This allows it to use the default currency from localStorage if not specified
+      return value ? formatCurrency(value) : "N/A";
     }
 
     return value || "N/A";
@@ -379,4 +379,4 @@ export const DataTable = ({
   );
 };
 
-export default DataTable; 
+export default DataTable;

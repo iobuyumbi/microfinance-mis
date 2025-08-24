@@ -13,6 +13,7 @@ import {
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { toast } from "sonner";
 import { transactionService } from "../../services/transactionService";
+import { FinancialDisplay } from "../../utils/financialUtils";
 
 const TransactionList = () => {
   const [transactions, setTransactions] = useState([]);
@@ -43,39 +44,7 @@ const TransactionList = () => {
       transaction.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusColor = (type) => {
-    switch (type) {
-      case "savings_contribution":
-        return "bg-green-100 text-green-800";
-      case "savings_withdrawal":
-        return "bg-red-100 text-red-800";
-      case "loan_disbursement":
-        return "bg-purple-100 text-purple-800";
-      case "loan_repayment":
-        return "bg-teal-100 text-teal-800";
-      case "transfer_in":
-      case "transfer_out":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getAmountColor = (type) => {
-    switch (type) {
-      case "savings_contribution":
-      case "loan_disbursement":
-        return "text-green-600";
-      case "savings_withdrawal":
-      case "loan_repayment":
-        return "text-red-600";
-      case "transfer_in":
-      case "transfer_out":
-        return "text-blue-600";
-      default:
-        return "text-gray-600";
-    }
-  };
+  // Using the centralized theme utilities instead of local functions
 
   const getIcon = (type) => {
     switch (type) {
@@ -145,7 +114,7 @@ const TransactionList = () => {
                 >
                   <div className="flex items-center gap-4">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${getStatusColor(
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${FinancialDisplay.getTransactionTypeColor(
                         transaction.type
                       )}`}
                     >
@@ -159,16 +128,16 @@ const TransactionList = () => {
                         {transaction.description}
                       </p>
                       <p
-                        className={`text-sm font-medium ${getAmountColor(
+                        className={`text-sm font-medium ${FinancialDisplay.getAmountColor(
                           transaction.type
                         )}`}
                       >
-                        {formatCurrency(transaction.amount, "USD")}
+                        {formatCurrency(transaction.amount)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className={getStatusColor(transaction.type)}>
+                    <Badge className={FinancialDisplay.getTransactionTypeColor(transaction.type)}>
                       {transaction.typeLabel || transaction.type}
                     </Badge>
                     <span className="text-xs text-muted-foreground">

@@ -2,19 +2,22 @@
  * Utility functions for formatting data
  */
 
+// Import FinancialConstants for consistent currency defaults
+import { FinancialConstants } from './financialUtils';
+
 // Resolve default currency from settings bootstrap (set in App)
 const getDefaultCurrency = () => {
   try {
     const stored = localStorage.getItem("appCurrency");
     if (stored && typeof stored === "string") return stored;
   } catch (_) {}
-  return "KES";
+  return FinancialConstants.DEFAULT_CURRENCY;
 };
 
 // Currency formatting with dynamic currency from settings
 export const formatCurrency = (amount, currency) => {
   if (amount === null || amount === undefined) return "N/A";
-  const cur = currency || getDefaultCurrency() || "USD";
+  const cur = currency || getDefaultCurrency() || FinancialConstants.DEFAULT_CURRENCY;
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -27,7 +30,7 @@ export const formatCurrency = (amount, currency) => {
 // Compact currency formatting (e.g., 1.2K, 1.5M)
 export const formatCompactCurrency = (amount, currency) => {
   if (amount === null || amount === undefined) return "N/A";
-  const cur = currency || getDefaultCurrency() || "USD";
+  const cur = currency || getDefaultCurrency() || FinancialConstants.DEFAULT_CURRENCY;
 
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",

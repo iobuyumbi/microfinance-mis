@@ -7,6 +7,7 @@ import {
   FacebookCardHeader,
   FacebookCardContent,
 } from "../components/ui/facebook-card";
+import { FinancialConstants } from "../utils/financialUtils";
 import {
   Users,
   DollarSign,
@@ -28,6 +29,7 @@ import GroupForm from "../components/forms/GroupForm";
 import TransactionForm from "../components/forms/TransactionForm";
 import { dashboardService } from "../services/dashboardService";
 import { useAuth } from "../hooks/useAuth";
+import { formatCurrency } from "../utils/formatters";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { toast } from "sonner";
 import { handleApiError } from "../utils/errorHandler";
@@ -113,7 +115,7 @@ const DashboardPage = () => {
       title: "Total Savings",
       value: new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: FinancialConstants.DEFAULT_CURRENCY,
       }).format(stats.totalSavings),
       change: "+15%",
       changeType: "positive",
@@ -381,10 +383,7 @@ const DashboardPage = () => {
                   key={index}
                   icon={DollarSign}
                   title={`Payment Due: ${payment.borrower?.name || "Unknown"}`}
-                  description={`${new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(payment.amount)} due on ${new Date(
+                  description={`${formatCurrency(payment.amount)} due on ${new Date(
                     payment.dueDate
                   ).toLocaleDateString()}`}
                   time={new Date(payment.dueDate).toLocaleDateString()}

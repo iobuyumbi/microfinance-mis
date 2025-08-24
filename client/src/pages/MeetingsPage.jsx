@@ -189,13 +189,13 @@ const MeetingsPage = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'completed':
-        return <Calendar className="h-4 w-4 text-green-600" />;
+        return <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />;
       case 'scheduled':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
       case 'cancelled':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />;
       default:
-        return <Calendar className="h-4 w-4 text-gray-600" />;
+        return <Calendar className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
     }
   };
 
