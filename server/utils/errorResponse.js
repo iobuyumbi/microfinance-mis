@@ -1,8 +1,12 @@
 // ErrorResponse utility class for consistent error handling
-class ErrorResponse extends Error {
+// Now extends from the new comprehensive error handling system
+const { AppError } = require('./errorHandler');
+
+class ErrorResponse extends AppError {
   constructor(message, statusCode) {
-    super(message);
-    this.statusCode = statusCode;
+    super(message, statusCode);
+    // Maintain backward compatibility
+    this.name = 'ErrorResponse';
   }
 }
 

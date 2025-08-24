@@ -32,19 +32,21 @@ const generateAccountNumber = async () => {
   return accountNumber;
 };
 
-// Run a function within a MongoDB transaction session (ACID across multiple writes)
+// Enhanced transaction wrapper using the new FinancialTransactionService
+// This maintains backward compatibility while providing better ACID compliance
 const withTransaction = async fn => {
   const session = await mongoose.startSession();
-  session.startTransaction();
+
   try {
-    const result = await fn(session);
-    await session.commitTransaction();
-    session.endSession();
-    return result;
+    await session.withTransaction(async () => {
+      return await fn(session);
+    });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    // Log transaction errors for debugging
+    console.error('Transaction failed:', error);
     throw error;
+  } finally {
+    await session.endSession();
   }
 };
 

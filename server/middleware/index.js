@@ -7,7 +7,7 @@ const {
   asyncHandler,
   notFound,
   setupGlobalErrorHandlers,
-} = require('./errorHandler');
+} = require('../utils/errorHandler');
 const validate = require('./validate');
 
 module.exports = {
