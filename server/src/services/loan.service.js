@@ -265,51 +265,71 @@ class LoanService {
    * @private
    */
   async processLoanDisbursement(loan, approverId) {
-    // Find or create borrower's account
-    let borrowerAccount = await Account.findOne({
-      owner: loan.borrower,
-      ownerModel: loan.borrowerModel,
-      type: 'savings',
-      status: 'active',
-    });
+    // Ensure atomic disbursement using a MongoDB session and centralized financial transaction utility
+    const mongoose = require('mongoose');
+    const {
+      createFinancialTransaction,
+    } = require('../../utils/financialUtils');
 
-    if (!borrowerAccount) {
-      borrowerAccount = await Account.create({
-        owner: loan.borrower,
-        ownerModel: loan.borrowerModel,
-        type: 'savings',
-        accountNumber: `SAV-${loan.borrower.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`,
-        balance: 0,
+    const session = await mongoose.startSession();
+    let borrowerAccount;
+
+    try {
+      await session.withTransaction(async () => {
+        // Find or create borrower's savings account within the session
+        borrowerAccount = await Account.findOne({
+          owner: loan.borrower,
+          ownerModel: loan.borrowerModel,
+          type: 'savings',
+          status: 'active',
+        }).session(session);
+
+        if (!borrowerAccount) {
+          const created = await Account.create(
+            [
+              {
+                owner: loan.borrower,
+                ownerModel: loan.borrowerModel,
+                type: 'savings',
+                accountNumber: `SAV-${loan.borrower.toString().substring(0, 8)}-${Date.now().toString().slice(-4)}`,
+                balance: 0,
+                status: 'active',
+              },
+            ],
+            { session }
+          );
+          borrowerAccount = created[0];
+        }
+
+        // Create the disbursement as a financial transaction (updates balance atomically)
+        await createFinancialTransaction(
+          {
+            type: 'loan_disbursement',
+            member: loan.borrowerModel === 'User' ? loan.borrower : null,
+            group: loan.borrowerModel === 'Group' ? loan.borrower : null,
+            account: borrowerAccount._id,
+            amount: loan.amountApproved,
+            description: `Loan disbursement for Loan ID: ${loan._id}`,
+            status: 'completed',
+            createdBy: approverId,
+            relatedEntity: loan._id,
+            relatedEntityType: 'Loan',
+          },
+          { session }
+        );
+
+        // Update group's total loans outstanding if applicable, within the same session
+        if (loan.borrowerModel === 'Group') {
+          const group = await Group.findById(loan.borrower).session(session);
+          if (group) {
+            group.totalLoansOutstanding =
+              (group.totalLoansOutstanding || 0) + loan.amountApproved;
+            await group.save({ session });
+          }
+        }
       });
-    }
-
-    // Update account balance
-    const newBalance = borrowerAccount.balance + loan.amountApproved;
-    borrowerAccount.balance = newBalance;
-    await borrowerAccount.save();
-
-    // Create transaction record
-    await Transaction.create({
-      type: 'loan_disbursement',
-      member: loan.borrowerModel === 'User' ? loan.borrower : null,
-      group: loan.borrowerModel === 'Group' ? loan.borrower : null,
-      amount: loan.amountApproved,
-      description: `Loan disbursement for Loan ID: ${loan._id}`,
-      status: 'completed',
-      balanceAfter: newBalance,
-      createdBy: approverId,
-      relatedEntity: loan._id,
-      relatedEntityType: 'Loan',
-    });
-
-    // Update group's total loans outstanding if applicable
-    if (loan.borrowerModel === 'Group') {
-      const group = await Group.findById(loan.borrower);
-      if (group) {
-        group.totalLoansOutstanding =
-          (group.totalLoansOutstanding || 0) + loan.amountApproved;
-        await group.save();
-      }
+    } finally {
+      await session.endSession();
     }
   }
 
