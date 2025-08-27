@@ -15,8 +15,10 @@ import AuthLayout from "./layouts/AuthLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
 
 // Auth Pages
-import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
+// import LoginPage from "./pages/auth/LoginPage";
+// import RegisterPage from "./pages/auth/RegisterPage";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 
 // Main Pages
@@ -92,8 +94,8 @@ function App() {
                   <Routes>
                     {/* Auth Routes */}
                     <Route path="/auth" element={<AuthLayout />}>
-                      <Route path="login" element={<LoginPage />} />
-                      <Route path="register" element={<RegisterPage />} />
+                      <Route path="login" element={<Login />} />
+                      <Route path="register" element={<Register />} />
                       <Route
                         path="forgot-password"
                         element={<ForgotPasswordPage />}
