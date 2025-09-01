@@ -1,61 +1,29 @@
-import React, { useState, useEffect } from "react";
-import { StatsCard } from "../components/ui/stats-card";
-import {
-  FacebookCard,
-  FacebookCardHeader,
-  FacebookCardContent,
-} from "../components/ui/facebook-card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Badge } from "../components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
-import { groupService } from "../services/groupService";
-import { toast } from "sonner";
-import FormModal from "../components/modals/FormModal";
-import GroupForm from "../components/forms/GroupForm";
-import AddMemberToGroupModal from "../components/modals/AddMemberToGroupModal";
-import {
-  Building2,
-  Plus,
-  Search,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Trash2,
-  Users,
-  Loader2,
-  TrendingUp,
-  CheckCircle,
-  Clock,
-  UserPlus,
-} from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 
-const GroupsPage = () => {
-  const { user, hasRole } = useAuth();
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Plus, Search, Edit2, Trash2, Users, MapPin, Calendar, Eye } from 'lucide-react';
+import { toast } from 'sonner';
+import GroupForm from '../components/forms/GroupForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
+import { groupService } from '../services/groupService';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
+
+export default function GroupsPage() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [actionLoading, setActionLoading] = useState({});
+  
+  const navigate = useNavigate();
 
-  // Fetch groups from API
   useEffect(() => {
     fetchGroups();
   }, []);
@@ -63,351 +31,276 @@ const GroupsPage = () => {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      const response = await groupService.getAll({
-        search: searchTerm || undefined,
-      });
-      setGroups(response.data.data || []);
+      const response = await groupService.getAllGroups();
+      setGroups(response.data || []);
     } catch (error) {
-      console.error("Error fetching groups:", error);
-      toast.error("Failed to load groups");
+      console.error('Error fetching groups:', error);
+      toast.error('Failed to fetch groups');
+      setGroups([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchGroups();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Handle group creation
   const handleCreateGroup = async (groupData) => {
     try {
-      console.log("Creating group with data:", groupData);
-      const payload = {
-        ...groupData,
-        leaderId: groupData.leaderId || user?._id || user?.id,
-      };
-      const res = await groupService.create(payload);
-      const created = res?.data?.data;
-      toast.success("Group created successfully");
-      setIsCreateGroupOpen(false);
-      if (created) {
-        setGroups((prev) => [created, ...prev]);
-      } else {
-        fetchGroups();
-      }
+      const response = await groupService.createGroup(groupData);
+      setGroups(prev => [...prev, response.data]);
+      setIsDialogOpen(false);
+      toast.success('Group created successfully');
     } catch (error) {
-      console.error("Error creating group:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
-      toast.error(error.response?.data?.message || "Failed to create group");
+      console.error('Error creating group:', error);
+      toast.error(error.response?.data?.message || 'Failed to create group');
     }
   };
 
-  // Handle group update
-  const handleUpdateGroup = async (groupData) => {
+  const handleUpdateGroup = async (id, groupData) => {
     try {
-      await groupService.update(
-        selectedGroup._id || selectedGroup.id,
-        groupData
-      );
-      toast.success("Group updated successfully");
-      setIsEditGroupOpen(false);
-      fetchGroups();
+      const response = await groupService.updateGroup(id, groupData);
+      setGroups(prev => prev.map(group => 
+        group._id === id ? response.data : group
+      ));
+      setEditingGroup(null);
+      setIsDialogOpen(false);
+      toast.success('Group updated successfully');
     } catch (error) {
-      console.error("Error updating group:", error);
-      toast.error("Failed to update group");
+      console.error('Error updating group:', error);
+      toast.error(error.response?.data?.message || 'Failed to update group');
     }
   };
 
-  // Handle group deletion
   const handleDeleteGroup = async (id) => {
-    if (window.confirm("Are you sure you want to delete this group?")) {
-      try {
-        await groupService.delete(id);
-        toast.success("Group deleted successfully");
-        fetchGroups();
-      } catch (error) {
-        console.error("Error deleting group:", error);
-        toast.error("Failed to delete group");
-      }
+    try {
+      setActionLoading(prev => ({ ...prev, [id]: true }));
+      await groupService.deleteGroup(id);
+      setGroups(prev => prev.filter(group => group._id !== id));
+      toast.success('Group deleted successfully');
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete group');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
+
+  const handleViewGroup = (groupId) => {
+    navigate(`/groups/${groupId}`);
+  };
+
+  const filteredGroups = groups.filter(group =>
+    group.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.leader?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.location?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusColor = (status) => {
+    const colors = {
+      active: 'bg-green-100 text-green-800',
+      inactive: 'bg-red-100 text-red-800',
+      pending: 'bg-yellow-100 text-yellow-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Groups Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage microfinance groups and their members
-          </p>
+          <h1 className="text-3xl font-bold">Groups Management</h1>
+          <p className="text-muted-foreground">Manage microfinance groups and their members</p>
         </div>
-        {hasRole(["admin", "officer"]) && (
-          <Button
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-            onClick={() => setIsCreateGroupOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Group
-          </Button>
-        )}
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
-        <StatsCard
-          title="Total Groups"
-          value={groups && groups.length ? groups.length.toString() : "0"}
-          description="Active microfinance groups"
-          icon={Building2}
-          trend="up"
-          changeType="positive"
-          change="+15%"
-        />
-        <StatsCard
-          title="Total Members"
-          value={
-            groups && groups.length
-              ? groups
-                  .reduce((sum, group) => sum + (group.memberCount || 0), 0)
-                  .toString()
-              : "0"
-          }
-          description="Across all groups"
-          icon={Users}
-          changeType="positive"
-          change="+8%"
-        />
-        <StatsCard
-          title="Active Groups"
-          value={
-            groups && groups.length
-              ? groups.filter((g) => g.status === "active").length.toString()
-              : "0"
-          }
-          description="Currently meeting regularly"
-          icon={CheckCircle}
-          changeType="positive"
-          change="+12%"
-        />
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setEditingGroup(null)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Group
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingGroup ? 'Edit Group' : 'Create New Group'}
+              </DialogTitle>
+            </DialogHeader>
+            <GroupForm
+              group={editingGroup}
+              onSubmit={editingGroup ? 
+                (data) => handleUpdateGroup(editingGroup._id, data) : 
+                handleCreateGroup
+              }
+              onCancel={() => setIsDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-        <Input
-          type="text"
-          placeholder="Search groups..."
-          className="pl-10 border-2 border-blue-200 focus:border-purple-500 focus:ring-purple-500/20"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex items-center space-x-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by group name, leader, or location..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex justify-center items-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-700 dark:text-gray-300">
-            Loading groups...
-          </span>
-        </div>
-      )}
-
-      {/* Groups Table */}
-      {!loading && groups.length === 0 ? (
-        <FacebookCard className="border-2 border-blue-200">
-          <FacebookCardContent className="text-center py-12">
-            <Building2 className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
-              No Groups Found
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              {searchTerm
-                ? "Try adjusting your search criteria"
-                : "Click Create Group at the top-right to add your first group"}
-            </p>
-          </FacebookCardContent>
-        </FacebookCard>
-      ) : (
-        !loading && (
-          <FacebookCard className="border-2 border-blue-200">
-            <FacebookCardHeader>
-              <div className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Microfinance Groups
-                </h2>
+      {/* Groups Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {filteredGroups.map((group) => (
+          <Card key={group._id} className="hover:shadow-lg transition-all duration-200">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <CardTitle className="text-lg mb-1">{group.name}</CardTitle>
+                  <Badge className={getStatusColor(group.status)}>
+                    {group.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  {group.members?.length || 0}
+                </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                View and manage all groups in the microfinance system
-              </p>
-            </FacebookCardHeader>
-            <FacebookCardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-blue-50 to-purple-50">
-                    <TableHead className="text-blue-900 font-semibold">
-                      Group Name
-                    </TableHead>
-                    <TableHead className="text-blue-900 font-semibold">
-                      Members
-                    </TableHead>
-                    <TableHead className="text-blue-900 font-semibold">
-                      Status
-                    </TableHead>
-                    <TableHead className="text-blue-900 font-semibold">
-                      Created
-                    </TableHead>
-                    <TableHead className="text-right text-blue-900 font-semibold">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groups && groups.length > 0 ? (
-                    groups.map((group) => (
-                      <TableRow
-                        key={group._id || group.id}
-                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-all duration-200"
-                      >
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                              <Building2 className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                              <div className="font-medium">{group.name}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {group.description?.substring(0, 50)}
-                                {group.description?.length > 50 ? "..." : ""}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Users className="mr-2 h-4 w-4 text-muted-foreground" />
-                            {group.memberCount || 0} members
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              group.status === "active"
-                                ? "success"
-                                : group.status === "pending"
-                                ? "warning"
-                                : "destructive"
-                            }
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {group.description && (
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {group.description}
+                  </p>
+                )}
+                
+                {group.leader && (
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="text-xs">
+                        {group.leader.name?.charAt(0) || 'L'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="text-sm font-medium">{group.leader.name}</div>
+                      <div className="text-xs text-muted-foreground">Group Leader</div>
+                    </div>
+                  </div>
+                )}
+
+                {group.location && (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    {group.location}
+                  </div>
+                )}
+
+                {group.meetingSchedule && (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    {group.meetingSchedule}
+                  </div>
+                )}
+
+                {group.members && group.members.length > 0 && (
+                  <div className="flex -space-x-2">
+                    {group.members.slice(0, 3).map((member, index) => (
+                      <Avatar key={member._id || index} className="h-8 w-8 border-2 border-background">
+                        <AvatarFallback className="text-xs">
+                          {member.name?.charAt(0) || 'M'}
+                        </AvatarFallback>
+                      </Avatar>
+                    ))}
+                    {group.members.length > 3 && (
+                      <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                        <span className="text-xs font-medium">
+                          +{group.members.length - 3}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-3 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewGroup(group._id)}
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingGroup(group);
+                        setIsDialogOpen(true);
+                      }}
+                      disabled={actionLoading[group._id]}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={actionLoading[group._id]}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Group</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{group.name}"? This will remove all members and cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteGroup(group._id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           >
-                            {group.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(group.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Link
-                                  to={`/groups/${group._id || group.id}`}
-                                  className="flex items-center w-full"
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedGroup(group);
-                                  setIsEditGroupOpen(true);
-                                }}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Group
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedGroup(group);
-                                  setIsAddMemberOpen(true);
-                                }}
-                              >
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Add Member to Group
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() =>
-                                  handleDeleteGroup(group._id || group.id)
-                                }
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Group
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-6">
-                        <p className="text-gray-500 dark:text-gray-400">
-                          No groups found
-                        </p>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </FacebookCardContent>
-          </FacebookCard>
-        )
-      )}
+                            Delete Group
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-      {/* Create Group Modal */}
-      <FormModal
-        isOpen={isCreateGroupOpen}
-        onClose={() => setIsCreateGroupOpen(false)}
-        title="Create New Group"
-      >
-        <GroupForm onSubmit={handleCreateGroup} />
-      </FormModal>
-
-      {/* Edit Group Modal */}
-      <FormModal
-        isOpen={isEditGroupOpen}
-        onClose={() => setIsEditGroupOpen(false)}
-        title="Edit Group"
-      >
-        <GroupForm onSubmit={handleUpdateGroup} initialData={selectedGroup} />
-      </FormModal>
-
-      {/* Add Member to Group Modal */}
-      {selectedGroup && (
-        <AddMemberToGroupModal
-          isOpen={isAddMemberOpen}
-          onClose={() => setIsAddMemberOpen(false)}
-          groupId={selectedGroup._id || selectedGroup.id}
-          onSuccess={fetchGroups}
-        />
+      {filteredGroups.length === 0 && !loading && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No groups found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm 
+                ? 'Try adjusting your search criteria'
+                : 'Get started by creating your first microfinance group'
+              }
+            </p>
+            {!searchTerm && (
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Group
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
-};
-
-export default GroupsPage;
+}

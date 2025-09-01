@@ -1,741 +1,366 @@
-import React, { useState, useEffect } from "react";
-import { StatsCard } from "../components/ui/stats-card";
-import {
-  FacebookCard,
-  FacebookCardHeader,
-  FacebookCardContent,
-} from "../components/ui/facebook-card";
-import { ActionButton } from "../components/ui/action-button";
-import { ActivityItem } from "../components/ui/activity-item";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
-import FormModal from "../components/modals/FormModal";
-import LoanForm from "../components/forms/LoanForm";
-import { financialService } from "../services/financialService";
-import { toast } from "sonner";
-import { Link } from "react-router-dom";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
-import { useAuth } from "../hooks/useAuth";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import {
-  DollarSign,
-  Plus,
-  Search,
-  Filter,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  CheckCircle,
-  XCircle,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  User,
-  Calendar,
-  CreditCard,
-  AlertCircle,
-  Loader2,
-  RefreshCw,
-  Building2,
-  AlertTriangle,
-  Shield,
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Plus, Search, Edit2, Trash2, DollarSign, Calendar, User, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import LoanForm from '../components/forms/LoanForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
+import { loanService } from '../services/loanService';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
-const LoansPage = () => {
+export default function LoansPage() {
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterBorrowerType, setFilterBorrowerType] = useState("all");
-  const [isNewLoanOpen, setIsNewLoanOpen] = useState(false);
-  const [selectedLoan, setSelectedLoan] = useState(null);
-  const [isEditLoanOpen, setIsEditLoanOpen] = useState(false);
-  const [showLoanDetails, setShowLoanDetails] = useState(false);
-  const [loanStats, setLoanStats] = useState({
-    totalLoans: 0,
-    totalAmount: 0,
-    approvedLoans: 0,
-    pendingLoans: 0,
-    disbursedLoans: 0,
-    overdueLoans: 0,
-    averageLoanAmount: 0,
-    portfolioHealth: 0,
-  });
-  const [portfolioAnalysis, setPortfolioAnalysis] = useState({});
-  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingLoan, setEditingLoan] = useState(null);
+  const [actionLoading, setActionLoading] = useState({});
 
-  /**
-   * Fetch loans from API on component mount
-   */
   useEffect(() => {
     fetchLoans();
-    fetchLoanStats();
   }, []);
 
-  /**
-   * Filter loans based on search term and filters
-   */
-  useEffect(() => {
-    const params = {};
-    if (searchTerm) params.search = searchTerm;
-    if (filterStatus !== "all") params.status = filterStatus;
-    if (filterBorrowerType !== "all") params.borrowerModel = filterBorrowerType;
-    fetchLoans(params);
-  }, [searchTerm, filterStatus, filterBorrowerType]);
-
-  /**
-   * Fetch loans from the API with optional search and filter parameters
-   * @async
-   */
-  const fetchLoans = async (params = {}) => {
+  const fetchLoans = async () => {
     try {
       setLoading(true);
-      const response = await financialService.getLoanPortfolio(params);
-      const data = Array.isArray(response.data?.data) ? response.data.data : [];
-      setLoans(data);
+      const response = await loanService.getAllLoans();
+      setLoans(response.data || []);
     } catch (error) {
-      console.error("Error fetching loans:", error);
-      toast.error("Failed to fetch loans");
+      console.error('Error fetching loans:', error);
+      toast.error('Failed to fetch loans');
+      setLoans([]);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Fetch loan statistics and portfolio analysis
-   */
-  const fetchLoanStats = async () => {
+  const handleCreateLoan = async (loanData) => {
     try {
-      const [statsResponse, defaultersResponse] = await Promise.all([
-        financialService.getLoanStats(),
-        financialService.getLoanDefaulters(),
-      ]);
-
-      const stats = statsResponse.data?.data || {};
-      const defaulters = defaultersResponse.data?.data || [];
-
-      // Calculate portfolio analysis
-      const analysis = financialService.analyzePortfolio(loans);
-      setPortfolioAnalysis(analysis);
-
-      setLoanStats({
-        totalLoans: stats.totalLoans || 0,
-        totalAmount: stats.totalAmount || 0,
-        approvedLoans: stats.approvedLoans || 0,
-        pendingLoans: stats.pendingLoans || 0,
-        disbursedLoans: stats.disbursedLoans || 0,
-        overdueLoans: defaulters.length,
-        averageLoanAmount: stats.averageLoanAmount || 0,
-        portfolioHealth: analysis.completionRate || 0,
-      });
+      const response = await loanService.createLoan(loanData);
+      setLoans(prev => [...prev, response.data]);
+      setIsDialogOpen(false);
+      toast.success('Loan created successfully');
     } catch (error) {
-      console.error("Error fetching loan stats:", error);
+      console.error('Error creating loan:', error);
+      toast.error(error.response?.data?.message || 'Failed to create loan');
     }
   };
 
-  const handleCreateLoan = () => {
-    setIsNewLoanOpen(true);
+  const handleUpdateLoan = async (id, loanData) => {
+    try {
+      const response = await loanService.updateLoan(id, loanData);
+      setLoans(prev => prev.map(loan => 
+        loan._id === id ? response.data : loan
+      ));
+      setEditingLoan(null);
+      setIsDialogOpen(false);
+      toast.success('Loan updated successfully');
+    } catch (error) {
+      console.error('Error updating loan:', error);
+      toast.error(error.response?.data?.message || 'Failed to update loan');
+    }
   };
 
-  const handleEditLoan = (loan) => {
-    setSelectedLoan(loan);
-    setIsEditLoanOpen(true);
+  const handleDeleteLoan = async (id) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [id]: true }));
+      await loanService.deleteLoan(id);
+      setLoans(prev => prev.filter(loan => loan._id !== id));
+      toast.success('Loan deleted successfully');
+    } catch (error) {
+      console.error('Error deleting loan:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete loan');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
+    }
   };
 
-  const handleViewLoanDetails = (loan) => {
-    setSelectedLoan(loan);
-    setShowLoanDetails(true);
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      setActionLoading(prev => ({ ...prev, [`${id}_status`]: true }));
+      const response = await loanService.updateLoanStatus(id, newStatus);
+      setLoans(prev => prev.map(loan => 
+        loan._id === id ? { ...loan, status: newStatus } : loan
+      ));
+      toast.success(`Loan ${newStatus} successfully`);
+    } catch (error) {
+      console.error('Error updating loan status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update loan status');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [`${id}_status`]: false }));
+    }
   };
 
-  const handleLoanSuccess = () => {
-    setIsNewLoanOpen(false);
-    setIsEditLoanOpen(false);
-    setSelectedLoan(null);
-    fetchLoans();
-    fetchLoanStats();
-    toast.success("Loan updated successfully");
-  };
+  const filteredLoans = loans.filter(loan => {
+    const matchesSearch = 
+      loan.borrower?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loan.group?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loan.loanId?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const getLoanStatusColor = (status) => {
+    const matchesStatus = statusFilter === 'all' || loan.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusColor = (status) => {
     const colors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-blue-100 text-blue-800",
-      disbursed: "bg-green-100 text-green-800",
-      overdue: "bg-red-100 text-red-800",
-      completed: "bg-purple-100 text-purple-800",
-      rejected: "bg-gray-100 text-gray-800",
+      pending: 'bg-yellow-100 text-yellow-800',
+      approved: 'bg-green-100 text-green-800',
+      active: 'bg-blue-100 text-blue-800',
+      completed: 'bg-gray-100 text-gray-800',
+      rejected: 'bg-red-100 text-red-800',
+      defaulted: 'bg-red-200 text-red-900'
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const getBorrowerTypeLabel = (borrowerModel) => {
-    return borrowerModel === "User" ? "Individual" : "Group";
-  };
-
-  const getRiskLevelColor = (riskLevel) => {
-    const colors = {
-      low: "bg-green-100 text-green-800",
-      medium: "bg-yellow-100 text-yellow-800",
-      high: "bg-red-100 text-red-800",
+  const getStatusIcon = (status) => {
+    const icons = {
+      pending: <Clock className="h-4 w-4" />,
+      approved: <CheckCircle className="h-4 w-4" />,
+      active: <DollarSign className="h-4 w-4" />,
+      completed: <CheckCircle className="h-4 w-4" />,
+      rejected: <XCircle className="h-4 w-4" />,
+      defaulted: <AlertCircle className="h-4 w-4" />
     };
-    return colors[riskLevel] || "bg-gray-100 text-gray-800";
+    return icons[status] || <Clock className="h-4 w-4" />;
   };
 
-  if (loading && loans.length === 0) {
-    return <LoadingSpinner />;
-  }
+  const calculateProgress = (loan) => {
+    if (!loan.repaymentSchedule || loan.repaymentSchedule.length === 0) return 0;
+    const paidInstallments = loan.repaymentSchedule.filter(schedule => schedule.status === 'paid').length;
+    return (paidInstallments / loan.repaymentSchedule.length) * 100;
+  };
+
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Loan Management</h1>
-          <p className="text-muted-foreground">
-            Manage loan applications, approvals, and portfolio health
-          </p>
+          <h1 className="text-3xl font-bold">Loans Management</h1>
+          <p className="text-muted-foreground">Manage loan applications and repayments</p>
         </div>
-        <Button onClick={handleCreateLoan}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Loan Application
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setEditingLoan(null)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Loan
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingLoan ? 'Edit Loan' : 'Create New Loan'}
+              </DialogTitle>
+            </DialogHeader>
+            <LoanForm
+              loan={editingLoan}
+              onSubmit={editingLoan ? 
+                (data) => handleUpdateLoan(editingLoan._id, data) : 
+                handleCreateLoan
+              }
+              onCancel={() => setIsDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Loans</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loanStats.totalLoans}</div>
-            <p className="text-xs text-muted-foreground">
-              All loan applications
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Portfolio
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(loanStats.totalAmount)}
-            </div>
-            <p className="text-xs text-muted-foreground">Total loan value</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loanStats.disbursedLoans}</div>
-            <p className="text-xs text-muted-foreground">Currently disbursed</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Portfolio Health
-            </CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {loanStats.portfolioHealth.toFixed(1)}%
-            </div>
-            <p className="text-xs text-muted-foreground">Completion rate</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Portfolio Health Alert */}
-      {loanStats.overdueLoans > 0 && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <p className="text-red-800 font-medium">
-                {loanStats.overdueLoans} loan(s) are overdue. Review and take
-                action.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Filters */}
-      <FacebookCard>
-        <FacebookCardHeader>
-          <CardTitle>Filters</CardTitle>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium">Search</label>
-              <Input
-                placeholder="Search loans..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Status</label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="disbursed">Disbursed</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Borrower Type</label>
-              <Select
-                value={filterBorrowerType}
-                onValueChange={setFilterBorrowerType}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="User">Individual</SelectItem>
-                  <SelectItem value="Group">Group</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterStatus("all");
-                  setFilterBorrowerType("all");
-                  fetchLoans();
-                }}
-                className="w-full"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-        </FacebookCardContent>
-      </FacebookCard>
-
-      {/* Loans Table */}
-      <FacebookCard>
-        <FacebookCardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Loan Applications</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchLoans()}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Application ID</TableHead>
-                  <TableHead>Borrower</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Risk Level</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loans.map((loan) => (
-                  <TableRow key={loan._id}>
-                    <TableCell className="font-medium">
-                      {loan._id.toString().substring(0, 8)}
-                    </TableCell>
-                    <TableCell>{loan.borrower?.name || "Unknown"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {loan.borrowerModel === "User" ? (
-                          <User className="h-4 w-4 text-blue-500" />
-                        ) : (
-                          <Building2 className="h-4 w-4 text-green-500" />
-                        )}
-                        {getBorrowerTypeLabel(loan.borrowerModel)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {financialService.formatCurrency(loan.amountRequested)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getLoanStatusColor(loan.status)}>
-                        {loan.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {loan.riskAssessment ? (
-                        <Badge
-                          className={getRiskLevelColor(
-                            loan.riskAssessment.riskLevel
-                          )}
-                        >
-                          {loan.riskAssessment.riskLevel}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          Not assessed
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {financialService.formatDate(loan.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleViewLoanDetails(loan)}
-                          >
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleEditLoan(loan)}
-                          >
-                            Edit Application
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            View Repayment Schedule
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Download Statement
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {loans.length === 0 && !loading && (
-            <div className="text-center py-8">
-              <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No loans found</p>
-            </div>
-          )}
-        </FacebookCardContent>
-      </FacebookCard>
-
-      {/* Create Loan Dialog */}
-      <Dialog open={isNewLoanOpen} onOpenChange={setIsNewLoanOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>New Loan Application</DialogTitle>
-          </DialogHeader>
-          <LoanForm onSuccess={handleLoanSuccess} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Loan Dialog */}
-      <Dialog open={isEditLoanOpen} onOpenChange={setIsEditLoanOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Loan Application</DialogTitle>
-          </DialogHeader>
-          <LoanForm loan={selectedLoan} onSuccess={handleLoanSuccess} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Loan Details Dialog */}
-      <Dialog open={showLoanDetails} onOpenChange={setShowLoanDetails}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Loan Details</DialogTitle>
-          </DialogHeader>
-          {selectedLoan && <LoanDetails loan={selectedLoan} />}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-// Component to show detailed loan information
-const LoanDetails = ({ loan }) => {
-  const [repaymentSchedule, setRepaymentSchedule] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (loan) {
-      fetchLoanDetails();
-    }
-  }, [loan]);
-
-  const fetchLoanDetails = async () => {
-    try {
-      setLoading(true);
-      // Fetch repayment schedule and transactions
-      // This would need to be implemented in the backend
-      setRepaymentSchedule(loan.repaymentSchedule || []);
-      setTransactions([]); // Would fetch from transactions service
-    } catch (error) {
-      console.error("Error fetching loan details:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Loan Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Loan Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">
-                Application ID:
-              </span>
-              <span className="font-medium">
-                {loan._id.toString().substring(0, 8)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Borrower:</span>
-              <span className="font-medium">{loan.borrower?.name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">
-                Amount Requested:
-              </span>
-              <span className="font-medium">
-                {financialService.formatCurrency(loan.amountRequested)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">
-                Amount Approved:
-              </span>
-              <span className="font-medium">
-                {loan.amountApproved
-                  ? financialService.formatCurrency(loan.amountApproved)
-                  : "Not approved"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">
-                Interest Rate:
-              </span>
-              <span className="font-medium">{loan.interestRate}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Loan Term:</span>
-              <span className="font-medium">{loan.loanTerm} months</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Status & Risk</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Status:</span>
-              <Badge className={getLoanStatusColor(loan.status)}>
-                {loan.status}
-              </Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Risk Level:</span>
-              {loan.riskAssessment ? (
-                <Badge
-                  className={getRiskLevelColor(loan.riskAssessment.riskLevel)}
-                >
-                  {loan.riskAssessment.riskLevel}
-                </Badge>
-              ) : (
-                <span className="text-muted-foreground">Not assessed</span>
-              )}
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Created:</span>
-              <span className="font-medium">
-                {financialService.formatDate(loan.createdAt)}
-              </span>
-            </div>
-            {loan.approvedAt && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Approved:</span>
-                <span className="font-medium">
-                  {financialService.formatDate(loan.approvedAt)}
-                </span>
-              </div>
-            )}
-            {loan.disbursedAt && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Disbursed:
-                </span>
-                <span className="font-medium">
-                  {financialService.formatDate(loan.disbursedAt)}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by borrower, group, or loan ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="defaulted">Defaulted</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Repayment Schedule */}
-      {repaymentSchedule.length > 0 && (
+      {/* Loans Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {filteredLoans.map((loan) => (
+          <Card key={loan._id} className="hover:shadow-lg transition-all duration-200">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">
+                    ${loan.amount?.toLocaleString() || '0'}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {loan.loanId || 'No ID'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(loan.status)}>
+                    {getStatusIcon(loan.status)}
+                    <span className="ml-1">{loan.status}</span>
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center text-sm">
+                  <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span className="font-medium">{loan.borrower?.name || 'Unknown Borrower'}</span>
+                </div>
+
+                {loan.group && (
+                  <div className="text-sm text-muted-foreground">
+                    Group: {loan.group.name}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Interest:</span>
+                    <div className="font-medium">{loan.interestRate || 0}%</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Term:</span>
+                    <div className="font-medium">{loan.term || 0} months</div>
+                  </div>
+                </div>
+
+                {loan.status === 'active' && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress:</span>
+                      <span>{Math.round(calculateProgress(loan))}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.round(calculateProgress(loan))}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-3 border-t">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingLoan(loan);
+                        setIsDialogOpen(true);
+                      }}
+                      disabled={actionLoading[loan._id]}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+
+                    {loan.status === 'pending' && (
+                      <>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleStatusChange(loan._id, 'approved')}
+                          disabled={actionLoading[`${loan._id}_status`]}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleStatusChange(loan._id, 'rejected')}
+                          disabled={actionLoading[`${loan._id}_status`]}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+
+                    {loan.status === 'approved' && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleStatusChange(loan._id, 'active')}
+                        disabled={actionLoading[`${loan._id}_status`]}
+                      >
+                        Disburse
+                      </Button>
+                    )}
+                  </div>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={actionLoading[loan._id]}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Loan</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this loan? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteLoan(loan._id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredLoans.length === 0 && !loading && (
         <Card>
-          <CardHeader>
-            <CardTitle>Repayment Schedule</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Paid Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {repaymentSchedule.map((installment, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        {financialService.formatDate(installment.dueDate)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {financialService.formatCurrency(installment.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(installment.status)}>
-                          {installment.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {installment.paidAt
-                          ? financialService.formatDate(installment.paidAt)
-                          : "-"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent className="text-center py-12">
+            <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No loans found</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm || statusFilter !== 'all' 
+                ? 'Try adjusting your search or filter criteria'
+                : 'Get started by creating your first loan application'
+              }
+            </p>
+            {!searchTerm && statusFilter === 'all' && (
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create First Loan
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
     </div>
   );
-};
-
-// Helper functions
-const getLoanStatusColor = (status) => {
-  const colors = {
-    pending: "bg-yellow-100 text-yellow-800",
-    approved: "bg-blue-100 text-blue-800",
-    disbursed: "bg-green-100 text-green-800",
-    overdue: "bg-red-100 text-red-800",
-    completed: "bg-purple-100 text-purple-800",
-    rejected: "bg-gray-100 text-gray-800",
-  };
-  return colors[status] || "bg-gray-100 text-gray-800";
-};
-
-const getRiskLevelColor = (riskLevel) => {
-  const colors = {
-    low: "bg-green-100 text-green-800",
-    medium: "bg-yellow-100 text-yellow-800",
-    high: "bg-red-100 text-red-800",
-  };
-  return colors[riskLevel] || "bg-gray-100 text-gray-800";
-};
-
-const getStatusColor = (status) => {
-  const colors = {
-    completed: "bg-green-100 text-green-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    failed: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-800",
-  };
-  return colors[status] || "bg-gray-100 text-gray-800";
-};
-
-export default LoansPage;
+}

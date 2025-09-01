@@ -1,102 +1,177 @@
-import { api } from "./api/client";
-import { ENDPOINTS } from "./api/endpoints";
 
-class LoanService {
+import api from './api/client';
+
+export const loanService = {
   // Get all loans
-  async getLoans(params = {}) {
-    const response = await api.get(ENDPOINTS.LOANS.BASE, { params });
-    return response.data;
-  }
+  getAllLoans: async () => {
+    try {
+      const response = await api.get('/loans');
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.getAllLoans error:', error);
+      throw error;
+    }
+  },
 
   // Get loan by ID
-  async getLoan(id) {
-    const response = await api.get(ENDPOINTS.LOANS.BY_ID(id));
-    return response.data;
-  }
+  getLoanById: async (id) => {
+    try {
+      const response = await api.get(`/loans/${id}`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.getLoanById error:', error);
+      throw error;
+    }
+  },
 
   // Create new loan
-  async createLoan(loanData) {
-    const response = await api.post(ENDPOINTS.LOANS.BASE, loanData);
-    return response.data;
-  }
+  createLoan: async (loanData) => {
+    try {
+      const response = await api.post('/loans', loanData);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.createLoan error:', error);
+      throw error;
+    }
+  },
 
   // Update loan
-  async updateLoan(id, loanData) {
-    const response = await api.put(ENDPOINTS.LOANS.BY_ID(id), loanData);
-    return response.data;
-  }
+  updateLoan: async (id, loanData) => {
+    try {
+      const response = await api.put(`/loans/${id}`, loanData);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.updateLoan error:', error);
+      throw error;
+    }
+  },
 
   // Delete loan
-  async deleteLoan(id) {
-    const response = await api.delete(ENDPOINTS.LOANS.BY_ID(id));
-    return response.data;
-  }
+  deleteLoan: async (id) => {
+    try {
+      const response = await api.delete(`/loans/${id}`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.deleteLoan error:', error);
+      throw error;
+    }
+  },
 
-  // Approve loan
-  async approveLoan(id, approvalData) {
-    const response = await api.put(ENDPOINTS.LOANS.APPROVE(id), approvalData);
-    return response.data;
-  }
+  // Update loan status
+  updateLoanStatus: async (id, status) => {
+    try {
+      const response = await api.patch(`/loans/${id}/status`, { status });
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.updateLoanStatus error:', error);
+      throw error;
+    }
+  },
 
-  // Reject loan
-  async rejectLoan(id, rejectionData) {
-    const response = await api.put(ENDPOINTS.LOANS.REJECT(id), rejectionData);
-    return response.data;
-  }
+  // Get loans by borrower
+  getLoansByBorrower: async (borrowerId) => {
+    try {
+      const response = await api.get(`/loans/borrower/${borrowerId}`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.getLoansByBorrower error:', error);
+      throw error;
+    }
+  },
 
-  // Disburse loan
-  async disburseLoan(id, disbursementData) {
-    const response = await api.put(ENDPOINTS.LOANS.DISBURSE(id), disbursementData);
-    return response.data;
-  }
+  // Get loans by group
+  getLoansByGroup: async (groupId) => {
+    try {
+      const response = await api.get(`/loans/group/${groupId}`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.getLoansByGroup error:', error);
+      throw error;
+    }
+  },
 
-  // Get loan repayment schedule
-  async getRepaymentSchedule(id) {
-    const response = await api.get(ENDPOINTS.LOANS.REPAYMENT_SCHEDULE(id));
-    return response.data;
-  }
-
-  // Add loan payment
-  async addPayment(id, paymentData) {
-    const response = await api.post(ENDPOINTS.LOANS.ADD_PAYMENT(id), paymentData);
-    return response.data;
-  }
-
-  // Get loan payments
-  async getPayments(id) {
-    const response = await api.get(ENDPOINTS.LOANS.PAYMENTS(id));
-    return response.data;
-  }
+  // Process loan repayment
+  processRepayment: async (loanId, repaymentData) => {
+    try {
+      const response = await api.post(`/loans/${loanId}/repayments`, repaymentData);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.processRepayment error:', error);
+      throw error;
+    }
+  },
 
   // Get loan statistics
-  async getLoanStats() {
-    const response = await api.get(ENDPOINTS.LOANS.STATS);
-    return response.data;
-  }
+  getLoanStats: async (filters = {}) => {
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const response = await api.get(`/loans/stats${queryParams ? `?${queryParams}` : ''}`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.getLoanStats error:', error);
+      throw error;
+    }
+  },
 
-  // Get pending loans
-  async getPendingLoans() {
-    const response = await api.get(ENDPOINTS.LOANS.BASE, { params: { status: 'pending' } });
-    return response.data;
-  }
+  // Generate loan report
+  generateLoanReport: async (filters = {}) => {
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const response = await api.get(`/loans/reports${queryParams ? `?${queryParams}` : ''}`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.generateLoanReport error:', error);
+      throw error;
+    }
+  },
 
-  // Get overdue loans
-  async getOverdueLoans() {
-    const response = await api.get(ENDPOINTS.LOANS.BASE, { params: { status: 'overdue' } });
-    return response.data;
+  // Calculate loan eligibility
+  calculateEligibility: async (borrowerId, amount) => {
+    try {
+      const response = await api.post('/loans/calculate-eligibility', {
+        borrowerId,
+        amount
+      });
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
+    } catch (error) {
+      console.error('LoanService.calculateEligibility error:', error);
+      throw error;
+    }
   }
-
-  // Get member loans
-  async getMemberLoans(memberId) {
-    const response = await api.get(ENDPOINTS.LOANS.BASE, { params: { borrower: memberId, borrowerModel: 'User' } });
-    return response.data;
-  }
-
-  // Get group loans
-  async getGroupLoans(groupId) {
-    const response = await api.get(ENDPOINTS.LOANS.BASE, { params: { borrower: groupId, borrowerModel: 'Group' } });
-    return response.data;
-  }
-}
-
-export const loanService = new LoanService();
+};
