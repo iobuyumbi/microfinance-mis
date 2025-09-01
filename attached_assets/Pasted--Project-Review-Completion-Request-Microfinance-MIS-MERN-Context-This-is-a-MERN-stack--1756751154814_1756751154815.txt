@@ -1,0 +1,124 @@
+# Project Review & Completion Request — Microfinance MIS (MERN)
+
+## Context
+This is a MERN-stack Microfinance MIS (Management Information System) project.  
+The codebase already exists, but it has repetitions, missing pieces, and unpolished UI.  
+I want Replit AI to **review the whole repo, fix it, finish it, and make it production-ready**.
+
+---
+
+## Environment Setup
+### Server (.env)
+MongoDB Configuration
+MONGO_URI=mongodb+srv://iobuyumbi:0101@cluster0.vrfaubu.mongodb.net/microfinance-mis2?retryWrites=true&w=majority&appName=Cluster0
+
+JWT Configuration
+JWT_SECRET=microfinance-mis-super-secret-jwt-key-2024
+JWT_EXPIRE=30d
+
+Server Configuration
+PORT=5000
+NODE_ENV=development
+
+Email Configuration (Nodemailer)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=iobuyumbi@gmail.com
+EMAIL_PASSWORD=ptwp ouak wnrh alnw
+FROM_NAME=Microfinance MIS
+FROM_EMAIL=noreply@microfinance-mis.com
+
+Frontend URL for CORS
+CLIENT_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173
+
+NODE_VERSION=20
+ESLINT_NO_DEV_ERRORS=true
+
+shell
+Copy code
+
+### Client (.env)
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+VITE_DEBUG=false
+
+App Configuration
+VITE_APP_NAME=Microfinance MIS
+VITE_APP_VERSION=1.0.0
+
+Feature Flags
+VITE_ENABLE_CHAT=true
+VITE_ENABLE_NOTIFICATIONS=true
+
+Build Configuration
+NODE_VERSION=20
+ESLINT_NO_DEV_ERRORS=true
+
+markdown
+Copy code
+
+---
+
+## Tasks for Replit AI
+
+### 🔹 Backend (Node + Express + MongoDB)
+1. Review and refactor **controllers, models, and routes** to ensure DRY, modular structure.
+2. Wrap **financial operations** (loans, repayments, savings, disbursements) in Mongo **transactions** to guarantee ACID safety.
+3. Ensure **Decimal128** or a safe decimal library is used for all money values.
+4. Add **idempotency keys** for payment/repayment endpoints.
+5. Implement **audit logging** (record before/after changes, actor, timestamp).
+6. Strengthen **auth & RBAC** (Admin, Field Officer, Group Leader).
+7. Add **Mpesa integration** (start with STK push or sandbox) so users can pay instantly into their savings/loan accounts.
+
+### 🔹 Frontend (React + Vite + Tailwind + shadcn/ui)
+1. Remove duplicate content (e.g., Login page repeated paragraph).
+2. Unify **UI components**: shared Layout, Navbar, Sidebar, DataTable, Form, Modal, EmptyState.
+3. Modernize visual design → minimalistic, mobile-first, modular, with consistent typography & spacing.
+4. Use **react-hook-form + zod** for validation.
+5. Show notifications via **sonner** or Toast component.
+6. Ensure accessibility (WCAG AA, keyboard navigation, aria labels).
+7. Optimize for mobile: responsive grids, collapsible sidebar, touch-friendly buttons.
+
+### 🔹 General Improvements
+1. Centralize API endpoints (`ENDPOINTS` file + `buildUrl` helper).
+2. Remove dead/unused code, duplicate pages, or repeated strings.
+3. Add **tests** for critical financial logic (interest, repayments, penalties).
+4. Configure ESLint + Prettier + Husky hooks.
+5. Add indexes to Mongo for frequent queries (loans by user, repayments by date).
+6. Write a clear `README.md` and `.env.example`.
+7. Prepare for production deployment (build, Docker, CI/CD if possible).
+
+---
+
+## Deliverables
+- Fully functional MERN microfinance MIS.
+- Clean, minimal, mobile-friendly UI.
+- ACID-compliant financial operations with audit logs.
+- Mpesa integration ready for use.
+- Updated docs + example env file.
+- Step-by-step commit messages with explanations: **what changed & why**.
+
+---
+
+## Acceptance Criteria
+- ✅ No duplicate pages/components.
+- ✅ All money handled as Decimal128 (not float).
+- ✅ Transactions ensure data integrity (loan approval → disbursement → repayment).
+- ✅ Mpesa sandbox integration working.
+- ✅ UI consistent, minimal, mobile-friendly.
+- ✅ ESLint/Prettier pass, CI tests green.
+- ✅ Documentation up to date.
+
+---
+
+👉 Please go through the entire repo, refactor and complete it **step by step**, explaining what you changed and why at each commit.
+
+Frontend:
+
+https://microfinance-mis.vercel.app
+
+Backend API:
+
+https://microfinance-mis.onrender.com
