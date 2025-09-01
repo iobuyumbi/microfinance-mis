@@ -18,3 +18,7 @@ args = "cd server && pnpm install && pnpm run dev"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd client && pnpm install && pnpm run dev"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
