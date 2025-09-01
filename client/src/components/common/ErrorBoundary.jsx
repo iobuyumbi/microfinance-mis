@@ -1,67 +1,137 @@
-import React from "react";
-import { Button } from "../ui/button";
+
+import React from 'react';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { 
+      hasError: false, 
+      error: null, 
+      errorInfo: null,
+      errorId: null 
+    };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    return { 
+      hasError: true,
+      errorId: Date.now().toString(36) + Math.random().toString(36).substr(2)
+    };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+
+    // Log error to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('ErrorBoundary caught an error:', error, errorInfo);
+    }
+
+    // You could also log the error to an error reporting service here
+    // errorService.logError(error, errorInfo);
   }
+
+  handleReload = () => {
+    window.location.reload();
+  };
+
+  handleGoHome = () => {
+    window.location.href = '/dashboard';
+  };
+
+  handleRetry = () => {
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: null
+    });
+  };
 
   render() {
     if (this.state.hasError) {
+      const isNetworkError = this.state.error?.message?.includes('Network') || 
+                           this.state.error?.message?.includes('fetch');
+      
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-            </div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <AlertTriangle className="h-12 w-12 text-destructive" />
+              </div>
+              <CardTitle className="text-xl">
+                {isNetworkError ? 'Connection Error' : 'Something went wrong'}
+              </CardTitle>
+              <CardDescription>
+                {isNetworkError 
+                  ? 'Unable to connect to the server. Please check your internet connection.'
+                  : 'An unexpected error occurred. Our team has been notified.'
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {process.env.NODE_ENV === 'development' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="text-sm font-medium text-red-800 mb-2">
+                    Debug Information (Development Only)
+                  </div>
+                  <div className="text-xs text-red-700 font-mono">
+                    <div className="mb-1">
+                      <strong>Error:</strong> {this.state.error?.toString()}
+                    </div>
+                    <div className="mb-1">
+                      <strong>Error ID:</strong> {this.state.errorId}
+                    </div>
+                    {this.state.errorInfo?.componentStack && (
+                      <div>
+                        <strong>Component Stack:</strong>
+                        <pre className="mt-1 text-xs overflow-auto max-h-32">
+                          {this.state.errorInfo.componentStack}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex flex-col space-y-2">
+                <Button onClick={this.handleRetry} className="w-full">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Try Again
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={this.handleReload} 
+                  className="w-full"
+                >
+                  Reload Page
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={this.handleGoHome} 
+                  className="w-full"
+                >
+                  <Home className="mr-2 h-4 w-4" />
+                  Go to Dashboard
+                </Button>
+              </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Something went wrong
-            </h2>
-
-            <p className="text-gray-600 mb-6">
-              We're sorry, but something unexpected happened. Please try
-              refreshing the page.
-            </p>
-
-            <div className="space-y-3">
-              <Button
-                onClick={() => window.location.reload()}
-                className="w-full"
-              >
-                Refresh Page
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="w-full"
-              >
-                Try Again
-              </Button>
-            </div>
-          </div>
+              {!isNetworkError && (
+                <div className="text-center text-sm text-muted-foreground">
+                  Error ID: {this.state.errorId}
+                  <br />
+                  Please include this ID when reporting the issue.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       );
     }

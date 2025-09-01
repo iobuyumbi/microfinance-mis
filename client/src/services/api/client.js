@@ -1,18 +1,20 @@
 
 import axios from 'axios';
 import { toast } from 'sonner';
-import { ENDPOINTS, buildUrl } from './endpoints';
 
-// Create axios instance
+// API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  timeout: 30000,
+  baseURL: API_BASE_URL,
+  timeout: 30000, // 30 seconds timeout
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor for auth token
+// Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -20,10 +22,8 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Add idempotency key for POST, PUT, PATCH requests
-    if (['post', 'put', 'patch'].includes(config.method)) {
-      config.headers['Idempotency-Key'] = generateIdempotencyKey();
-    }
+    // Add request timestamp for debugging
+    config.metadata = { startTime: new Date() };
     
     return config;
   },
@@ -32,123 +32,141 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor for global error handling
 apiClient.interceptors.response.use(
   (response) => {
-    return response;
-  },
-  (error) => {
-    const { response, request } = error;
-    
-    if (response) {
-      // Server responded with error status
-      const { status, data } = response;
-      
-      switch (status) {
-        case 401:
-          // Unauthorized - clear token and redirect to login
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          if (window.location.pathname !== '/auth/login') {
-            window.location.href = '/auth/login';
-          }
-          toast.error('Session expired. Please login again.');
-          break;
-          
-        case 403:
-          toast.error('Access denied. Insufficient permissions.');
-          break;
-          
-        case 404:
-          toast.error('Resource not found.');
-          break;
-          
-        case 422:
-          // Validation errors
-          if (data.errors && Array.isArray(data.errors)) {
-            data.errors.forEach(err => toast.error(err.message || err));
-          } else {
-            toast.error(data.message || 'Validation failed.');
-          }
-          break;
-          
-        case 429:
-          toast.error('Too many requests. Please try again later.');
-          break;
-          
-        case 500:
-          toast.error('Server error. Please try again later.');
-          break;
-          
-        default:
-          toast.error(data.message || 'An unexpected error occurred.');
+    // Log response time in development
+    if (process.env.NODE_ENV === 'development' && response.config.metadata) {
+      const duration = new Date() - response.config.metadata.startTime;
+      console.log(`API Request: ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`);
+    }
+
+    // Ensure consistent response structure
+    if (response.data && typeof response.data === 'object') {
+      // If the response has a nested data structure, flatten it
+      if (response.data.success !== undefined && response.data.data !== undefined) {
+        return {
+          ...response,
+          data: response.data.data,
+          success: response.data.success,
+          message: response.data.message,
+          originalResponse: response.data
+        };
       }
-    } else if (request) {
-      // Network error
-      toast.error('Network error. Please check your connection.');
-    } else {
-      // Request setup error
-      toast.error('Request failed. Please try again.');
     }
     
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Handle network errors
+    if (!error.response) {
+      const networkError = {
+        message: 'Network error: Unable to connect to server',
+        type: 'network',
+        status: 0
+      };
+      
+      toast.error('Connection failed. Please check your internet connection.');
+      return Promise.reject(networkError);
+    }
+
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      // Clear invalid token
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Redirect to login unless already on auth page
+      if (!window.location.pathname.includes('/auth/')) {
+        toast.error('Session expired. Please login again.');
+        window.location.href = '/auth/login';
+      }
+      
+      return Promise.reject(error);
+    }
+
+    // Handle server errors
+    if (error.response?.status >= 500) {
+      toast.error('Server error. Please try again later.');
+    }
+
+    // Handle client errors (400-499)
+    if (error.response?.status >= 400 && error.response?.status < 500) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          'Request failed';
+      
+      // Don't show toast for validation errors (they should be handled by forms)
+      if (error.response?.status !== 422) {
+        toast.error(errorMessage);
+      }
+    }
+
+    // Retry logic for temporary failures
+    if (error.response?.status >= 500 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Wait 1 second before retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      try {
+        return await apiClient(originalRequest);
+      } catch (retryError) {
+        // If retry fails, continue with original error
+      }
+    }
+
     return Promise.reject(error);
   }
 );
 
-// Helper function to generate idempotency key
-const generateIdempotencyKey = () => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
-
 // Helper function to handle API responses consistently
 export const handleApiResponse = (response) => {
-  if (response.data) {
-    // Check if response has the expected structure
-    if (response.data.success !== undefined) {
-      return response.data.success ? response.data : null;
-    }
-    
-    // Handle different response structures
-    if (response.data.data) {
-      return response.data;
-    }
-    
-    return response.data;
+  if (response.success !== undefined) {
+    return response.success ? response : Promise.reject(response);
   }
   
+  // For responses that don't have success field, assume success if we got data
   return response;
 };
 
-// API helper functions
-export const apiRequest = {
-  get: async (endpoint, params = {}) => {
-    const url = buildUrl(endpoint, params);
-    const response = await apiClient.get(url);
-    return handleApiResponse(response);
-  },
-  
-  post: async (endpoint, data = {}, params = {}) => {
-    const url = buildUrl(endpoint, params);
-    const response = await apiClient.post(url, data);
-    return handleApiResponse(response);
-  },
-  
-  put: async (endpoint, data = {}, params = {}) => {
-    const url = buildUrl(endpoint, params);
-    const response = await apiClient.put(url, data);
-    return handleApiResponse(response);
-  },
-  
-  patch: async (endpoint, data = {}, params = {}) => {
-    const url = buildUrl(endpoint, params);
-    const response = await apiClient.patch(url, data);
-    return handleApiResponse(response);
-  },
-  
-  delete: async (endpoint, params = {}) => {
-    const url = buildUrl(endpoint, params);
-    const response = await apiClient.delete(url);
-    return handleApiResponse(response);
+// Helper function for API calls with loading states
+export const apiCall = async (apiFunction, options = {}) => {
+  const { 
+    onSuccess, 
+    onError, 
+    showSuccessToast = false, 
+    showErrorToast = true,
+    successMessage = 'Operation completed successfully',
+  } = options;
+
+  try {
+    const response = await apiFunction();
+    
+    if (showSuccessToast) {
+      toast.success(successMessage);
+    }
+    
+    if (onSuccess) {
+      onSuccess(response);
+    }
+    
+    return response;
+  } catch (error) {
+    if (showErrorToast && error.response?.status !== 422) {
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'An unexpected error occurred';
+      toast.error(errorMessage);
+    }
+    
+    if (onError) {
+      onError(error);
+    }
+    
+    throw error;
   }
 };
 

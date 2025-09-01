@@ -1,180 +1,306 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { PiggyBank, DollarSign, Loader2, User } from "lucide-react";
-import { toast } from "sonner";
 
-const SavingsForm = ({ onSubmit, initialData }) => {
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { Loader2, User, Building2, DollarSign, Percent } from 'lucide-react';
+
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Textarea } from '../ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import FormField from '../ui/form-field';
+import { memberService } from '../../services/memberService';
+import { groupService } from '../../services/groupService';
+
+// Validation schema
+const savingsSchema = z.object({
+  member: z.string().min(1, 'Member is required'),
+  group: z.string().optional(),
+  initialDeposit: z.number().min(0, 'Initial deposit must be positive').optional(),
+  interestRate: z.number().min(0, 'Interest rate must be positive').max(100, 'Interest rate cannot exceed 100%'),
+  accountType: z.enum(['individual', 'group'], {
+    required_error: 'Account type is required'
+  }),
+  description: z.string().optional(),
+  status: z.enum(['active', 'inactive']).default('active')
+});
+
+const SavingsForm = ({ 
+  initialData = null, 
+  onSubmit, 
+  onCancel, 
+  isEdit = false 
+}) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    savingsType: "",
-    amount: "",
-    frequency: "",
-    purpose: "",
-    owner: "",
-    ownerModel: "User",
+  const [members, setMembers] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isValid },
+    reset
+  } = useForm({
+    resolver: zodResolver(savingsSchema),
+    defaultValues: {
+      member: initialData?.member?._id || '',
+      group: initialData?.group?._id || '',
+      initialDeposit: initialData?.balance || 0,
+      interestRate: initialData?.interestRate || 5,
+      accountType: initialData?.accountType || 'individual',
+      description: initialData?.description || '',
+      status: initialData?.status || 'active'
+    },
+    mode: 'onChange'
   });
 
-  // Load initial data if provided (for edit mode)
+  const watchedAccountType = watch('accountType');
+
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        savingsType: initialData.savingsType || "",
-        amount: initialData.amount || "",
-        frequency: initialData.frequency || "",
-        purpose: initialData.purpose || "",
-        owner: initialData.owner || "",
-        ownerModel: initialData.ownerModel || "User",
+    fetchFormData();
+  }, []);
+
+  useEffect(() => {
+    if (initialData && isEdit) {
+      reset({
+        member: initialData.member?._id || '',
+        group: initialData.group?._id || '',
+        initialDeposit: initialData.balance || 0,
+        interestRate: initialData.interestRate || 5,
+        accountType: initialData.accountType || 'individual',
+        description: initialData.description || '',
+        status: initialData.status || 'active'
       });
     }
-  }, [initialData]);
+  }, [initialData, isEdit, reset]);
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const fetchFormData = async () => {
+    try {
+      setLoadingData(true);
+      const [membersResponse, groupsResponse] = await Promise.all([
+        memberService.getAll(),
+        groupService.getAll()
+      ]);
+
+      setMembers(membersResponse.data || membersResponse || []);
+      setGroups(groupsResponse.data || groupsResponse || []);
+    } catch (error) {
+      console.error('Error fetching form data:', error);
+      toast.error('Failed to load form data');
+    } finally {
+      setLoadingData(false);
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!formData.savingsType || !formData.amount || !formData.frequency) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-    
-    setLoading(true);
-
+  const onFormSubmit = async (data) => {
     try {
-      // Use the onSubmit prop to handle form submission
-      await onSubmit(formData);
+      setLoading(true);
       
-      // Only reset form if not in edit mode
-      if (!initialData) {
-        setFormData({ 
-          savingsType: "", 
-          amount: "", 
-          frequency: "", 
-          purpose: "",
-          owner: "",
-          ownerModel: "User", 
-        });
-      }
+      const savingsData = {
+        member: data.member,
+        group: data.group || null,
+        balance: data.initialDeposit || 0,
+        interestRate: data.interestRate,
+        accountType: data.accountType,
+        description: data.description,
+        status: data.status
+      };
+
+      await onSubmit(savingsData);
     } catch (error) {
-      console.error("Error submitting form:", error);
-      toast.error("Error saving account information");
+      console.error('Error submitting form:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+        Loading form data...
+      </div>
+    );
+  }
+
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <PiggyBank className="h-5 w-5" />
-          {initialData ? "Edit Savings Account" : "Create Savings Account"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="savingsType">Savings Type</Label>
-            <Select value={formData.savingsType} onValueChange={(value) => handleChange("savingsType", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select savings type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="regular">Regular Savings</SelectItem>
-                <SelectItem value="goal">Goal Savings</SelectItem>
-                <SelectItem value="emergency">Emergency Fund</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="amount">Initial Amount ($)</Label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                placeholder="Enter amount"
-                value={formData.amount}
-                onChange={(e) => handleChange("amount", e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="frequency">Contribution Frequency</Label>
-            <Select value={formData.frequency} onValueChange={(value) => handleChange("frequency", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select frequency" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="quarterly">Quarterly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="purpose">Purpose</Label>
-            <Textarea
-              placeholder="Describe savings purpose..."
-              value={formData.purpose}
-              onChange={(e) => handleChange("purpose", e.target.value)}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="owner">Account Owner</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Enter owner ID"
-                value={formData.owner}
-                onChange={(e) => handleChange("owner", e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="ownerModel">Owner Type</Label>
-            <Select value={formData.ownerModel} onValueChange={(value) => handleChange("ownerModel", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select owner type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="User">Individual Member</SelectItem>
-                <SelectItem value="Group">Group</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button 
-            type="submit" 
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Member Selection */}
+        <FormField
+          label="Member"
+          required
+          error={errors.member?.message}
+          icon={<User className="h-4 w-4" />}
+        >
+          <Select 
+            value={watch('member')} 
+            onValueChange={(value) => setValue('member', value)}
             disabled={loading}
-            className="w-full"
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {initialData ? "Updating..." : "Creating..."}
-              </>
-            ) : (
-              initialData ? "Update Account" : "Create Account"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a member" />
+            </SelectTrigger>
+            <SelectContent>
+              {members.map((member) => (
+                <SelectItem key={member._id} value={member._id}>
+                  {member.name} - {member.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+
+        {/* Account Type */}
+        <FormField
+          label="Account Type"
+          required
+          error={errors.accountType?.message}
+        >
+          <Select 
+            value={watch('accountType')} 
+            onValueChange={(value) => setValue('accountType', value)}
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select account type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="individual">Individual Account</SelectItem>
+              <SelectItem value="group">Group Account</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
+
+        {/* Group Selection (if group account) */}
+        {watchedAccountType === 'group' && (
+          <FormField
+            label="Group"
+            error={errors.group?.message}
+            icon={<Building2 className="h-4 w-4" />}
+          >
+            <Select 
+              value={watch('group')} 
+              onValueChange={(value) => setValue('group', value)}
+              disabled={loading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((group) => (
+                  <SelectItem key={group._id} value={group._id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        )}
+
+        {/* Initial Deposit */}
+        <FormField
+          label="Initial Deposit"
+          error={errors.initialDeposit?.message}
+          icon={<DollarSign className="h-4 w-4" />}
+        >
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            {...register('initialDeposit', { valueAsNumber: true })}
+            disabled={loading}
+          />
+        </FormField>
+
+        {/* Interest Rate */}
+        <FormField
+          label="Interest Rate (%)"
+          required
+          error={errors.interestRate?.message}
+          icon={<Percent className="h-4 w-4" />}
+        >
+          <Input
+            type="number"
+            step="0.1"
+            min="0"
+            max="100"
+            placeholder="5.0"
+            {...register('interestRate', { valueAsNumber: true })}
+            disabled={loading}
+          />
+        </FormField>
+
+        {/* Status */}
+        <FormField
+          label="Status"
+          required
+          error={errors.status?.message}
+        >
+          <Select 
+            value={watch('status')} 
+            onValueChange={(value) => setValue('status', value)}
+            disabled={loading}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
+      </div>
+
+      {/* Description */}
+      <FormField
+        label="Description"
+        error={errors.description?.message}
+      >
+        <Textarea
+          placeholder="Optional account description or notes..."
+          rows={3}
+          {...register('description')}
+          disabled={loading}
+        />
+      </FormField>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-3 pt-4 border-t">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={loading || !isValid}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isEdit ? 'Updating...' : 'Creating...'}
+            </>
+          ) : (
+            <>
+              {isEdit ? 'Update Account' : 'Create Account'}
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
   );
 };
 

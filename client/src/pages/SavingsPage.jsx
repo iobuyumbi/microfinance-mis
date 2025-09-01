@@ -1,111 +1,89 @@
-import React, { useState, useEffect } from "react";
-import { StatsCard } from "../components/ui/stats-card";
+
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import {
-  FacebookCard,
-  FacebookCardHeader,
-  FacebookCardContent,
-} from "../components/ui/facebook-card";
-import { Button } from "../components/ui/button";
-import {
-  PiggyBank,
   Plus,
   Search,
-  Loader2,
-  DollarSign,
-  Activity,
-  MoreHorizontal,
-  TrendingUp,
-  CheckCircle,
-  Clock,
-  Users,
-  Building2,
+  Filter,
+  Download,
   RefreshCw,
-} from "lucide-react";
-import { Input } from "../components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import { Badge } from "../components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
-import { toast } from "sonner";
-import { financialService } from "../services/financialService";
-import SavingsForm from "../components/forms/SavingsForm";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
-import { useAuth } from "../hooks/useAuth";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
+  Edit,
+  Trash2,
+  Eye,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  PiggyBank,
+  Calendar,
+  User,
+  Building2,
+  AlertCircle,
+  Loader2
+} from 'lucide-react';
+
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import ErrorBoundary from '../components/common/ErrorBoundary';
+import SavingsForm from '../components/forms/SavingsForm';
+import { savingsService } from '../services/savingsService';
+import { useAuth } from '../hooks/useAuth';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 const SavingsPage = () => {
-  const [savingsAccounts, setSavingsAccounts] = useState([]);
+  const [savings, setSavings] = useState([]);
   const [savingsStats, setSavingsStats] = useState({
-    totalAccounts: 0,
     totalSavings: 0,
-    activeAccounts: 0,
-    monthlyContributions: 0,
-    monthlyWithdrawals: 0,
+    totalMembers: 0,
     averageBalance: 0,
+    monthlyGrowth: 0,
+    activeAccounts: 0,
+    totalInterestEarned: 0
   });
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterOwner, setFilterOwner] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterGroup, setFilterGroup] = useState('');
+  const [sortBy, setSortBy] = useState('balance');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [isCreateSavingsOpen, setIsCreateSavingsOpen] = useState(false);
   const [isEditSavingsOpen, setIsEditSavingsOpen] = useState(false);
   const [currentSavings, setCurrentSavings] = useState(null);
-  const [selectedAccount, setSelectedAccount] = useState(null);
-  const [showTransactions, setShowTransactions] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { user } = useAuth();
 
-  // Fetch savings accounts
+  // Fetch savings data
   useEffect(() => {
-    fetchSavingsAccounts();
+    fetchSavings();
     fetchSavingsStats();
   }, []);
 
-  // Filter savings based on search term and owner type
+  // Filter and sort savings
   useEffect(() => {
     const params = {};
     if (searchTerm) params.search = searchTerm;
-    if (filterOwner) params.ownerModel = filterOwner;
-    fetchSavingsAccounts(params);
-  }, [searchTerm, filterOwner]);
+    if (filterStatus) params.status = filterStatus;
+    if (filterGroup) params.group = filterGroup;
+    if (sortBy) params.sortBy = sortBy;
+    if (sortOrder) params.sortOrder = sortOrder;
 
-  const fetchSavingsAccounts = async (params = {}) => {
+    fetchSavings(params);
+  }, [searchTerm, filterStatus, filterGroup, sortBy, sortOrder]);
+
+  const fetchSavings = async (params = {}) => {
     try {
       setLoading(true);
-      const query = { type: "savings", ...params };
-      const response = await financialService.getAccounts(query);
-      const data = Array.isArray(response.data?.data) ? response.data.data : [];
-      setSavingsAccounts(data);
+      const response = await savingsService.getAll(params);
+      setSavings(response.data || response || []);
     } catch (error) {
-      console.error("Error fetching savings accounts:", error);
-      toast.error("Failed to fetch savings accounts");
+      console.error('Error fetching savings:', error);
+      toast.error('Failed to fetch savings data');
+      setSavings([]);
     } finally {
       setLoading(false);
     }
@@ -113,494 +91,372 @@ const SavingsPage = () => {
 
   const fetchSavingsStats = async () => {
     try {
-      const [dashboardResponse, accountsResponse] = await Promise.all([
-        financialService.getDashboardStats(),
-        financialService.getAccounts({ type: "savings" }),
-      ]);
-
-      const dashboardData = dashboardResponse.data?.data || {};
-      const accounts = accountsResponse.data?.data || [];
-
-      const activeAccounts = accounts.filter(
-        (account) => account.status === "active"
-      ).length;
-      const totalBalance = accounts.reduce(
-        (sum, account) => sum + (account.balance || 0),
-        0
-      );
-      const averageBalance =
-        activeAccounts > 0 ? totalBalance / activeAccounts : 0;
-
-      setSavingsStats({
-        totalAccounts: accounts.length,
-        totalSavings: dashboardData.totalSavings || 0,
-        activeAccounts,
-        monthlyContributions: dashboardData.monthlyContributions || 0,
-        monthlyWithdrawals: 0, // This would need to be calculated from transactions
-        averageBalance,
-      });
+      const response = await savingsService.getStats();
+      setSavingsStats(response.data || response || {});
     } catch (error) {
-      console.error("Error fetching savings stats:", error);
+      console.error('Error fetching savings stats:', error);
     }
   };
 
-  const handleCreateSavings = () => {
-    setIsCreateSavingsOpen(true);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchSavings(),
+      fetchSavingsStats()
+    ]);
+    setRefreshing(false);
+    toast.success('Data refreshed successfully');
   };
 
-  const handleEditSavings = (account) => {
-    setCurrentSavings(account);
+  const handleCreateSavings = async (savingsData) => {
+    try {
+      await savingsService.create(savingsData);
+      toast.success('Savings account created successfully');
+      setIsCreateSavingsOpen(false);
+      fetchSavings();
+      fetchSavingsStats();
+    } catch (error) {
+      console.error('Error creating savings:', error);
+      toast.error(error.response?.data?.message || 'Failed to create savings account');
+    }
+  };
+
+  const handleEditSavings = async (savingsData) => {
+    try {
+      await savingsService.update(currentSavings._id, savingsData);
+      toast.success('Savings account updated successfully');
+      setIsEditSavingsOpen(false);
+      setCurrentSavings(null);
+      fetchSavings();
+      fetchSavingsStats();
+    } catch (error) {
+      console.error('Error updating savings:', error);
+      toast.error(error.response?.data?.message || 'Failed to update savings account');
+    }
+  };
+
+  const handleDeleteSavings = async (savingsId) => {
+    if (!window.confirm('Are you sure you want to delete this savings account?')) {
+      return;
+    }
+
+    try {
+      await savingsService.delete(savingsId);
+      toast.success('Savings account deleted successfully');
+      fetchSavings();
+      fetchSavingsStats();
+    } catch (error) {
+      console.error('Error deleting savings:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete savings account');
+    }
+  };
+
+  const openEditModal = (savings) => {
+    setCurrentSavings(savings);
     setIsEditSavingsOpen(true);
   };
 
-  const handleViewTransactions = (account) => {
-    setSelectedAccount(account);
-    setShowTransactions(true);
-  };
-
-  const handleSavingsSuccess = () => {
-    setIsCreateSavingsOpen(false);
-    setIsEditSavingsOpen(false);
-    setCurrentSavings(null);
-    fetchSavingsAccounts();
-    fetchSavingsStats();
-    toast.success("Savings account updated successfully");
-  };
-
-  const getAccountStatusColor = (status) => {
-    const colors = {
-      active: "bg-green-100 text-green-800",
-      inactive: "bg-gray-100 text-gray-800",
-      suspended: "bg-red-100 text-red-800",
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      active: { variant: 'default', color: 'bg-green-100 text-green-800' },
+      inactive: { variant: 'secondary', color: 'bg-gray-100 text-gray-800' },
+      suspended: { variant: 'destructive', color: 'bg-red-100 text-red-800' }
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+
+    const config = statusConfig[status] || statusConfig.inactive;
+    
+    return (
+      <Badge className={config.color}>
+        {status || 'inactive'}
+      </Badge>
+    );
   };
 
-  const getOwnerTypeLabel = (ownerModel) => {
-    return ownerModel === "User" ? "Individual" : "Group";
-  };
-
-  if (loading && savingsAccounts.length === 0) {
-    return <LoadingSpinner />;
+  if (loading && !refreshing) {
+    return <LoadingSpinner size="lg" text="Loading savings data..." />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Savings Accounts</h1>
-          <p className="text-muted-foreground">
-            Manage and track savings accounts for members and groups
-          </p>
+    <ErrorBoundary>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Savings Management</h1>
+            <p className="text-muted-foreground">
+              Manage member savings accounts and track balances
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={() => setIsCreateSavingsOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Savings Account
+            </Button>
+          </div>
         </div>
-        <Button onClick={handleCreateSavings}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Savings Account
-        </Button>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+              <PiggyBank className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(savingsStats.totalSavings)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Across {savingsStats.totalMembers} members
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average Balance</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(savingsStats.averageBalance)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Per savings account
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Monthly Growth</CardTitle>
+              {savingsStats.monthlyGrowth >= 0 ? (
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-600" />
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {savingsStats.monthlyGrowth >= 0 ? '+' : ''}
+                {savingsStats.monthlyGrowth?.toFixed(1)}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                From last month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Accounts</CardTitle>
+              <User className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {savingsStats.activeAccounts}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Currently active
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters and Search */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Accounts
-            </CardTitle>
-            <PiggyBank className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="text-lg">Filters & Search</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {savingsStats.totalAccounts}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All savings accounts
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(savingsStats.totalSavings)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Total balance across all accounts
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Accounts
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {savingsStats.activeAccounts}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Currently active accounts
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Average Balance
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {financialService.formatCurrency(savingsStats.averageBalance)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Average per active account
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <FacebookCard>
-        <FacebookCardHeader>
-          <CardTitle>Filters</CardTitle>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium">Search</label>
-              <Input
-                placeholder="Search accounts..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Owner Type</label>
-              <Select value={filterOwner} onValueChange={setFilterOwner}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All types" />
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search by member name or account..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
-                  <SelectItem value="User">Individual</SelectItem>
-                  <SelectItem value="Group">Group</SelectItem>
+                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="balance">Balance</SelectItem>
+                  <SelectItem value="member">Member Name</SelectItem>
+                  <SelectItem value="createdAt">Date Created</SelectItem>
+                  <SelectItem value="lastTransaction">Last Activity</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger className="w-full md:w-32">
+                  <SelectValue placeholder="Order" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="desc">Desc</SelectItem>
+                  <SelectItem value="asc">Asc</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterOwner("");
-                  fetchSavingsAccounts();
-                }}
-                className="w-full"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-        </FacebookCardContent>
-      </FacebookCard>
+          </CardContent>
+        </Card>
 
-      {/* Savings Accounts Table */}
-      <FacebookCard>
-        <FacebookCardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Savings Accounts</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchSavingsAccounts()}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Account Number</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {savingsAccounts.map((account) => (
-                  <TableRow key={account._id}>
-                    <TableCell className="font-medium">
-                      {account.accountNumber}
-                    </TableCell>
-                    <TableCell>{account.owner?.name || "Unknown"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {account.ownerModel === "User" ? (
-                          <Users className="h-4 w-4 text-blue-500" />
-                        ) : (
-                          <Building2 className="h-4 w-4 text-green-500" />
-                        )}
-                        {getOwnerTypeLabel(account.ownerModel)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {financialService.formatCurrency(account.balance)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getAccountStatusColor(account.status)}>
-                        {account.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {financialService.formatDate(account.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
+        {/* Savings List */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Savings Accounts</CardTitle>
+            <CardDescription>
+              {savings.length} savings account{savings.length !== 1 ? 's' : ''} found
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading && !refreshing ? (
+              <LoadingSpinner text="Loading savings..." />
+            ) : savings.length === 0 ? (
+              <div className="text-center py-8">
+                <PiggyBank className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No savings accounts found</h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm || filterStatus 
+                    ? 'No savings accounts match your current filters.'
+                    : 'Get started by creating your first savings account.'
+                  }
+                </p>
+                <Button onClick={() => setIsCreateSavingsOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Savings Account
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {savings.map((account) => (
+                  <Card key={account._id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <h3 className="font-semibold text-lg">
+                                  {account.member?.name || 'Unknown Member'}
+                                </h3>
+                                {getStatusBadge(account.status)}
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div className="flex items-center text-muted-foreground">
+                                  <DollarSign className="mr-1 h-4 w-4" />
+                                  Balance: <span className="font-medium ml-1 text-foreground">
+                                    {formatCurrency(account.balance)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center text-muted-foreground">
+                                  <Building2 className="mr-1 h-4 w-4" />
+                                  Group: <span className="font-medium ml-1 text-foreground">
+                                    {account.group?.name || 'No Group'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center text-muted-foreground">
+                                  <TrendingUp className="mr-1 h-4 w-4" />
+                                  Interest: <span className="font-medium ml-1 text-foreground">
+                                    {account.interestRate || 0}%
+                                  </span>
+                                </div>
+                                <div className="flex items-center text-muted-foreground">
+                                  <Calendar className="mr-1 h-4 w-4" />
+                                  Created: <span className="font-medium ml-1 text-foreground">
+                                    {formatDate(account.createdAt)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 ml-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditModal(account)}
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleViewTransactions(account)}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteSavings(account._id)}
+                            className="text-destructive hover:text-destructive"
                           >
-                            View Transactions
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleEditSavings(account)}
-                          >
-                            Edit Account
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Download Statement
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {savingsAccounts.length === 0 && !loading && (
-            <div className="text-center py-8">
-              <PiggyBank className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No savings accounts found</p>
-            </div>
-          )}
-        </FacebookCardContent>
-      </FacebookCard>
+        {/* Create Savings Modal */}
+        <Dialog open={isCreateSavingsOpen} onOpenChange={setIsCreateSavingsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Savings Account</DialogTitle>
+              <DialogDescription>
+                Set up a new savings account for a member
+              </DialogDescription>
+            </DialogHeader>
+            <SavingsForm
+              onSubmit={handleCreateSavings}
+              onCancel={() => setIsCreateSavingsOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
-      {/* Create Savings Dialog */}
-      <Dialog open={isCreateSavingsOpen} onOpenChange={setIsCreateSavingsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New Savings Account</DialogTitle>
-          </DialogHeader>
-          <SavingsForm onSuccess={handleSavingsSuccess} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Savings Dialog */}
-      <Dialog open={isEditSavingsOpen} onOpenChange={setIsEditSavingsOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Savings Account</DialogTitle>
-          </DialogHeader>
-          <SavingsForm
-            account={currentSavings}
-            onSuccess={handleSavingsSuccess}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Transactions Dialog */}
-      <Dialog open={showTransactions} onOpenChange={setShowTransactions}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              Transactions for {selectedAccount?.accountNumber}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedAccount && <AccountTransactions account={selectedAccount} />}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-// Component to show account transactions
-const AccountTransactions = ({ account }) => {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (account) {
-      fetchTransactions();
-    }
-  }, [account]);
-
-  const fetchTransactions = async () => {
-    try {
-      setLoading(true);
-      const response = await financialService.getSavingsTransactions(
-        account._id
-      );
-      const data = Array.isArray(response.data?.data) ? response.data.data : [];
-      setTransactions(data);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      toast.error("Failed to fetch transactions");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            Owner: {account.owner?.name || "Unknown"}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Current Balance: {financialService.formatCurrency(account.balance)}
-          </p>
-        </div>
+        {/* Edit Savings Modal */}
+        <Dialog open={isEditSavingsOpen} onOpenChange={setIsEditSavingsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Savings Account</DialogTitle>
+              <DialogDescription>
+                Update savings account information
+              </DialogDescription>
+            </DialogHeader>
+            <SavingsForm
+              initialData={currentSavings}
+              onSubmit={handleEditSavings}
+              onCancel={() => {
+                setIsEditSavingsOpen(false);
+                setCurrentSavings(null);
+              }}
+              isEdit={true}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Balance After</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.map((transaction) => (
-              <TableRow key={transaction._id}>
-                <TableCell>
-                  {financialService.formatDate(transaction.createdAt)}
-                </TableCell>
-                <TableCell>
-                  <Badge className={getTransactionTypeColor(transaction.type)}>
-                    {getTransactionTypeLabel(transaction.type)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="max-w-xs truncate">
-                  {transaction.description}
-                </TableCell>
-                <TableCell className="font-medium">
-                  {financialService.formatCurrency(transaction.amount)}
-                </TableCell>
-                <TableCell>
-                  {financialService.formatCurrency(transaction.balanceAfter)}
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(transaction.status)}>
-                    {transaction.status}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {transactions.length === 0 && (
-        <div className="text-center py-8">
-          <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            No transactions found for this account
-          </p>
-        </div>
-      )}
-    </div>
+    </ErrorBoundary>
   );
-};
-
-// Helper functions (same as in TransactionsPage)
-const getTransactionTypeLabel = (type) => {
-  const labels = {
-    savings_contribution: "Savings Contribution",
-    savings_withdrawal: "Savings Withdrawal",
-    loan_disbursement: "Loan Disbursement",
-    loan_repayment: "Loan Repayment",
-    interest_earned: "Interest Earned",
-    interest_charged: "Interest Charged",
-    penalty_incurred: "Penalty Incurred",
-    penalty_paid: "Penalty Paid",
-    fee_incurred: "Fee Incurred",
-    fee_paid: "Fee Paid",
-    transfer_in: "Transfer In",
-    transfer_out: "Transfer Out",
-    refund: "Refund",
-    adjustment: "Adjustment",
-  };
-  return labels[type] || type;
-};
-
-const getTransactionTypeColor = (type) => {
-  const colors = {
-    savings_contribution: "bg-green-100 text-green-800",
-    savings_withdrawal: "bg-red-100 text-red-800",
-    loan_disbursement: "bg-blue-100 text-blue-800",
-    loan_repayment: "bg-green-100 text-green-800",
-    interest_earned: "bg-purple-100 text-purple-800",
-    interest_charged: "bg-orange-100 text-orange-800",
-    penalty_incurred: "bg-red-100 text-red-800",
-    penalty_paid: "bg-green-100 text-green-800",
-    fee_incurred: "bg-red-100 text-red-800",
-    fee_paid: "bg-green-100 text-green-800",
-    transfer_in: "bg-blue-100 text-blue-800",
-    transfer_out: "bg-orange-100 text-orange-800",
-    refund: "bg-green-100 text-green-800",
-    adjustment: "bg-gray-100 text-gray-800",
-  };
-  return colors[type] || "bg-gray-100 text-gray-800";
-};
-
-const getStatusColor = (status) => {
-  const colors = {
-    completed: "bg-green-100 text-green-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    failed: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-800",
-  };
-  return colors[status] || "bg-gray-100 text-gray-800";
 };
 
 export default SavingsPage;
