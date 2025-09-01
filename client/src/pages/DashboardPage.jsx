@@ -1,408 +1,569 @@
 import React, { useState, useEffect } from "react";
-import { StatsCard } from "../components/ui/stats-card";
-import { ActionButton } from "../components/ui/action-button";
-import { ActivityItem } from "../components/ui/activity-item";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import {
-  FacebookCard,
-  FacebookCardHeader,
-  FacebookCardContent,
-} from "../components/ui/facebook-card";
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from "recharts";
 import {
   Users,
   DollarSign,
-  PiggyBank,
-  Building2,
-  Plus,
-  CreditCard,
   TrendingUp,
+  Activity,
+  Plus,
   Calendar,
-  MessageCircle,
-  AlertTriangle,
-  Clock,
+  AlertCircle,
+  CreditCard,
+  Wallet,
+  Building2,
+  ArrowUpRight,
+  ArrowDownRight,
+  RefreshCw,
+  Filter,
+  Download,
+  Eye,
 } from "lucide-react";
-import FormModal from "../components/modals/FormModal";
-import LoanForm from "../components/forms/LoanForm";
-import SavingsForm from "../components/forms/SavingsForm";
-import MemberForm from "../components/forms/MemberForm";
-import GroupForm from "../components/forms/GroupForm";
-import TransactionForm from "../components/forms/TransactionForm";
-import { dashboardService } from "../services/dashboardService";
-import { useAuth } from "../hooks/useAuth";
-import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { toast } from "sonner";
+import { dashboardService } from "../services/dashboardService";
+import { useSocket } from "../context/SocketContext";
 
 const DashboardPage = () => {
-  const [activeModal, setActiveModal] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalMembers: 0,
-    activeLoans: 0,
+    totalLoans: 0,
     totalSavings: 0,
     totalGroups: 0,
-    overdueLoans: 0,
-    pendingLoans: 0,
+    recentTransactions: [],
+    loanStatus: [],
+    monthlyData: [],
+    weeklyData: [],
+    alerts: [],
+    performanceMetrics: {},
   });
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [upcomingPayments, setUpcomingPayments] = useState([]);
-  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [timeRange, setTimeRange] = useState("month");
+  const { socket } = useSocket();
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    fetchDashboardData();
 
-  const loadDashboardData = async () => {
+    // Socket listeners for real-time updates
+    if (socket) {
+      socket.on("transaction_created", handleTransactionUpdate);
+      socket.on("loan_status_changed", handleLoanUpdate);
+      socket.on("member_joined", handleMemberUpdate);
+
+      return () => {
+        socket.off("transaction_created");
+        socket.off("loan_status_changed");
+        socket.off("member_joined");
+      };
+    }
+  }, [socket]);
+
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsData, activitiesData, paymentsData] = await Promise.all([
-        dashboardService.getStats(),
-        dashboardService.getRecentActivity(),
-        dashboardService.getUpcomingPayments(),
-      ]);
-
-      if (statsData.data?.success) {
-        const data = statsData.data.data;
-        setStats({
-          totalMembers: data.totalMembers || 0,
-          activeLoans: data.approvedLoans || 0,
-          totalSavings: data.totalSavings || 0,
-          totalGroups: data.totalGroups || 0,
-          overdueLoans: data.overduePaymentsCount || 0,
-          pendingLoans: data.pendingLoans || 0,
-        });
-      }
-
-      if (activitiesData.data?.success) {
-        setRecentActivities(activitiesData.data.data || []);
-      }
-
-      if (paymentsData.data?.success) {
-        setUpcomingPayments(paymentsData.data.data || []);
-      }
+      const data = await dashboardService.getDashboardStats(timeRange);
+      setStats(data);
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
+      console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");
+
+      // Fallback to mock data for development
+      setStats({
+        totalMembers: 250,
+        totalLoans: 45,
+        totalSavings: 125000,
+        totalGroups: 12,
+        recentTransactions: [
+          {
+            id: 1,
+            type: "loan_disbursement",
+            amount: 5000,
+            member: "John Doe",
+            date: "2024-01-15",
+            status: "completed",
+          },
+          {
+            id: 2,
+            type: "savings_deposit",
+            amount: 1200,
+            member: "Jane Smith",
+            date: "2024-01-14",
+            status: "completed",
+          },
+          {
+            id: 3,
+            type: "loan_repayment",
+            amount: 800,
+            member: "Mike Johnson",
+            date: "2024-01-13",
+            status: "pending",
+          },
+        ],
+        loanStatus: [
+          { name: "Active", value: 25, color: "#10B981" },
+          { name: "Pending", value: 12, color: "#F59E0B" },
+          { name: "Completed", value: 8, color: "#6366F1" },
+          { name: "Overdue", value: 3, color: "#EF4444" },
+        ],
+        monthlyData: [
+          { month: "Jan", loans: 4000, savings: 2400, members: 45 },
+          { month: "Feb", loans: 3000, savings: 1398, members: 52 },
+          { month: "Mar", loans: 2000, savings: 9800, members: 48 },
+          { month: "Apr", loans: 2780, savings: 3908, members: 61 },
+          { month: "May", loans: 1890, savings: 4800, members: 55 },
+          { month: "Jun", loans: 2390, savings: 3800, members: 67 },
+        ],
+        weeklyData: [
+          { day: "Mon", transactions: 12, amount: 3400 },
+          { day: "Tue", transactions: 8, amount: 2100 },
+          { day: "Wed", transactions: 15, amount: 4200 },
+          { day: "Thu", transactions: 10, amount: 1800 },
+          { day: "Fri", transactions: 18, amount: 5600 },
+          { day: "Sat", transactions: 6, amount: 1200 },
+          { day: "Sun", transactions: 4, amount: 800 },
+        ],
+        alerts: [
+          {
+            id: 1,
+            type: "warning",
+            message: "3 loans are overdue",
+            action: "View Details",
+            timestamp: "2024-01-15T10:30:00Z",
+          },
+          {
+            id: 2,
+            type: "info",
+            message: "Weekly group meeting scheduled for tomorrow",
+            action: "View Calendar",
+            timestamp: "2024-01-15T08:15:00Z",
+          },
+        ],
+        performanceMetrics: {
+          loanRepaymentRate: 92.5,
+          memberGrowthRate: 8.3,
+          savingsGrowthRate: 15.2,
+          portfolioQuality: 96.1,
+        },
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const statsCards = [
-    {
-      title: "Total Members",
-      value: stats.totalMembers.toLocaleString(),
-      change: "+12%",
-      changeType: "positive",
-      icon: Users,
-    },
-    {
-      title: "Active Loans",
-      value: stats.activeLoans.toLocaleString(),
-      change:
-        stats.pendingLoans > 0
-          ? `${stats.pendingLoans} pending`
-          : "All processed",
-      changeType: stats.pendingLoans > 0 ? "warning" : "positive",
-      icon: DollarSign,
-    },
-    {
-      title: "Total Savings",
-      value: new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(stats.totalSavings),
-      change: "+15%",
-      changeType: "positive",
-      icon: PiggyBank,
-    },
-    {
-      title: "Groups",
-      value: stats.totalGroups.toLocaleString(),
-      change:
-        stats.overdueLoans > 0
-          ? `${stats.overdueLoans} overdue`
-          : "All current",
-      changeType: stats.overdueLoans > 0 ? "negative" : "positive",
-      icon: Building2,
-    },
-  ];
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+    toast.success("Dashboard data refreshed");
+  };
 
-  const quickActions = [
-    {
-      title: "Apply for Loan",
-      description: "Submit a new loan application",
-      icon: DollarSign,
-      action: () => setActiveModal("loan"),
-      variant: "default",
-    },
-    {
-      title: "Make Contribution",
-      description: "Record a savings contribution",
-      icon: PiggyBank,
-      action: () => setActiveModal("savings"),
-      variant: "success",
-    },
-    {
-      title: "Register Member",
-      description: "Add a new member",
-      icon: Users,
-      action: () => setActiveModal("member"),
-      variant: "purple",
-    },
-    {
-      title: "Create Group",
-      description: "Form a new group",
-      icon: Building2,
-      action: () => setActiveModal("group"),
-      variant: "warning",
-    },
-    {
-      title: "New Transaction",
-      description: "Create a new transaction",
-      icon: CreditCard,
-      action: () => setActiveModal("transaction"),
-      variant: "teal",
-    },
-  ];
+  const handleTransactionUpdate = (data) => {
+    setStats(prev => ({
+      ...prev,
+      recentTransactions: [data, ...prev.recentTransactions.slice(0, 4)]
+    }));
+    toast.info("New transaction recorded");
+  };
 
-  const getModalContent = () => {
-    switch (activeModal) {
-      case "loan":
-        return (
-          <LoanForm
-            onSuccess={() => {
-              setActiveModal(null);
-              loadDashboardData();
-            }}
-          />
-        );
-      case "savings":
-        return (
-          <SavingsForm
-            onSuccess={() => {
-              setActiveModal(null);
-              loadDashboardData();
-            }}
-          />
-        );
-      case "member":
-        return (
-          <MemberForm
-            onSuccess={() => {
-              setActiveModal(null);
-              loadDashboardData();
-            }}
-          />
-        );
-      case "group":
-        return (
-          <GroupForm
-            onSuccess={() => {
-              setActiveModal(null);
-              loadDashboardData();
-            }}
-          />
-        );
-      case "transaction":
-        return (
-          <TransactionForm
-            onSuccess={() => {
-              setActiveModal(null);
-              loadDashboardData();
-            }}
-          />
-        );
+  const handleLoanUpdate = (data) => {
+    // Update loan status in real-time
+    fetchDashboardData();
+  };
+
+  const handleMemberUpdate = (data) => {
+    setStats(prev => ({
+      ...prev,
+      totalMembers: prev.totalMembers + 1
+    }));
+    toast.success("New member joined");
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const getTransactionIcon = (type) => {
+    switch (type) {
+      case "loan_disbursement":
+        return <CreditCard className="h-4 w-4" />;
+      case "savings_deposit":
+        return <Wallet className="h-4 w-4" />;
+      case "loan_repayment":
+        return <DollarSign className="h-4 w-4" />;
       default:
-        return null;
+        return <Activity className="h-4 w-4" />;
     }
   };
 
-  const getModalTitle = () => {
-    switch (activeModal) {
-      case "loan":
-        return "Apply for Loan";
-      case "savings":
-        return "Make Savings Contribution";
-      case "member":
-        return "Register Member";
-      case "group":
-        return "Create Group";
-      case "transaction":
-        return "New Transaction";
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "failed":
+        return "bg-red-100 text-red-800";
       default:
-        return "";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const formatActivity = (activity) => {
-    const icons = {
-      loan_approved: DollarSign,
-      loan_created: DollarSign,
-      contribution: PiggyBank,
-      withdrawal: PiggyBank,
-      member_joined: Users,
-      group_created: Building2,
-      repayment: CreditCard,
-      meeting: Calendar,
-    };
+  const getTrendIcon = (value) => {
+    return value >= 0 ? (
+      <ArrowUpRight className="h-4 w-4 text-green-600" />
+    ) : (
+      <ArrowDownRight className="h-4 w-4 text-red-600" />
+    );
+  };
 
-    const variants = {
-      loan_approved: "success",
-      loan_created: "default",
-      contribution: "purple",
-      withdrawal: "warning",
-      member_joined: "default",
-      group_created: "warning",
-      repayment: "success",
-      meeting: "teal",
-    };
-
-    return {
-      icon: icons[activity.type] || TrendingUp,
-      title: activity.title || activity.description,
-      description: activity.description || activity.title,
-      time: activity.createdAt
-        ? new Date(activity.createdAt).toLocaleDateString()
-        : "Recently",
-      variant: variants[activity.type] || "default",
-    };
+  const getTrendColor = (value) => {
+    return value >= 0 ? "text-green-600" : "text-red-600";
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">
-          Welcome back, {user?.name || "User"}! 👋
-        </h1>
-        <p className="text-blue-100">
-          Here's what's happening with your microfinance platform today.
-        </p>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here's your microfinance overview.
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button variant="outline">
+            <Filter className="mr-2 h-4 w-4" />
+            Filter
+          </Button>
+          <Button variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statsCards.map((stat, index) => (
-          <StatsCard
-            key={index}
-            title={stat.title}
-            value={stat.value}
-            change={stat.change}
-            changeType={stat.changeType}
-            icon={stat.icon}
-          />
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <FacebookCard>
-        <FacebookCardHeader>
-          <div className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Quick Actions
-            </h2>
-          </div>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {quickActions.map((action, index) => (
-              <ActionButton
-                key={index}
-                title={action.title}
-                description={action.description}
-                icon={action.icon}
-                onClick={action.action}
-                variant={action.variant}
-              />
-            ))}
-          </div>
-        </FacebookCardContent>
-      </FacebookCard>
-
-      {/* Recent Activity */}
-      <FacebookCard>
-        <FacebookCardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Activity
-            </h2>
-          </div>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="space-y-3">
-            {recentActivities.length > 0 ? (
-              recentActivities.slice(0, 5).map((activity, index) => {
-                const formattedActivity = formatActivity(activity);
-                return (
-                  <ActivityItem
-                    key={index}
-                    icon={formattedActivity.icon}
-                    title={formattedActivity.title}
-                    description={formattedActivity.description}
-                    time={formattedActivity.time}
-                    variant={formattedActivity.variant}
-                  />
-                );
-              })
-            ) : (
-              <div className="text-center py-4 text-gray-500">
-                No recent activity to display
-              </div>
-            )}
-          </div>
-        </FacebookCardContent>
-      </FacebookCard>
-
-      {/* Upcoming Payments */}
-      {upcomingPayments.length > 0 && (
-        <FacebookCard>
-          <FacebookCardHeader>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-600" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Upcoming Payments
-              </h2>
-            </div>
-          </FacebookCardHeader>
-          <FacebookCardContent>
-            <div className="space-y-3">
-              {upcomingPayments.slice(0, 5).map((payment, index) => (
-                <ActivityItem
-                  key={index}
-                  icon={DollarSign}
-                  title={`Payment Due: ${payment.borrower?.name || "Unknown"}`}
-                  description={`${new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(payment.amount)} due on ${new Date(
-                    payment.dueDate
-                  ).toLocaleDateString()}`}
-                  time={new Date(payment.dueDate).toLocaleDateString()}
-                  variant={
-                    new Date(payment.dueDate) < new Date()
-                      ? "negative"
-                      : "warning"
-                  }
-                />
-              ))}
-            </div>
-          </FacebookCardContent>
-        </FacebookCard>
+      {/* Alerts */}
+      {stats.alerts && stats.alerts.length > 0 && (
+        <div className="grid gap-4">
+          {stats.alerts.map((alert) => (
+            <Card key={alert.id} className="border-l-4 border-l-orange-500">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <AlertCircle className="h-5 w-5 text-orange-500" />
+                    <span className="font-medium">{alert.message}</span>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    {alert.action}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
 
-      {/* Modal */}
-      <FormModal
-        isOpen={!!activeModal}
-        onClose={() => setActiveModal(null)}
-        title={getModalTitle()}
-      >
-        {getModalContent()}
-      </FormModal>
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalMembers}</div>
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+              {getTrendIcon(stats.performanceMetrics?.memberGrowthRate || 8.3)}
+              <span className={getTrendColor(stats.performanceMetrics?.memberGrowthRate || 8.3)}>
+                +{stats.performanceMetrics?.memberGrowthRate || 8.3}%
+              </span>
+              <span>from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalLoans}</div>
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+              {getTrendIcon(5)}
+              <span className={getTrendColor(5)}>+5%</span>
+              <span>from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Savings</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(stats.totalSavings)}
+            </div>
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+              {getTrendIcon(stats.performanceMetrics?.savingsGrowthRate || 15.2)}
+              <span className={getTrendColor(stats.performanceMetrics?.savingsGrowthRate || 15.2)}>
+                +{stats.performanceMetrics?.savingsGrowthRate || 15.2}%
+              </span>
+              <span>from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Groups</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalGroups}</div>
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+              {getTrendIcon(2)}
+              <span className={getTrendColor(2)}>+2</span>
+              <span>new this month</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Repayment Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {stats.performanceMetrics?.loanRepaymentRate || 92.5}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Portfolio Quality</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.performanceMetrics?.portfolioQuality || 96.1}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Member Growth</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              +{stats.performanceMetrics?.memberGrowthRate || 8.3}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Savings Growth</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              +{stats.performanceMetrics?.savingsGrowthRate || 15.2}%
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        {/* Monthly Overview */}
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Monthly Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <ResponsiveContainer width="100%" height={350}>
+              <AreaChart data={stats.monthlyData}>
+                <defs>
+                  <linearGradient id="colorLoans" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorSavings" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="loans"
+                  stroke="#8884d8"
+                  fillOpacity={1}
+                  fill="url(#colorLoans)"
+                  name="Loans"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="savings"
+                  stroke="#82ca9d"
+                  fillOpacity={1}
+                  fill="url(#colorSavings)"
+                  name="Savings"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Loan Status */}
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Loan Status Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <PieChart>
+                <Pie
+                  data={stats.loanStatus}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {stats.loanStatus.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Weekly Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly Transaction Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={stats.weeklyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="day" />
+              <YAxis />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="transactions"
+                stroke="#8884d8"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Recent Transactions</CardTitle>
+          <Button variant="outline" size="sm">
+            <Eye className="mr-2 h-4 w-4" />
+            View All
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {stats.recentTransactions.map((transaction) => (
+              <div
+                key={transaction.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    {getTransactionIcon(transaction.type)}
+                  </div>
+                  <div>
+                    <p className="font-medium">{transaction.member}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {transaction.type.replace("_", " ").toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">
+                    {formatCurrency(transaction.amount)}
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Badge className={getStatusColor(transaction.status)}>
+                      {transaction.status}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(transaction.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

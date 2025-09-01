@@ -58,6 +58,7 @@ const repaymentRoutes = require('./routes/repaymentRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const loanAssessmentRoutes = require('./routes/loanAssessmentRoutes');
 const contributionRoutes = require('./routes/contributionRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 
 // Initialize express app
@@ -399,6 +400,13 @@ try {
   console.log('  ✅ /api/contributions registered');
 } catch (error) {
   console.log('  ❌ Error registering /api/contributions:', error.message);
+}
+
+try {
+  app.use('/api/dashboard', dashboardRoutes);
+  console.log('  ✅ /api/dashboard registered');
+} catch (error) {
+  console.log('  ❌ Error registering /api/dashboard:', error.message);
 }
 
 // Debug: Log all registered routes

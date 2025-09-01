@@ -1,18 +1,72 @@
-import { api } from "./api/client";
-import { ENDPOINTS } from "./api/endpoints";
+
+import { apiClient } from './api/client';
 
 export const dashboardService = {
-  getStats: () => api.get(ENDPOINTS.REPORTS.DASHBOARD),
+  // Get dashboard statistics
+  getDashboardStats: async (timeRange = 'month') => {
+    try {
+      const response = await apiClient.get(`/dashboard/stats?timeRange=${timeRange}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      throw error;
+    }
+  },
 
-  getRecentActivity: () => api.get(ENDPOINTS.REPORTS.RECENT_ACTIVITY),
+  // Get real-time metrics
+  getRealTimeMetrics: async () => {
+    try {
+      const response = await apiClient.get('/dashboard/metrics');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching real-time metrics:', error);
+      throw error;
+    }
+  },
 
-  getUpcomingPayments: () => api.get(ENDPOINTS.REPORTS.UPCOMING_REPAYMENTS),
+  // Get performance indicators
+  getPerformanceIndicators: async (period = '30d') => {
+    try {
+      const response = await apiClient.get(`/dashboard/performance?period=${period}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching performance indicators:', error);
+      throw error;
+    }
+  },
 
-  getFinancialSummary: (params = {}) =>
-    api.get(ENDPOINTS.REPORTS.FINANCIAL_SUMMARY, { params }),
+  // Get alerts and notifications
+  getAlerts: async () => {
+    try {
+      const response = await apiClient.get('/dashboard/alerts');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      throw error;
+    }
+  },
 
-  getGroupPerformance: () =>
-    api.get(ENDPOINTS.REPORTS.GROUP_SAVINGS_PERFORMANCE),
+  // Get transaction analytics
+  getTransactionAnalytics: async (timeRange = 'week') => {
+    try {
+      const response = await apiClient.get(`/dashboard/transactions?timeRange=${timeRange}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transaction analytics:', error);
+      throw error;
+    }
+  },
 
-  getLoanDefaulters: () => api.get(ENDPOINTS.REPORTS.ACTIVE_LOAN_DEFAULTERS),
+  // Export dashboard data
+  exportDashboardData: async (format = 'csv', timeRange = 'month') => {
+    try {
+      const response = await apiClient.get(`/dashboard/export?format=${format}&timeRange=${timeRange}`, {
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error exporting dashboard data:', error);
+      throw error;
+    }
+  }
 };
