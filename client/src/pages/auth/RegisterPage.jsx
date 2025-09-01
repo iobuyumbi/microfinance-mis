@@ -1,164 +1,263 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
+import FormField from '../../components/ui/form-field';
+import { useAuth } from '../../context/AuthContext';
+import { registerSchema } from '../../lib/validations';
 
 const RegisterPage = () => {
-  const navigate = useNavigate();
-  const { register, isLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+  const [isLoading, setIsLoading] = useState(false);
+  const { register: registerUser } = useAuth();
+  const navigate = useNavigate();
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+    watch
+  } = useForm({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirmPassword: '',
+      role: 'member',
+      address: ''
+    }
   });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Basic client-side check for password match
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-
+  const onSubmit = async (data) => {
+    setIsLoading(true);
+    
     try {
-      const result = await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      });
-
+      const result = await registerUser(data);
+      
       if (result.success) {
-        navigate("/auth/login");
+        navigate('/dashboard');
+      } else {
+        setError('root', {
+          type: 'manual',
+          message: result.error || 'Registration failed'
+        });
       }
     } catch (error) {
-      console.error("Registration failed:", error);
+      console.error('Registration submission error:', error);
+      setError('root', {
+        type: 'manual',
+        message: 'An unexpected error occurred. Please try again.'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const roleOptions = [
+    { value: 'member', label: 'Member' },
+    { value: 'leader', label: 'Group Leader' },
+    { value: 'officer', label: 'Field Officer' },
+    { value: 'admin', label: 'Administrator' }
+  ];
+
   return (
-    <div>
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          Create your account
-        </h2>
-        <p className="text-gray-600 mt-2">Join our microfinance community</p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-8">
+      <Card className="w-full max-w-lg">
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-xl">MF</span>
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+          <CardDescription className="text-center">
+            Join our Microfinance MIS platform
+          </CardDescription>
+        </CardHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
-          <Input
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            placeholder="Enter your full name"
-            required
-          />
-        </div>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                name="firstName"
+                control={control}
+                label="First Name"
+                placeholder="Enter first name"
+                error={errors.firstName}
+                required
+                disabled={isSubmitting}
+              />
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email Address</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="Enter your email"
-            required
-          />
-        </div>
+              <FormField
+                name="lastName"
+                control={control}
+                label="Last Name"
+                placeholder="Enter last name"
+                error={errors.lastName}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder="Create a password"
+            <FormField
+              name="email"
+              control={control}
+              label="Email Address"
+              type="email"
+              placeholder="Enter your email"
+              error={errors.email}
               required
+              disabled={isSubmitting}
             />
+
+            <FormField
+              name="phone"
+              control={control}
+              label="Phone Number"
+              type="tel"
+              placeholder="e.g., +254712345678 or 0712345678"
+              error={errors.phone}
+              required
+              disabled={isSubmitting}
+            />
+
+            <FormField
+              name="role"
+              control={control}
+              label="Role"
+              type="select"
+              placeholder="Select your role"
+              options={roleOptions}
+              error={errors.role}
+              required
+              disabled={isSubmitting}
+            />
+
+            <FormField
+              name="address"
+              control={control}
+              label="Address"
+              type="textarea"
+              placeholder="Enter your address (optional)"
+              error={errors.address}
+              disabled={isSubmitting}
+            />
+
+            <div className="space-y-2">
+              <FormField
+                name="password"
+                control={control}
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Create a strong password"
+                error={errors.password}
+                required
+                disabled={isSubmitting}
+              />
+              
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+              >
+                {showPassword ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    Hide
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Show
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <FormField
+                name="confirmPassword"
+                control={control}
+                label="Confirm Password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Confirm your password"
+                error={errors.confirmPassword}
+                required
+                disabled={isSubmitting}
+              />
+              
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                disabled={isSubmitting}
+              >
+                {showConfirmPassword ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    Hide
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Show
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {errors.root && (
+              <div className="text-sm text-destructive text-center">
+                {errors.root.message}
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter className="flex flex-col space-y-4">
             <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-              onClick={() => setShowPassword(!showPassword)}
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              disabled={isSubmitting || isLoading}
             >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" />
+              {isSubmitting || isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
               ) : (
-                <Eye className="h-4 w-4" />
+                'Create Account'
               )}
             </Button>
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <div className="relative">
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              placeholder="Confirm your password"
-              required
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              {showConfirmPassword ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Creating account..." : "Create account"}
-        </Button>
-      </form>
-
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link
-            to="/auth/login"
-            className="text-blue-600 hover:text-blue-500 font-medium"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+            <div className="text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link
+                to="/auth/login"
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                Sign in
+              </Link>
+            </div>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 };
 
-export default RegisterPage; 
+export default LoginPage;

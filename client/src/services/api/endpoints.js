@@ -1,246 +1,134 @@
-// API Endpoints Configuration
-// This file centralizes all API endpoints for better maintainability
 
+/**
+ * Centralized API endpoints configuration
+ */
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Helper function to build URLs
+export const buildUrl = (endpoint, params = {}) => {
+  let url = `${API_BASE}${endpoint}`;
+  
+  // Replace path parameters
+  Object.keys(params).forEach(key => {
+    url = url.replace(`:${key}`, params[key]);
+  });
+  
+  return url;
+};
+
+// API Endpoints
 export const ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: "/auth/login",
-    REGISTER: "/auth/register",
-    LOGOUT: "/auth/logout",
-    REFRESH: "/auth/refresh",
-    ME: "/auth/me",
-    FORGOT_PASSWORD: "/auth/forgot-password",
-    RESET_PASSWORD: "/auth/reset-password",
-    VERIFY_EMAIL: "/auth/verify-email",
-    STATUS: "/auth/status",
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
+    REFRESH: '/auth/refresh',
+    LOGOUT: '/auth/logout',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
+    PROFILE: '/auth/profile'
   },
 
-  // Users (Global User Accounts)
+  // Users
   USERS: {
-    BASE: "/users",
-    PROFILE: "/users/profile",
-    BY_ID: (id) => `/users/${id}`,
-    UPDATE_PROFILE: "/users/profile",
-    CHANGE_PASSWORD: "/users/change-password",
-    UPLOAD_AVATAR: "/users/avatar",
-    // Removed group/membership related endpoints from here, as they are now in MEMBERS/GROUPS
-    FINANCIAL_SUMMARY: (userId) => `/users/${userId}/financial-summary`,
+    BASE: '/users',
+    BY_ID: '/users/:id',
+    STATS: '/users/stats',
+    BULK: '/users/bulk'
   },
 
-  // Members (Specific for member-related actions, especially cross-entity ones)
-  // These routes are handled by memberController on the backend.
-  MEMBERS: {
-    BASE: "/members", // For getAllMembers, createMember
-    BY_ID: (id) => `/members/${id}`, // For getMemberById, updateMember, deleteMember
-    ADD_TO_GROUP: (memberId, groupId) =>
-      `/members/${memberId}/groups/${groupId}`,
-    REMOVE_FROM_GROUP: (memberId, groupId) =>
-      `/members/${memberId}/groups/${groupId}`,
-    UPDATE_ROLE_IN_GROUP: (memberId, groupId) =>
-      `/members/${memberId}/groups/${groupId}/role`,
-  },
-
-  // Groups (Group Management)
-  // These routes are also handled by memberController on the backend.
+  // Groups
   GROUPS: {
-    BASE: "/groups", // For getAllGroups, createGroup
-    BY_ID: (id) => `/groups/${id}`, // For getGroupById, updateGroup, deleteGroup
-    MEMBERS: (groupId) => `/users/groups/${groupId}/members`, // For getGroupMembers (mounted under /api/users)
-    JOIN: (groupId) => `/groups/${groupId}/join`, // For joinGroup
-    // Removed other group-member specific routes as they are now under MEMBERS
+    BASE: '/groups',
+    BY_ID: '/groups/:id',
+    MEMBERS: '/groups/:id/members',
+    STATS: '/groups/stats',
+    ACTIVITIES: '/groups/:id/activities'
+  },
+
+  // Members
+  MEMBERS: {
+    BASE: '/members',
+    BY_ID: '/members/:id',
+    STATS: '/members/stats',
+    BY_GROUP: '/members/group/:groupId'
   },
 
   // Loans
   LOANS: {
-    BASE: "/loans",
-    BY_ID: (id) => `/loans/${id}`,
-    APPLY: "/loans",
-    APPROVE: (id) => `/loans/${id}/approve`,
-    REJECT: (id) => `/loans/${id}/reject`,
-    DISBURSE: (id) => `/loans/${id}/disburse`,
-    REPAYMENT_SCHEDULE: (id) => `/loans/${id}/repayment-schedule`,
-    PAYMENTS: (id) => `/loans/${id}/payments`,
-    ADD_PAYMENT: (id) => `/loans/${id}/payments`,
-    STATS: "/loans/stats",
+    BASE: '/loans',
+    BY_ID: '/loans/:id',
+    APPROVE: '/loans/:id/approve',
+    REPAYMENT: '/loans/:id/repayment',
+    STATS: '/loans/stats',
+    CALCULATE: '/loans/:id/calculate'
   },
 
   // Savings
   SAVINGS: {
-    BASE: "/savings",
-    BY_ID: (id) => `/savings/${id}`,
-    // Deposit/withdraw endpoints on backend are POST /savings/deposit and /savings/withdraw
-    DEPOSIT_ANY: () => `/savings/deposit`,
-    WITHDRAW_ANY: () => `/savings/withdraw`,
-    TRANSACTIONS: (id) => `/savings/${id}/transactions`,
-    STATS: "/savings/stats",
+    BASE: '/savings',
+    BY_ID: '/savings/:id',
+    DEPOSIT: '/savings/:id/deposit',
+    WITHDRAW: '/savings/:id/withdraw',
+    STATS: '/savings/stats'
   },
 
   // Transactions
   TRANSACTIONS: {
-    BASE: "/transactions",
-    BY_ID: (id) => `/transactions/${id}`,
-    BY_TYPE: (type) => `/transactions?type=${type}`,
-    BY_DATE_RANGE: (startDate, endDate) =>
-      `/transactions?startDate=${startDate}&endDate=${endDate}`,
-    STATS: "/transactions/stats",
+    BASE: '/transactions',
+    BY_ID: '/transactions/:id',
+    BY_USER: '/transactions/user/:userId',
+    BY_LOAN: '/transactions/loan/:loanId',
+    STATS: '/transactions/stats'
   },
 
-  // Accounts
-  ACCOUNTS: {
-    BASE: "/accounts",
-    BY_ID: (id) => `/accounts/${id}`,
-    BY_OWNER: (ownerId, ownerModel) =>
-      `/accounts?owner=${ownerId}&ownerModel=${ownerModel}`,
-    CREATE: "/accounts",
-    UPDATE: (id) => `/accounts/${id}`,
-    DELETE: (id) => `/accounts/${id}`,
-  },
-
-  // Contributions
-  CONTRIBUTIONS: {
-    BASE: "/contributions",
-    BY_ID: (id) => `/contributions/${id}`,
-    BY_GROUP: (groupId) => `/contributions/groups/${groupId}`,
-    BY_MEMBER: (memberId) => `/contributions/members/${memberId}/contributions`,
-    SUMMARY: (groupId) => `/contributions/groups/${groupId}/summary`,
-    BULK_IMPORT: (groupId) => `/contributions/groups/${groupId}/bulk`,
-    EXPORT: (groupId, format = "csv") =>
-      `/contributions/groups/${groupId}/export?format=${format}`,
-    MEMBER_HISTORY: (memberId) =>
-      `/contributions/members/${memberId}/contributions`,
+  // Chat
+  CHAT: {
+    MESSAGES: '/chat/messages',
+    BY_ID: '/chat/messages/:id',
+    READ: '/chat/messages/read',
+    BY_GROUP: '/chat/messages/group/:groupId'
   },
 
   // Meetings
   MEETINGS: {
-    BASE: "/meetings",
-    BY_ID: (id) => `/meetings/${id}`,
-    BY_GROUP: (groupId) => `/meetings?group=${groupId}`,
-    ATTENDANCE: (id) => `/meetings/${id}/attendance`,
-    MARK_ATTENDANCE: (id) => `/meetings/${id}/attendance`,
+    BASE: '/meetings',
+    BY_ID: '/meetings/:id',
+    BY_GROUP: '/meetings/group/:groupId',
+    ATTENDANCE: '/meetings/:id/attendance'
   },
 
   // Reports
   REPORTS: {
-    BASE: "/reports",
-    DASHBOARD: "/reports/dashboard",
-    TOTAL_LOANS: "/reports/total-loans",
-    LOANS: "/reports/loans",
-    SAVINGS: "/reports/savings",
-    TRANSACTIONS: "/reports/transactions",
-    MEMBERS: "/reports/members",
-    GROUPS: "/reports/groups",
-    DEFAULTERS: "/reports/defaulters",
-    EXPORT: (type, format = "csv") =>
-      `/reports/${type}/export?format=${format}`,
-    RECENT_ACTIVITY: "/reports/recent-activity",
-    UPCOMING_REPAYMENTS: "/reports/upcoming-repayments",
-    FINANCIAL_SUMMARY: "/reports/financial-summary",
-    GROUP_SAVINGS_PERFORMANCE: "/reports/group-savings-performance",
-    ACTIVE_LOAN_DEFAULTERS: "/reports/active-loan-defaulters",
+    FINANCIAL: '/reports/financial',
+    LOANS: '/reports/loans',
+    SAVINGS: '/reports/savings',
+    GROUPS: '/reports/groups',
+    CUSTOM: '/reports/custom'
   },
 
   // Notifications
   NOTIFICATIONS: {
-    BASE: "/notifications",
-    BY_ID: (id) => `/notifications/${id}`,
-    MARK_READ: (id) => `/notifications/${id}/read`,
-    MARK_ALL_READ: "/notifications/mark-all-read",
-    UNREAD_COUNT: "/notifications/unread-count",
+    BASE: '/notifications',
+    BY_ID: '/notifications/:id',
+    MARK_READ: '/notifications/:id/read',
+    MARK_ALL_READ: '/notifications/read-all'
   },
 
   // Settings
   SETTINGS: {
-    BASE: "/settings",
-    APP: "/settings/app",
-    UPDATE_APP: "/settings/app",
-    USER: "/settings/user",
-    UPDATE_USER: "/settings/user",
-    RESET: "/settings/reset",
+    BASE: '/settings',
+    BY_KEY: '/settings/:key'
   },
 
-  // Chat (aligned with backend routes)
-  CHAT: {
-    BASE: "/chat",
-    CHANNELS: "/chat/channels",
-    MESSAGES: "/chat/messages",
-    SEND_MESSAGE: "/chat/messages",
-    MARK_READ: "/chat/messages/read",
-    MESSAGE: (messageId) => `/chat/messages/${messageId}`,
-    STATS: "/chat/stats",
-  },
-
-  // Guarantors
-  GUARANTORS: {
-    BASE: "/guarantors",
-    BY_ID: (id) => `/guarantors/${id}`,
-    BY_LOAN: (loanId) => `/guarantors?loan=${loanId}`,
-    APPROVE: (id) => `/guarantors/${id}/approve`,
-    REJECT: (id) => `/guarantors/${id}/reject`,
-  },
-
-  // Contributions
-  CONTRIBUTIONS: {
-    BASE: "/contributions",
-    BY_ID: (id) => `/contributions/${id}`,
-    BY_GROUP: (groupId) => `/contributions?group=${groupId}`,
-    BY_MEMBER: (memberId) => `/contributions?member=${memberId}`,
-    SUMMARY: (groupId) =>
-      `/contributions/groups/${groupId}/contributions/summary`,
-    BULK_IMPORT: (groupId) =>
-      `/contributions/groups/${groupId}/contributions/bulk`,
-    EXPORT: (groupId, format) =>
-      `/contributions/groups/${groupId}/contributions/export?format=${format}`,
-    MEMBER_HISTORY: (memberId) =>
-      `/contributions/members/${memberId}/contributions`,
-  },
-
-  // Repayments
-  REPAYMENTS: {
-    BASE: "/repayments",
-    BY_ID: (id) => `/repayments/${id}`,
-    BY_LOAN: (loanId) => `/repayments?loan=${loanId}`,
-    SCHEDULE: (loanId) => `/repayments/${loanId}/schedule`,
-    VOID: (id) => `/repayments/${id}/void`,
-  },
-
-  // Health
-  HEALTH: {
-    BASE: "/health",
-    STATUS: "/health/status",
-  },
-
-  // Loan Assessments
-  LOAN_ASSESSMENTS: {
-    BASE: "/loan-assessments",
-    BY_ID: (id) => `/loan-assessments/${id}`,
-    STATUS: (id) => `/loan-assessments/${id}/status`,
-    STATS: "/loan-assessments/stats",
-    QUICK: "/loan-assessments/quick",
-  },
+  // Health & System
+  HEALTH: '/health',
+  STATUS: '/status',
+  INFO: '/info'
 };
 
-// Helper function to build query parameters
-export const buildQueryString = (params = {}) => {
-  const searchParams = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      if (Array.isArray(value)) {
-        value.forEach((item) => searchParams.append(key, item));
-      } else {
-        searchParams.append(key, value);
-      }
-    }
-  });
-
-  const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : "";
-};
-
-// Helper function to build URL with query parameters
-export const buildUrl = (endpoint, params = {}) => {
-  const queryString = buildQueryString(params);
-  return `${endpoint}${queryString}`;
-};
+// Export individual endpoint builders
+export const getEndpoint = (endpoint, params = {}) => buildUrl(endpoint, params);
 
 export default ENDPOINTS;
