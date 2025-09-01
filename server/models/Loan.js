@@ -1,6 +1,9 @@
 // server\models\Loan.js
 const mongoose = require('mongoose');
 const { getCurrencyFromSettings } = require('../utils/currencyUtils');
+// Assuming DecimalUtils is available in '../utils/decimalUtils'
+const DecimalUtils = require('../utils/decimalUtils');
+
 
 // Embedded schema for each repayment installment
 const repaymentScheduleSchema = new mongoose.Schema(
@@ -10,9 +13,11 @@ const repaymentScheduleSchema = new mongoose.Schema(
       required: true,
     },
     amount: {
-      type: Number,
+      type: mongoose.Schema.Types.Decimal128,
       required: true,
       min: [1, 'Installment amount must be positive'],
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
     },
     status: {
       type: String,
@@ -44,20 +49,26 @@ const loanSchema = new mongoose.Schema(
       index: true, // Added index
     },
     amountRequested: {
-      type: Number,
+      type: mongoose.Schema.Types.Decimal128,
       required: [true, 'Requested amount is required'],
       min: [10, 'Minimum loan amount is 10'],
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
     },
     amountApproved: {
-      type: Number,
+      type: mongoose.Schema.Types.Decimal128,
       min: [0, 'Approved amount cannot be negative'],
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
       // Consider adding required: true if status is 'approved' (can be done with custom validation)
     },
     interestRate: {
-      type: Number,
-      default: 10,
+      type: mongoose.Schema.Types.Decimal128,
+      default: () => DecimalUtils.toDecimal(10), // Default to 10%
       min: [0, 'Interest rate cannot be negative'],
       max: [100, 'Interest rate cannot exceed 100'],
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
     },
     loanTerm: {
       type: Number, // In months
@@ -81,6 +92,39 @@ const loanSchema = new mongoose.Schema(
     deleted: { type: Boolean, default: false, index: true },
     deletedAt: { type: Date },
     deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+    // Added fields from changes, ensuring they are Decimal128 where appropriate
+    monthlyPayment: {
+      type: mongoose.Schema.Types.Decimal128,
+      required: true,
+      min: 0,
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
+    },
+    totalInterest: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: () => DecimalUtils.toDecimal(0),
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
+    },
+    totalAmount: {
+      type: mongoose.Schema.Types.Decimal128,
+      required: true,
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
+    },
+    outstandingBalance: {
+      type: mongoose.Schema.Types.Decimal128,
+      required: true,
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
+    },
+    amountPaid: {
+      type: mongoose.Schema.Types.Decimal128,
+      default: () => DecimalUtils.toDecimal(0),
+      set: value => DecimalUtils.toDecimal(value),
+      get: value => DecimalUtils.toNumber(value)
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields
@@ -91,10 +135,10 @@ const loanSchema = new mongoose.Schema(
 
 // 🔍 Instance method to calculate total outstanding (unpaid) balance
 loanSchema.methods.getOutstandingBalance = function () {
-  if (!this.repaymentSchedule?.length) return 0;
+  if (!this.repaymentSchedule?.length) return DecimalUtils.toDecimal(0);
   return this.repaymentSchedule
     .filter(r => r.status === 'pending')
-    .reduce((sum, r) => sum + r.amount, 0);
+    .reduce((sum, r) => sum + DecimalUtils.toNumber(r.amount), 0); // Ensure sum is in number format
 };
 
 // Virtual for formatted loan amount
@@ -103,7 +147,7 @@ loanSchema.virtual('formattedAmountRequested').get(async function () {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
-  }).format(this.amountRequested);
+  }).format(DecimalUtils.toNumber(this.amountRequested)); // Use getter
 });
 
 // Virtual for formatted approved amount
@@ -112,7 +156,44 @@ loanSchema.virtual('formattedAmountApproved').get(async function () {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
-  }).format(this.amountApproved);
+  }).format(DecimalUtils.toNumber(this.amountApproved)); // Use getter
 });
+
+// Virtual for formatted monthly payment
+loanSchema.virtual('formattedMonthlyPayment').get(async function () {
+  const currency = await getCurrencyFromSettings();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(DecimalUtils.toNumber(this.monthlyPayment)); // Use getter
+});
+
+// Virtual for formatted total amount
+loanSchema.virtual('formattedTotalAmount').get(async function () {
+  const currency = await getCurrencyFromSettings();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(DecimalUtils.toNumber(this.totalAmount)); // Use getter
+});
+
+// Virtual for formatted outstanding balance
+loanSchema.virtual('formattedOutstandingBalance').get(async function () {
+  const currency = await getCurrencyFromSettings();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(DecimalUtils.toNumber(this.outstandingBalance)); // Use getter
+});
+
+// Virtual for formatted amount paid
+loanSchema.virtual('formattedAmountPaid').get(async function () {
+  const currency = await getCurrencyFromSettings();
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(DecimalUtils.toNumber(this.amountPaid)); // Use getter
+});
+
 
 module.exports = mongoose.model('Loan', loanSchema);

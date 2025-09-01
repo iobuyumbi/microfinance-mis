@@ -2,3 +2,19 @@ modules = ["nodejs-20", "web"]
 
 [nix]
 channel = "stable-25_05"
+
+[workflows]
+runButton = "Development"
+
+[[workflows.workflow]]
+name = "Development"
+author = 47128572
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && pnpm install && pnpm run dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && pnpm install && pnpm run dev"
