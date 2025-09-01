@@ -1,13 +1,52 @@
-import { api } from './api/client';
-import { ENDPOINTS } from './api/endpoints';
 
-export const settingsService = {
-  get: () =>
-    api.get(ENDPOINTS.SETTINGS.BASE),
+import apiClient from './api/client';
 
-  update: (data) =>
-    api.put(ENDPOINTS.SETTINGS.BASE, data),
+class SettingsService {
+  async getSettings() {
+    try {
+      const response = await apiClient.get('/settings');
+      return response.data.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch settings');
+    }
+  }
 
-  reset: () =>
-    api.post(ENDPOINTS.SETTINGS.RESET),
-};
+  async updateSettings(settings) {
+    try {
+      const response = await apiClient.put('/settings', settings);
+      return response.data.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to update settings');
+    }
+  }
+
+  async resetSettings() {
+    try {
+      const response = await apiClient.post('/settings/reset');
+      return response.data.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to reset settings');
+    }
+  }
+
+  async getSettingCategory(category) {
+    try {
+      const response = await apiClient.get(`/settings/${category}`);
+      return response.data.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || `Failed to fetch ${category} settings`);
+    }
+  }
+
+  async updateSettingCategory(category, data) {
+    try {
+      const response = await apiClient.put(`/settings/${category}`, data);
+      return response.data.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || `Failed to update ${category} settings`);
+    }
+  }
+}
+
+export const settingsService = new SettingsService();
+export default settingsService;

@@ -1,122 +1,138 @@
-// server\controllers\settingsController.js (REVISED)
+
 const Settings = require('../models/Settings');
 const asyncHandler = require('../middleware/asyncHandler');
-const { ErrorResponse } = require('../utils');
-const mongoose = require('mongoose');
+const ErrorResponse = require('../utils/errorResponse');
 
-// The fixed ID for the single settings document
-const SETTINGS_ID = 'app_settings';
-
-/**
- * Helper function to deeply merge objects.
- * This is useful for updating nested settings without overwriting entire sub-objects.
- * @param {object} target - The object to merge into (modified in place).
- * @param {object} source - The object to merge from.
- */
-function deepMerge(target, source) {
-  for (const key in source) {
-    if (source.hasOwnProperty(key)) {
-      if (
-        typeof source[key] === 'object' &&
-        source[key] !== null &&
-        !Array.isArray(source[key])
-      ) {
-        if (
-          !target[key] ||
-          typeof target[key] !== 'object' ||
-          Array.isArray(target[key])
-        ) {
-          target[key] = {}; // Ensure target property is an object if source is
-        }
-        deepMerge(target[key], source[key]);
-      } else {
-        target[key] = source[key];
-      }
-    }
-  }
-}
-
-// @desc    Get application settings
+// @desc    Get settings
 // @route   GET /api/settings
-// @access  Private (Accessible by all authenticated users)
-exports.getSettings = asyncHandler(async (req, res, next) => {
-  // Attempt to find the single settings document by its fixed ID
-  let settings = await Settings.findOne({ settingsId: SETTINGS_ID });
-
-  // If no settings document exists, create it with defaults
+// @access  Private (Admin/Officer)
+const getSettings = asyncHandler(async (req, res) => {
+  let settings = await Settings.findOne({ settingsId: 'app_settings' });
+  
   if (!settings) {
-    // Create with the new settingsId field
-    settings = await Settings.create({ settingsId: SETTINGS_ID });
-    console.log('Default settings document created as it did not exist.');
+    // Create default settings if none exist
+    settings = await Settings.create({ settingsId: 'app_settings' });
   }
 
-  res.status(200).json({ success: true, data: settings });
+  res.status(200).json({
+    success: true,
+    data: settings
+  });
 });
 
-// @desc    Update application settings
+// @desc    Update settings
 // @route   PUT /api/settings
-// @access  Private (Admin only) - authorize('admin') middleware handles this
-exports.updateSettings = asyncHandler(async (req, res, next) => {
-  // Find the settings document by its fixed ID
-  let settings = await Settings.findOne({ settingsId: SETTINGS_ID });
-
-  // If settings don't exist, create them first (though getSettings should ideally ensure existence)
-  if (!settings) {
-    settings = await Settings.create({ settingsId: SETTINGS_ID });
-    console.warn(
-      'Settings document not found during update, created a new one.'
-    );
+// @access  Private (Admin only)
+const updateSettings = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return next(new ErrorResponse('Access denied. Admin role required.', 403));
   }
 
-  // Use deepMerge to handle nested objects gracefully
-  deepMerge(settings, req.body);
+  let settings = await Settings.findOne({ settingsId: 'app_settings' });
+  
+  if (!settings) {
+    // Create new settings if none exist
+    settings = await Settings.create({
+      settingsId: 'app_settings',
+      ...req.body
+    });
+  } else {
+    // Update existing settings
+    Object.keys(req.body).forEach(key => {
+      if (key !== 'settingsId' && key !== '_id') {
+        settings[key] = req.body[key];
+      }
+    });
+    await settings.save();
+  }
 
+  res.status(200).json({
+    success: true,
+    data: settings,
+    message: 'Settings updated successfully'
+  });
+});
+
+// @desc    Reset settings to default
+// @route   POST /api/settings/reset
+// @access  Private (Admin only)
+const resetSettings = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return next(new ErrorResponse('Access denied. Admin role required.', 403));
+  }
+
+  // Delete existing settings
+  await Settings.deleteOne({ settingsId: 'app_settings' });
+  
+  // Create new default settings
+  const settings = await Settings.create({ settingsId: 'app_settings' });
+
+  res.status(200).json({
+    success: true,
+    data: settings,
+    message: 'Settings reset to default successfully'
+  });
+});
+
+// @desc    Get specific setting category
+// @route   GET /api/settings/:category
+// @access  Private
+const getSettingCategory = asyncHandler(async (req, res) => {
+  const { category } = req.params;
+  
+  const settings = await Settings.findOne({ settingsId: 'app_settings' });
+  
+  if (!settings) {
+    return next(new ErrorResponse('Settings not found', 404));
+  }
+
+  if (!settings[category]) {
+    return next(new ErrorResponse(`Setting category '${category}' not found`, 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: settings[category]
+  });
+});
+
+// @desc    Update specific setting category
+// @route   PUT /api/settings/:category
+// @access  Private (Admin/Officer for most, Admin only for security and system)
+const updateSettingCategory = asyncHandler(async (req, res) => {
+  const { category } = req.params;
+  
+  // Restrict certain categories to admin only
+  const adminOnlyCategories = ['security', 'system'];
+  if (adminOnlyCategories.includes(category) && req.user.role !== 'admin') {
+    return next(new ErrorResponse('Access denied. Admin role required for this setting category.', 403));
+  }
+
+  let settings = await Settings.findOne({ settingsId: 'app_settings' });
+  
+  if (!settings) {
+    settings = await Settings.create({ settingsId: 'app_settings' });
+  }
+
+  if (!settings[category]) {
+    return next(new ErrorResponse(`Setting category '${category}' not found`, 404));
+  }
+
+  // Update the category
+  settings[category] = { ...settings[category], ...req.body };
   await settings.save();
 
   res.status(200).json({
     success: true,
-    message: 'Settings updated successfully.',
-    data: settings,
+    data: settings[category],
+    message: `${category} settings updated successfully`
   });
 });
 
-// @desc    Reset application settings to defaults
-// @route   POST /api/settings/reset
-// @access  Private (Admin only) - authorize('admin') middleware handles this
-exports.resetSettings = asyncHandler(async (req, res, next) => {
-  // Start a session for atomicity, especially if other operations depend on settings
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    // Find and delete the existing settings document by its fixed ID
-    const deletedSettings = await Settings.findOneAndDelete(
-      { settingsId: SETTINGS_ID },
-      {
-        session,
-      }
-    );
-
-    // Create a new settings document, which will use the schema defaults
-    const defaultSettings = await Settings.create(
-      [{ settingsId: SETTINGS_ID }],
-      {
-        session,
-      }
-    );
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(200).json({
-      success: true,
-      message: 'Settings reset to default values successfully.',
-      data: defaultSettings[0], // Access the first element as create returns an array
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('Error resetting settings:', error);
-    return next(new ErrorResponse('Failed to reset settings.', 500));
-  }
-});
+module.exports = {
+  getSettings,
+  updateSettings,
+  resetSettings,
+  getSettingCategory,
+  updateSettingCategory
+};
