@@ -6,25 +6,14 @@ require('dotenv').config();
 // Core dependencies
 const express = require('express');
 const http = require('http');
-const path = require('path');
 
 // Security and middleware
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
 const morgan = require('morgan');
-
-// Socket.IO and authentication
-const socketIo = require('socket.io');
-const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose'); // Added mongoose to validate ObjectId
-
-// Models
-const User = require('./models/User');
 
 // Configuration
 const { connectDB } = require('./config');
@@ -32,12 +21,6 @@ const configureSocket = require('./config/socket');
 
 // Middleware
 const { errorHandler, notFound } = require('./middleware');
-
-// Controllers
-const {
-  checkGroupAccess,
-  createAndSaveChatMessage,
-} = require('./controllers/chatController');
 
 // Import all routes
 const authRoutes = require('./routes/authRoutes');
@@ -68,7 +51,11 @@ const server = http.createServer(app);
 // CORS configuration - MUST be applied early, before routes
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: [
+      process.env.CLIENT_URL || 'http://localhost:5173',
+      'http://localhost:5174', // Allow the alternate port
+      'http://localhost:3000'  // Common React port
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -467,7 +454,7 @@ process.on('SIGINT', () => {
 });
 
 // Unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
+process.on('unhandledRejection', (err, _promise) => {
   console.log(`Error: ${err.message}`);
   server.close(() => process.exit(1));
 });
@@ -495,8 +482,8 @@ const startServer = async () => {
 
       if (process.env.NODE_ENV === 'development') {
         console.log(`\n🔧 Development Mode: Default admin account available:`);
-        console.log(`   Email: admin@microfinance.com`);
-        console.log(`   Password: admin1234`);
+        console.log(`   Email: admin@microfinance.com`);
+        console.log(`   Password: admin1234`);
       }
     });
   } catch (error) {

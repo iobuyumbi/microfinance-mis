@@ -99,7 +99,7 @@ class LoanService {
           await account.save({ session });
         }
 
-        return loan;
+        return { loan, amount: loan.amount };
       },
       userId: approvedBy,
       resource: 'loan',
@@ -107,7 +107,7 @@ class LoanService {
       req,
       metadata: {
         action: 'LOAN_APPROVE',
-        amount: DecimalUtils.toNumber(loan.amount)
+        amount: 0 // Will be set from operation result
       }
     });
   }
@@ -180,10 +180,6 @@ class LoanService {
    * Calculate loan interest and penalties
    */
   static calculateInterestAndPenalties(loan, asOfDate = new Date()) {
-    const principal = DecimalUtils.toNumber(loan.amount);
-    const rate = DecimalUtils.toNumber(loan.interestRate) / 100;
-    const termMonths = loan.termMonths;
-    
     // Calculate days since disbursement
     const disbursementDate = loan.approvedAt || loan.createdAt;
     const daysDiff = Math.floor((asOfDate - disbursementDate) / (1000 * 60 * 60 * 24));

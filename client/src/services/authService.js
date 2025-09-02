@@ -66,13 +66,21 @@ class AuthService {
   // Login
   async login(credentials) {
     try {
+      console.log('AuthService.login - Sending credentials:', credentials);
       const response = await apiRequest.post(ENDPOINTS.AUTH.LOGIN, credentials);
+      console.log('AuthService.login - Raw response:', response);
       
       if (response.success && response.token && response.user) {
+        console.log('AuthService.login - Success, setting auth data');
         this.setAuthData(response.token, response.user);
-        toast.success(`Welcome back, ${response.user.firstName}!`);
+        toast.success(`Welcome back, ${response.user.name}!`);
         return { success: true, user: response.user };
       } else {
+        console.log('AuthService.login - Response missing required fields:', { 
+          success: response.success, 
+          hasToken: !!response.token, 
+          hasUser: !!response.user 
+        });
         throw new Error(response.message || 'Login failed');
       }
     } catch (error) {
@@ -90,7 +98,7 @@ class AuthService {
       
       if (response.success && response.token && response.user) {
         this.setAuthData(response.token, response.user);
-        toast.success(`Welcome to Microfinance MIS, ${response.user.firstName}!`);
+        toast.success(`Welcome to Microfinance MIS, ${response.user.name}!`);
         return { success: true, user: response.user };
       } else {
         throw new Error(response.message || 'Registration failed');
@@ -182,10 +190,10 @@ class AuthService {
     try {
       const response = await apiRequest.get(ENDPOINTS.AUTH.PROFILE);
       
-      if (response.success && response.user) {
+      if (response.success && response.data) {
         // Update stored user data
-        this.setAuthData(this.getToken(), response.user);
-        return { success: true, user: response.user };
+        this.setAuthData(this.getToken(), response.data);
+        return { success: true, user: response.data };
       } else {
         throw new Error('Failed to get user profile');
       }
@@ -214,3 +222,6 @@ class AuthService {
 
 // Export singleton instance
 export default new AuthService();
+
+// Named export for backward compatibility
+export const authService = new AuthService();

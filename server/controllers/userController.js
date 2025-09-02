@@ -78,7 +78,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
           gender,
           nationalID, // Use nationalID as per model
           status: 'active', // Default status for newly created users
-          isMember: isMember, // Set isMember based on role
+          isMember, // Set isMember based on role
           // createdBy: req.user.id, // Uncomment if you have this field in User model
         },
       ],
@@ -96,7 +96,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
           owner: user._id,
           ownerModel: 'User',
           type: 'savings', // Default account type
-          accountNumber: accountNumber, // Add the generated account number
+          accountNumber, // Add the generated account number
           balance: 0,
           status: 'active',
           // createdBy: req.user.id, // Uncomment if you have this field in Account model
@@ -129,7 +129,7 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     }
     next(
       new ErrorResponse(
-        'Failed to create user and account. ' + error.message,
+        `Failed to create user and account. ${  error.message}`,
         500
       )
     );
@@ -140,16 +140,59 @@ exports.createUser = asyncHandler(async (req, res, next) => {
 // @route   GET /api/users
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAllUsers = asyncHandler(async (req, res, next) => {
-  // req.dataFilter is set by the filterDataByRole middleware
-  // This endpoint should primarily return User documents based on global roles/status.
-  // For group-specific member lists, use the memberController.getMembers endpoint with groupId.
-  // For listing system users, admins/officers see all users; others are filtered by middleware.
-  const query = req.dataFilter || {};
-  const users = await User.find(query)
-    .select('-password -__v') // Exclude password hash and version key
-    .sort({ createdAt: -1 });
+  // Base filter from role-based middleware
+  const baseFilter = req.dataFilter || {};
 
-  res.status(200).json({ success: true, count: users.length, data: users });
+  // Parse query params
+  const {
+    page = 1,
+    limit = 10,
+    q = '',
+    role,
+    status,
+    sortBy = 'createdAt',
+    sortOrder = 'desc'
+  } = req.query;
+
+  // Build filter
+  const filter = { ...baseFilter };
+  if (q) {
+    filter.$or = [
+      { name: { $regex: q, $options: 'i' } },
+      { email: { $regex: q, $options: 'i' } },
+      { role: { $regex: q, $options: 'i' } },
+      { status: { $regex: q, $options: 'i' } },
+    ];
+  }
+  if (role) filter.role = role;
+  if (status) filter.status = status;
+
+  // Pagination & sorting
+  const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+  const skip = (pageNum - 1) * limitNum;
+  const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+  const [items, total] = await Promise.all([
+    User.find(filter)
+      .select('-password -__v')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum),
+    User.countDocuments(filter),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    message: 'Users fetched successfully',
+    data: {
+      items,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    },
+  });
 });
 
 // @desc    Get a single user by ID
@@ -466,7 +509,7 @@ exports.getUserFinancialSummary = asyncHandler(async (req, res, next) => {
         status: 'active',
       });
 
-      let groupTotalSavings = groupAccount ? groupAccount.balance : 0;
+      const groupTotalSavings = groupAccount ? groupAccount.balance : 0;
 
       // Fetch loans associated with this specific group
       const groupLoans = await Loan.find({

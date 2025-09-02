@@ -79,8 +79,17 @@ const DashboardPage = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await dashboardService.getDashboardStats(timeRange);
-      setStats(data);
+      const response = await dashboardService.getDashboardStats(timeRange);
+      console.log('Dashboard response:', response);
+      
+      // Handle the response structure properly
+      if (response && response.data) {
+        setStats(response.data);
+      } else if (response) {
+        setStats(response);
+      } else {
+        throw new Error('Invalid response structure');
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");
@@ -304,6 +313,21 @@ const DashboardPage = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+              {getTrendIcon(3.2)}
+              <span className={getTrendColor(3.2)}>+3.2%</span>
+              <span>from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Members</CardTitle>

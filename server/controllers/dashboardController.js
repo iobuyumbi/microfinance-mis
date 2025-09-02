@@ -47,7 +47,8 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   }
 
   // Get basic counts
-  const [totalMembers, totalGroups, totalLoans, totalSavings] = await Promise.all([
+  const [totalUsers, totalMembers, totalGroups, totalLoans, totalSavings] = await Promise.all([
+    User.countDocuments({}),
     User.countDocuments({ role: 'member', ...groupFilter }),
     Group.countDocuments(userRole === 'admin' || userRole === 'officer' ? {} : { $or: [{ leader: userId }, { members: userId }] }),
     Loan.countDocuments({ status: 'active', ...groupFilter }),
@@ -220,6 +221,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data: {
+      totalUsers,
       totalMembers,
       totalLoans,
       totalSavings: totalSavings[0]?.total || 0,

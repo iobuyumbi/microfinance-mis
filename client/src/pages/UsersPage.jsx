@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  FacebookCard,
-  FacebookCardContent,
-  FacebookCardHeader,
-} from "../components/ui/facebook-card";
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -42,20 +38,32 @@ const UsersPage = () => {
     role: "member",
   });
   const [saving, setSaving] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page]);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPagination(p => ({ ...p, page: 1 }));
+      fetchUsers();
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+  
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await userService.getAll();
-      setUsers(res.data.data || []);
-      
+      const res = await userService.getAll({ page: pagination.page, limit: pagination.limit, q: search });
+      const body = res.data?.data || res.data || {};
+      const items = body.items || body;
+      setUsers(items || []);
+      if (body.total !== undefined) setPagination(prev => ({ ...prev, total: body.total }));
       // For each user, fetch their groups
-      const usersData = res.data.data || [];
-      usersData.forEach(user => {
+      (items || []).forEach(user => {
         fetchUserGroups(user._id);
       });
     } catch (err) {
@@ -150,7 +158,7 @@ const UsersPage = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 pb-16">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -165,24 +173,93 @@ const UsersPage = () => {
         </Button>
       </div>
 
-      <FacebookCard>
-        <FacebookCardHeader>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pagination.total}</div>
+            <p className="text-xs text-muted-foreground">Active system users</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Admins</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {users.filter(u => u.role === 'admin').length}
+            </div>
+            <p className="text-xs text-muted-foreground">System administrators</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Officers</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {users.filter(u => u.role === 'officer').length}
+            </div>
+            <p className="text-xs text-muted-foreground">Loan officers</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Members</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {users.filter(u => u.role === 'member').length}
+            </div>
+            <p className="text-xs text-muted-foreground">Regular members</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600" />
-              <h2 className="text-lg font-semibold">System Users</h2>
+              <CardTitle>System Users</CardTitle>
+              <Badge variant="secondary" className="ml-2">{pagination.total} total</Badge>
             </div>
-            <div className="w-full max-w-sm">
-              <Input
-                placeholder="Search users..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="flex items-center gap-2">
+              <div className="w-full max-w-sm">
+                <Input
+                  placeholder="Search users..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))} 
+                disabled={pagination.page <= 1}
+              >
+                Prev
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))} 
+                disabled={pagination.page * pagination.limit >= pagination.total}
+              >
+                Next
+              </Button>
             </div>
           </div>
-        </FacebookCardHeader>
-        <FacebookCardContent>
-          <div className="overflow-hidden rounded-lg border-2 border-blue-200">
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -197,19 +274,13 @@ const UsersPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-8 text-center text-muted-foreground"
-                    >
+                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                       Loading users...
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-8 text-center text-muted-foreground"
-                    >
+                    <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                       No users found
                     </TableCell>
                   </TableRow>
@@ -218,14 +289,19 @@ const UsersPage = () => {
                     <TableRow key={u._id}>
                       <TableCell>
                         <div className="font-medium">{u.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {u._id}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{u._id}</div>
                       </TableCell>
                       <TableCell>{u.email}</TableCell>
-                      <TableCell className="capitalize">{u.role}</TableCell>
-                      <TableCell className="capitalize">
-                        {u.status || "active"}
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{u.role}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={u.status === 'active' ? 'success' : 'secondary'} 
+                          className="capitalize"
+                        >
+                          {u.status || 'active'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {loadingGroups[u._id] ? (
@@ -233,34 +309,18 @@ const UsersPage = () => {
                         ) : userGroups[u._id] && userGroups[u._id].length > 0 ? (
                           <Popover>
                             <PopoverTrigger asChild>
-                              <Button variant="outline" size="sm">
+                              <Button variant="ghost" size="sm">
                                 <Building2 className="mr-2 h-4 w-4" />
-                                {userGroups[u._id].length} {userGroups[u._id].length === 1 ? 'Group' : 'Groups'}
+                                {userGroups[u._id].length} groups
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0">
-                              <div className="p-4 border-b">
-                                <h4 className="font-medium">Groups for {u.name}</h4>
-                                <p className="text-sm text-muted-foreground">User is a member of the following groups</p>
-                              </div>
-                              <ScrollArea className="h-72">
-                                <div className="p-4 space-y-2">
-                                  {userGroups[u._id].map((group) => (
-                                    <div key={group.groupId} className="border rounded-md p-3">
-                                      <div className="flex items-center justify-between">
-                                        <div className="font-medium">{group.groupName}</div>
-                                        <Badge variant={group.groupStatus === 'active' ? 'success' : 'secondary'}>
-                                          {group.groupStatus}
-                                        </Badge>
-                                      </div>
-                                      <div className="text-sm text-muted-foreground mt-1">{group.groupDescription}</div>
-                                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                        <div className="flex items-center">
-                                          <Users className="mr-1 h-3 w-3" />
-                                          {group.membersCount || 0} members
-                                        </div>
-                                        <div>Role: {group.userRoleInGroup}</div>
-                                      </div>
+                            <PopoverContent className="w-80">
+                              <ScrollArea className="h-[200px] w-full">
+                                <div className="space-y-2">
+                                  {userGroups[u._id].map(group => (
+                                    <div key={group._id} className="flex items-center justify-between">
+                                      <span>{group.name}</span>
+                                      <Badge variant="outline">{group.role}</Badge>
                                     </div>
                                   ))}
                                 </div>
@@ -274,51 +334,19 @@ const UsersPage = () => {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => updateRole(u._id, "admin")}
-                            >
-                              Set role: Admin
+                            <DropdownMenuItem onClick={() => updateRole(u._id, 'admin')}>Make Admin</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateRole(u._id, 'officer')}>Make Officer</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateRole(u._id, 'member')}>Make Member</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateStatus(u._id, u.status === 'active' ? 'inactive' : 'active')}>
+                              {u.status === 'active' ? 'Deactivate' : 'Activate'}
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateRole(u._id, "officer")}
-                            >
-                              Set role: Officer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateRole(u._id, "leader")}
-                            >
-                              Set role: Leader
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateRole(u._id, "member")}
-                            >
-                              Set role: Member
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateRole(u._id, "user")}
-                            >
-                              Set role: User
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateStatus(u._id, "active")}
-                            >
-                              Set status: Active
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => updateStatus(u._id, "inactive")}
-                            >
-                              Set status: Inactive
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => deleteUser(u._id)}
-                            >
-                              Delete user
+                            <DropdownMenuItem className="text-red-600" onClick={() => deleteUser(u._id)}>
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -329,79 +357,56 @@ const UsersPage = () => {
               </TableBody>
             </Table>
           </div>
-        </FacebookCardContent>
-      </FacebookCard>
+        </CardContent>
+      </Card>
 
       <FormModal
+        title="Add New User"
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        title="Add User"
-        description="Create a new user account with appropriate role and permissions."
+        onSubmit={handleCreateUser}
+        loading={saving}
       >
-        <form className="space-y-4" onSubmit={handleCreateUser}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <Input
-                value={createForm.name}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, name: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <Input
-                type="email"
-                value={createForm.email}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, email: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
-              <Input
-                type="password"
-                value={createForm.password}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, password: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Role</label>
-              <select
-                className="w-full px-3 py-2 border-2 border-blue-200 rounded-md focus:border-purple-500 focus:ring-purple-500/20 bg-transparent"
-                value={createForm.role}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, role: e.target.value }))
-                }
-              >
-                <option value="member">Member</option>
-                <option value="leader">Leader</option>
-                <option value="officer">Officer</option>
-                <option value="admin">Admin</option>
-                <option value="user">User</option>
-              </select>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium">Name</label>
+            <Input
+              value={createForm.name}
+              onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+              placeholder="Enter user name"
+            />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAddOpen(false)}
+          <div>
+            <label className="text-sm font-medium">Email</label>
+            <Input
+              type="email"
+              value={createForm.email}
+              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+              placeholder="Enter email address"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Password</label>
+            <Input
+              type="password"
+              value={createForm.password}
+              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+              placeholder="Enter password"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Role</label>
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+              value={createForm.role}
+              onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
             >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
+              <option value="member">Member</option>
+              <option value="officer">Officer</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
-        </form>
+        </div>
       </FormModal>
     </div>
   );

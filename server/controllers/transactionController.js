@@ -178,7 +178,7 @@ exports.createTransaction = asyncHandler(async (req, res, next) => {
 exports.getTransactions = asyncHandler(async (req, res, next) => {
   // `req.dataFilter` is set by the `filterDataByRole('Transaction')` middleware.
   // It will contain conditions for `member`, `group`, and `loan` access, etc.
-  let query = { ...(req.dataFilter || {}) };
+  const query = { ...(req.dataFilter || {}) };
 
   // Allow additional query parameters for filtering
   if (req.query.type) {
@@ -232,7 +232,7 @@ exports.getTransactionById = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
   // `req.dataFilter` is set by the `filterDataByRole` middleware.
-  let query = { _id: id, ...(req.dataFilter || {}) };
+  const query = { _id: id, ...(req.dataFilter || {}) };
 
   const transaction = await Transaction.findOne(query)
     .populate('member', 'name email')

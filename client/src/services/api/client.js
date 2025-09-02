@@ -3,7 +3,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 // API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -36,22 +36,47 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => {
     // Log response time in development
-    if (process.env.NODE_ENV === 'development' && response.config.metadata) {
+    if (import.meta.env.DEV && response.config.metadata) {
       const duration = new Date() - response.config.metadata.startTime;
       console.log(`API Request: ${response.config.method?.toUpperCase()} ${response.config.url} - ${duration}ms`);
     }
 
     // Ensure consistent response structure
     if (response.data && typeof response.data === 'object') {
+      // Debug logging for development
+      if (import.meta.env.DEV) {
+        console.log('Response interceptor - Original response.data:', response.data);
+      }
+      
       // If the response has a nested data structure, flatten it
       if (response.data.success !== undefined && response.data.data !== undefined) {
-        return {
+        const processedResponse = {
           ...response,
           data: response.data.data,
           success: response.data.success,
           message: response.data.message,
           originalResponse: response.data
         };
+        if (import.meta.env.DEV) {
+          console.log('Response interceptor - Nested structure processed:', processedResponse);
+        }
+        return processedResponse;
+      }
+      
+      // If the response has a flat structure with success, token, user, etc.
+      if (response.data.success !== undefined) {
+        const processedResponse = {
+          ...response,
+          success: response.data.success,
+          message: response.data.message,
+          token: response.data.token,
+          user: response.data.user,
+          originalResponse: response.data
+        };
+        if (import.meta.env.DEV) {
+          console.log('Response interceptor - Flat structure processed:', processedResponse);
+        }
+        return processedResponse;
       }
     }
     
@@ -171,3 +196,8 @@ export const apiCall = async (apiFunction, options = {}) => {
 };
 
 export default apiClient;
+
+// Named exports for backward compatibility
+export const api = apiClient;
+export const apiRequest = apiClient;
+export { apiClient };

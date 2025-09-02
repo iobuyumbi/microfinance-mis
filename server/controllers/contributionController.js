@@ -20,7 +20,7 @@ exports.getAllContributions = asyncHandler(async (req, res, next) => {
 
   // `req.dataFilter` is set by the `filterDataByRole('Transaction')` middleware.
   // It will already contain conditions for `member`, `group`, and `loan` access.
-  let query = {
+  const query = {
     type: 'savings_contribution',
     deleted: false,
     ...(req.dataFilter || {}),
@@ -93,7 +93,7 @@ exports.getContribution = asyncHandler(async (req, res, next) => {
   }
 
   // `req.dataFilter` is set by the `filterDataByRole('Transaction')` middleware.
-  let query = {
+  const query = {
     _id: id,
     type: 'savings_contribution',
     deleted: false, // Added deleted: false
@@ -259,7 +259,7 @@ exports.createContribution = asyncHandler(async (req, res, next) => {
     // Create the financial transaction using the utility function
     const { transaction, account } = await createFinancialTransaction({
       type: 'savings_contribution',
-      amount: amount,
+      amount,
       description: description || `Savings contribution to ${group.name}`,
       member: memberId,
       group: groupId,
@@ -459,7 +459,7 @@ exports.getGroupContributions = asyncHandler(async (req, res, next) => {
   // `filterDataByRole('Transaction')` middleware will also ensure the user can only see transactions
   // within their accessible groups.
 
-  let query = {
+  const query = {
     group: groupId,
     type: 'savings_contribution',
     deleted: false,
@@ -501,7 +501,7 @@ exports.getContributionSummary = asyncHandler(async (req, res, next) => {
   // `filterDataByRole('Transaction')` middleware will also ensure the user can only aggregate transactions
   // within their accessible groups.
 
-  let matchQuery = {
+  const matchQuery = {
     group: new mongoose.Types.ObjectId(groupId),
     type: 'savings_contribution',
     status: 'completed',
@@ -572,7 +572,7 @@ exports.getContributionSummary = asyncHandler(async (req, res, next) => {
       memberContributions.map(async mc => {
         mc.formattedTotalContribution = new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: currency,
+          currency,
         }).format(mc.totalContribution);
         return mc;
       })
@@ -679,7 +679,7 @@ exports.bulkImportContributions = asyncHandler(async (req, res, next) => {
             member: memberId,
             group: groupId,
             account: memberAccount._id,
-            amount: amount,
+            amount,
             description: description || 'Bulk savings contribution',
             status: 'completed',
             balanceAfter: newBalance,
@@ -822,7 +822,7 @@ exports.getMemberContributionHistory = asyncHandler(async (req, res, next) => {
   // The `filterDataByRole` middleware for 'Transaction' will also ensure the user can only see transactions
   // for members within their accessible scope.
 
-  let query = {
+  const query = {
     member: memberId,
     type: 'savings_contribution',
     deleted: false,

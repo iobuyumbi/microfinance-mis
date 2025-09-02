@@ -78,7 +78,7 @@ exports.addMemberToGroup = asyncHandler(async (req, res, next) => {
           {
             user: memberId,
             group: groupId,
-            roleInGroup: roleInGroup,
+            roleInGroup,
             status: 'active',
             joinedDate: new Date(),
           },
@@ -118,7 +118,7 @@ exports.addMemberToGroup = asyncHandler(async (req, res, next) => {
     console.error('Error adding member to group:', error);
     if (error instanceof ErrorResponse) return next(error);
     next(
-      new ErrorResponse('Failed to add member to group. ' + error.message, 500)
+      new ErrorResponse(`Failed to add member to group. ${  error.message}`, 500)
     );
   }
 });
@@ -181,7 +181,7 @@ exports.removeMemberFromGroup = asyncHandler(async (req, res, next) => {
       }
 
       // Transfer leadership
-      let newLeaderMembership = await UserGroupMembership.findOne({
+      const newLeaderMembership = await UserGroupMembership.findOne({
         user: newLeaderId,
         group: groupId,
       }).session(session);
@@ -257,7 +257,7 @@ exports.removeMemberFromGroup = asyncHandler(async (req, res, next) => {
     if (error instanceof ErrorResponse) return next(error);
     next(
       new ErrorResponse(
-        'Failed to remove member from group. ' + error.message,
+        `Failed to remove member from group. ${  error.message}`,
         500
       )
     );
@@ -360,7 +360,7 @@ exports.updateMemberRoleInGroup = asyncHandler(async (req, res, next) => {
     console.error('Error updating member role:', error);
     if (error instanceof ErrorResponse) return next(error);
     next(
-      new ErrorResponse('Failed to update member role. ' + error.message, 500)
+      new ErrorResponse(`Failed to update member role. ${  error.message}`, 500)
     );
   }
 });

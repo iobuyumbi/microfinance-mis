@@ -313,14 +313,14 @@ async function processLoanRepayment(repaymentData, options = {}) {
           member: memberId,
           group: groupId,
           account: borrowerAccount._id,
-          amount: amount,
+          amount,
           description: description || `Loan repayment for Loan ID: ${loanId}`,
           status: 'completed',
           balanceAfter: newBalance,
-          createdBy: createdBy,
+          createdBy,
           relatedEntity: loanId,
           relatedEntityType: 'Loan',
-          paymentMethod: paymentMethod,
+          paymentMethod,
         },
       ],
       { session }
@@ -372,7 +372,7 @@ function calculateLoanSchedule(loanData) {
   const monthlyPayment = totalAmount / loanTerm;
 
   const schedule = [];
-  let currentDate = new Date();
+  const currentDate = new Date();
 
   for (let i = 0; i < loanTerm; i++) {
     currentDate.setMonth(currentDate.getMonth() + 1);

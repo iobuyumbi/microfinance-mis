@@ -18,7 +18,7 @@ const commonSchemas = {
   }),
 
   phone: Joi.string()
-    .pattern(/^\+?[\d\s\-\(\)]+$/)
+    .pattern(/^\+?[\d\s\-()]+$/)
     .messages({
       'string.pattern.base': 'Please provide a valid phone number',
     }),

@@ -32,7 +32,7 @@ const chatMessageSchema = new mongoose.Schema(
       // Specific reference for 'group' chatType
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
-      required: function () {
+      required () {
         return this.chatType === 'group';
       },
       index: true, // Added index for groupId

@@ -23,7 +23,7 @@ const getSettings = asyncHandler(async (req, res) => {
 // @desc    Update settings
 // @route   PUT /api/settings
 // @access  Private (Admin only)
-const updateSettings = asyncHandler(async (req, res) => {
+const updateSettings = asyncHandler(async (req, res, next) => {
   if (req.user.role !== 'admin') {
     return next(new ErrorResponse('Access denied. Admin role required.', 403));
   }
@@ -56,7 +56,7 @@ const updateSettings = asyncHandler(async (req, res) => {
 // @desc    Reset settings to default
 // @route   POST /api/settings/reset
 // @access  Private (Admin only)
-const resetSettings = asyncHandler(async (req, res) => {
+const resetSettings = asyncHandler(async (req, res, next) => {
   if (req.user.role !== 'admin') {
     return next(new ErrorResponse('Access denied. Admin role required.', 403));
   }
@@ -77,7 +77,7 @@ const resetSettings = asyncHandler(async (req, res) => {
 // @desc    Get specific setting category
 // @route   GET /api/settings/:category
 // @access  Private
-const getSettingCategory = asyncHandler(async (req, res) => {
+const getSettingCategory = asyncHandler(async (req, res, next) => {
   const { category } = req.params;
   
   const settings = await Settings.findOne({ settingsId: 'app_settings' });
@@ -99,7 +99,7 @@ const getSettingCategory = asyncHandler(async (req, res) => {
 // @desc    Update specific setting category
 // @route   PUT /api/settings/:category
 // @access  Private (Admin/Officer for most, Admin only for security and system)
-const updateSettingCategory = asyncHandler(async (req, res) => {
+const updateSettingCategory = asyncHandler(async (req, res, next) => {
   const { category } = req.params;
   
   // Restrict certain categories to admin only

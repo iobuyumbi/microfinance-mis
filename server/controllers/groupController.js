@@ -70,7 +70,7 @@ exports.createGroup = asyncHandler(async (req, res, next) => {
           owner: newGroup._id,
           ownerModel: 'Group',
           balance: 0,
-          accountNumber: accountNumber,
+          accountNumber,
           type: 'savings',
           status: 'active',
         },
@@ -121,7 +121,7 @@ exports.createGroup = asyncHandler(async (req, res, next) => {
       const messages = Object.values(error.errors).map(val => val.message);
       return next(new ErrorResponse(messages.join(', '), 400));
     }
-    next(new ErrorResponse('Failed to create group. ' + error.message, 500));
+    next(new ErrorResponse(`Failed to create group. ${  error.message}`, 500));
   }
 });
 
@@ -223,7 +223,7 @@ exports.updateGroup = asyncHandler(async (req, res, next) => {
 
   // Use req.dataFilter for access control
   const query = { _id: id, ...(req.dataFilter || {}) };
-  let group = await Group.findOne(query);
+  const group = await Group.findOne(query);
 
   if (!group) {
     return next(
@@ -324,7 +324,7 @@ exports.updateGroup = asyncHandler(async (req, res, next) => {
       if (error instanceof ErrorResponse) return next(error); // Pass custom errors
       next(
         new ErrorResponse(
-          'Failed to update group leader. ' + error.message,
+          `Failed to update group leader. ${  error.message}`,
           500
         )
       );

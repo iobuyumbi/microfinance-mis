@@ -61,7 +61,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
   devLog('Token decoded payload:', decoded);
 
   const user = await User.findById(decoded.id).select('-password');
-  devLog('User found:', user ? 'yes, ID:' + user._id : 'no');
+  devLog('User found:', user ? `yes, ID:${  user._id}` : 'no');
 
   if (!user) {
     return res.status(401).json({
@@ -747,10 +747,10 @@ exports.filterDataByRole = modelName => {
     );
 
     // Initialize a base filter for the current model. This will be an $or query.
-    let filter = { $or: [], deleted: false };
+    const filter = { $or: [], deleted: false };
 
     // For 'Report' modelName, we'll build a more complex object with filters for multiple models
-    let reportFilters = {};
+    const reportFilters = {};
 
     switch (modelName) {
       case 'Loan':

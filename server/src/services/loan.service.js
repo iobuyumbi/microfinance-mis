@@ -28,7 +28,7 @@ class LoanService {
     const totalAmountToRepay = amount * (1 + interestRate / 100);
     const monthlyPayment = totalAmountToRepay / loanTermInMonths;
     const schedule = [];
-    let currentDate = new Date();
+    const currentDate = new Date();
 
     for (let i = 0; i < loanTermInMonths; i++) {
       currentDate.setMonth(currentDate.getMonth() + 1);

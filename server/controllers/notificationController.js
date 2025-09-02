@@ -11,7 +11,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { ErrorResponse } = require('../utils');
 const mongoose = require('mongoose');
 
-// @desc    Create a new notification
+// @desc    Create a new notification
 // @route   POST /api/notifications
 // @access  Private (Admin, Officer, or specific permissions for creating notifications)
 exports.createNotification = asyncHandler(async (req, res, next) => {
@@ -76,7 +76,7 @@ exports.createNotification = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get all notifications for the authenticated user (filtered by role and recipient)
+// @desc    Get all notifications for the authenticated user (filtered by role and recipient)
 // @route   GET /api/notifications
 // @access  Private (filterDataByRole middleware handles access)
 exports.getNotifications = asyncHandler(async (req, res, next) => {
@@ -94,7 +94,7 @@ exports.getNotifications = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get a notification by ID
+// @desc    Get a notification by ID
 // @route   GET /api/notifications/:id
 // @access  Private (filterDataByRole middleware handles access)
 exports.getNotificationById = asyncHandler(async (req, res, next) => {
@@ -103,7 +103,7 @@ exports.getNotificationById = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid Notification ID format.', 400));
   }
 
-  let query = { _id: id, ...(req.dataFilter || {}) };
+  const query = { _id: id, ...(req.dataFilter || {}) };
 
   const notification = await Notification.findOne(query)
     .populate({ path: 'recipient', select: 'name email avatar' })
@@ -124,7 +124,7 @@ exports.getNotificationById = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Update a notification by ID (e.g., mark as read)
+// @desc    Update a notification by ID (e.g., mark as read)
 // @route   PUT /api/notifications/:id
 // @access  Private (Recipient or Admin/Officer) - filterDataByRole middleware
 exports.updateNotification = asyncHandler(async (req, res, next) => {
@@ -182,7 +182,7 @@ exports.updateNotification = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Mark a notification as read
+// @desc    Mark a notification as read
 // @route   PUT /api/notifications/:id/read
 // @access  Private (Recipient or Admin/Officer) - filterDataByRole will ensure access
 exports.markNotificationAsRead = asyncHandler(async (req, res, next) => {
@@ -226,7 +226,7 @@ exports.markNotificationAsRead = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Delete a notification by ID (soft delete)
+// @desc    Delete a notification by ID (soft delete)
 // @route   DELETE /api/notifications/:id
 // @access  Private (Recipient of 'User' notification, Admin, Officer) - filterDataByRole handles access
 exports.deleteNotification = asyncHandler(async (req, res, next) => {

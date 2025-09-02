@@ -33,7 +33,7 @@ exports.upcomingRepayments = asyncHandler(async (req, res, next) => {
   // req.dataFilter will be an object like { _id: { $in: [...] }} for specific loans,
   // or { borrower: { $in: [...] }, borrowerModel: 'User' } etc.
   // It's crucial that filterDataByRole for 'Loan' populates req.dataFilter appropriately.
-  let loanFilter = req.dataFilter || {};
+  const loanFilter = req.dataFilter || {};
 
   const loans = await Loan.find({
     ...loanFilter, // Apply the data filter for loans
@@ -44,7 +44,7 @@ exports.upcomingRepayments = asyncHandler(async (req, res, next) => {
     .populate('borrower', 'name email')
     .lean(); // Use lean() for performance with iteration
 
-  let upcomingInstallments = [];
+  const upcomingInstallments = [];
 
   loans.forEach(loan => {
     const currentCurrency = loan.currency || currency; // Use loan's currency or default
@@ -230,7 +230,7 @@ exports.financialSummary = asyncHandler(async (req, res, next) => {
   }
 
   // Base match for 'loan_repayment' transactions
-  let matchExpr = {
+  const matchExpr = {
     type: 'loan_repayment',
     status: 'completed',
     deleted: false,

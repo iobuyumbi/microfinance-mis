@@ -25,17 +25,13 @@ export const getStatusColor = (status) => {
     success: "bg-green-100 text-green-800 border-green-200",
     failed: "bg-red-100 text-red-800 border-red-200",
     processing: "bg-blue-100 text-blue-800 border-blue-200",
-    cancelled: "bg-gray-100 text-gray-800 border-gray-200",
+    cancelled: "bg-red-100 text-red-800 border-red-200",
 
     // Meeting statuses
     scheduled: "bg-blue-100 text-blue-800 border-blue-200",
     ongoing: "bg-green-100 text-green-800 border-green-200",
-    completed: "bg-gray-100 text-gray-800 border-gray-200",
-    cancelled: "bg-red-100 text-red-800 border-red-200",
 
     // Group statuses
-    active: "bg-green-100 text-green-800 border-green-200",
-    inactive: "bg-gray-100 text-gray-800 border-gray-200",
     dissolved: "bg-red-100 text-red-800 border-red-200",
   };
 

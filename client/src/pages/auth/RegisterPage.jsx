@@ -260,4 +260,4 @@ const RegisterPage = () => {
   );
 };
 
-export default LoginPage;
+export default RegisterPage;

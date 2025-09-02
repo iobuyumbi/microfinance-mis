@@ -294,7 +294,7 @@ exports.updateSavings = asyncHandler(async (req, res, next) => {
 // @access  Private (Admin, Officer, or Group Leader with 'can_manage_savings' for group accounts)
 exports.deleteSavings = asyncHandler(async (req, res, next) => {
   // req.targetAccount is populated by authorizeAccountAccess middleware
-  let account = req.targetAccount;
+  const account = req.targetAccount;
 
   // Ensure it's a savings account
   if (account.type !== 'savings') {
@@ -437,7 +437,7 @@ exports.recordSavingsDeposit = asyncHandler(async (req, res, next) => {
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
     account: account._id,
-    amount: amount,
+    amount,
     description:
       description ||
       `Deposit into ${account.ownerModel === 'User' ? 'personal' : 'group'} savings account`,
@@ -553,7 +553,7 @@ exports.recordSavingsWithdrawal = asyncHandler(async (req, res, next) => {
     member: account.ownerModel === 'User' ? account.owner : null,
     group: account.ownerModel === 'Group' ? account.owner : null,
     account: account._id,
-    amount: amount,
+    amount,
     description:
       description ||
       `Withdrawal from ${account.ownerModel === 'User' ? 'personal' : 'group'} savings account`,

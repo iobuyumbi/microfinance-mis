@@ -156,7 +156,7 @@ exports.applyForLoan = asyncHandler(async (req, res, next) => {
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAllLoans = asyncHandler(async (req, res, next) => {
   // const currency = await getCurrency(); // Not directly used here, but can be for formatting
-  let query = req.dataFilter || {}; // Use filter from filterDataByRole middleware
+  const query = req.dataFilter || {}; // Use filter from filterDataByRole middleware
 
   const loans = await Loan.find(query)
     .populate('borrower', 'name email') // Populate borrower details
@@ -190,7 +190,7 @@ exports.getLoanById = asyncHandler(async (req, res, next) => {
   }
   // const currency = await getCurrency(); // Not directly used here
 
-  let query = { _id: id };
+  const query = { _id: id };
   // Apply data filter from middleware (if any)
   // This is crucial for ensuring users only see loans they are authorized for.
   if (req.dataFilter) {
@@ -499,9 +499,9 @@ exports.repayLoan = asyncHandler(async (req, res, next) => {
       // Create a loan repayment transaction
       const transactionResult = await createFinancialTransaction({
         type: 'loan_repayment',
-        amount: amount,
+        amount,
         account: account._id,
-        description: `Loan repayment for ${loan.borrowerModel} ${loan.borrower.name}${installmentToUpdate ? ' - Installment ' + installmentToUpdate.installmentNumber : ''}`,
+        description: `Loan repayment for ${loan.borrowerModel} ${loan.borrower.name}${installmentToUpdate ? ` - Installment ${  installmentToUpdate.installmentNumber}` : ''}`,
         relatedEntity: {
           model: 'Loan',
           id: loan._id,

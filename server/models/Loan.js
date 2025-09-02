@@ -146,7 +146,7 @@ loanSchema.virtual('formattedAmountRequested').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(DecimalUtils.toNumber(this.amountRequested)); // Use getter
 });
 
@@ -155,7 +155,7 @@ loanSchema.virtual('formattedAmountApproved').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(DecimalUtils.toNumber(this.amountApproved)); // Use getter
 });
 
@@ -164,7 +164,7 @@ loanSchema.virtual('formattedMonthlyPayment').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(DecimalUtils.toNumber(this.monthlyPayment)); // Use getter
 });
 
@@ -173,7 +173,7 @@ loanSchema.virtual('formattedTotalAmount').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(DecimalUtils.toNumber(this.totalAmount)); // Use getter
 });
 
@@ -182,7 +182,7 @@ loanSchema.virtual('formattedOutstandingBalance').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(DecimalUtils.toNumber(this.outstandingBalance)); // Use getter
 });
 
@@ -191,7 +191,7 @@ loanSchema.virtual('formattedAmountPaid').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(DecimalUtils.toNumber(this.amountPaid)); // Use getter
 });
 

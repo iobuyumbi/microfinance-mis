@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { memberService } from "../services/memberService";
-import { MemberForm } from "../components/forms/MemberForm";
+import MemberForm from "../components/forms/MemberForm";
 import { ErrorMessage } from "../components/custom/ErrorBoundary";
 import { useSocket } from "../context/SocketContext";
 

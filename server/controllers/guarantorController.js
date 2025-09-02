@@ -97,7 +97,7 @@ exports.getGuarantorById = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Invalid Guarantor ID format.', 400));
   }
 
-  let query = { _id: id };
+  const query = { _id: id };
   // Apply data filter from middleware
   if (req.dataFilter) {
     Object.assign(query, req.dataFilter);

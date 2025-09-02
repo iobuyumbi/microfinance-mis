@@ -101,7 +101,7 @@ exports.createMember = asyncHandler(async (req, res, next) => {
           type: 'savings',
           accountName: `${user.name}'s Primary Savings`,
           balance: 0,
-          currency: currency,
+          currency,
           status: 'active',
         },
       ],
@@ -127,7 +127,7 @@ exports.createMember = asyncHandler(async (req, res, next) => {
       const messages = Object.values(error.errors).map(val => val.message);
       return next(new ErrorResponse(messages.join(', '), 400));
     }
-    next(new ErrorResponse('Failed to create member. ' + error.message, 500));
+    next(new ErrorResponse(`Failed to create member. ${  error.message}`, 500));
   }
 });
 
@@ -220,7 +220,7 @@ exports.updateMember = asyncHandler(async (req, res, next) => {
 
   // Use req.dataFilter for access control
   const query = { _id: id, ...(req.dataFilter || {}) };
-  let member = await User.findOne(query);
+  const member = await User.findOne(query);
 
   if (!member) {
     return next(

@@ -60,7 +60,7 @@ exports.recordRepayment = asyncHandler(async (req, res, next) => {
     // Repayments typically originate from a savings/current account or cash.
     // Assuming 'savings' for now, but in a real system, you'd allow payment from various sources
     // and link to the relevant account type.
-    let borrowerAccount = await Account.findOne({
+    const borrowerAccount = await Account.findOne({
       owner: loan.borrower,
       ownerModel: loan.borrowerModel,
       type: 'savings', // Assuming repayments come from their savings account
@@ -286,7 +286,7 @@ exports.getRepaymentById = asyncHandler(async (req, res, next) => {
     );
   }
 
-  let query = {
+  const query = {
     _id: id,
     type: 'loan_repayment',
     deleted: false,
@@ -378,7 +378,7 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
       );
     }
 
-    let borrowerAccount = await Account.findOne({
+    const borrowerAccount = await Account.findOne({
       owner: loan.borrower,
       ownerModel: loan.borrowerModel,
       type: 'savings',
@@ -467,7 +467,7 @@ exports.voidRepayment = asyncHandler(async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Repayment successfully voided and reversed.',
-      originalRepayment: originalRepayment, // Return the voided original
+      originalRepayment, // Return the voided original
       reversalTransaction: reversalTransaction[0], // Return the new reversal transaction
     });
   } catch (error) {

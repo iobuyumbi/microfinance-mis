@@ -6,6 +6,7 @@ const {
   login,
   logout,
   getMe,
+  updateProfile,
   forgotPassword,
   resetPassword,
   checkPublicAccess,
@@ -41,6 +42,16 @@ router.get('/status', checkPublicAccess); // <--- NEW ROUTE
 // @desc    Get current logged in user
 // @access  Private (requires token)
 router.get('/me', protect, getMe);
+
+// @route   GET /api/auth/profile
+// @desc    Get current logged in user profile (alias for /me)
+// @access  Private (requires token)
+router.get('/profile', protect, getMe);
+
+// @route   PUT /api/auth/profile
+// @desc    Update current user profile
+// @access  Private (requires token)
+router.put('/profile', protect, updateProfile);
 
 // @route   POST /api/auth/forgot-password
 // @desc    Request a password reset link

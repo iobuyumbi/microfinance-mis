@@ -48,6 +48,25 @@ export const formatDate = (date, format = "medium") => {
   ).format(dateObj);
 };
 
+// Time formatting
+export const formatTime = (date, format = "short") => {
+  if (!date) return "N/A";
+
+  const dateObj = new Date(date);
+  if (isNaN(dateObj.getTime())) return "Invalid Time";
+
+  const options = {
+    short: { timeStyle: "short" },
+    medium: { timeStyle: "medium" },
+    long: { timeStyle: "long" },
+  };
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    options[format] || options.short
+  ).format(dateObj);
+};
+
 // Date and time formatting
 export const formatDateTime = (date, format = "medium") => {
   if (!date) return "N/A";

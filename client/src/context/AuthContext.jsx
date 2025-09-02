@@ -47,15 +47,17 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setIsLoading(true);
-      const { user: userData, token } = await authService.login(credentials);
+      const result = await authService.login(credentials);
 
-      setUser(userData);
-      setIsAuthenticated(true);
-      toast.success("Login successful!");
-
-      return { success: true, user: userData };
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        return { success: true, user: result.user };
+      } else {
+        throw new Error(result.error || "Login failed");
+      }
     } catch (error) {
-      const message = error.response?.data?.message || "Login failed";
+      const message = error.response?.data?.message || error.message || "Login failed";
       toast.error(message);
       return { success: false, error: message };
     } finally {

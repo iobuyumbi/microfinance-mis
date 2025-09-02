@@ -14,6 +14,7 @@ const { errorHandler, notFound } = require('../middleware');
 const {
   authRoutes,
   userRoutes,
+  groupRoutes,
   loanRoutes,
   savingsRoutes,
   transactionRoutes,

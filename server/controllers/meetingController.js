@@ -171,7 +171,7 @@ exports.updateMeeting = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Mark attendance for a meeting
+// @desc    Mark attendance for a meeting
 // @route   POST /api/meetings/:id/attendance
 // @access  Private (Admin, Officer, or user with 'can_record_attendance' permission)
 exports.markAttendance = asyncHandler(async (req, res, next) => {

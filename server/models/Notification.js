@@ -121,12 +121,12 @@ notificationSchema.index({ sender: 1, createdAt: -1 }); // Good for seeing notif
 
 // Example virtual if notification involves an amount (still commented out, but illustrative)
 // notificationSchema.virtual('formattedAmount').get(async function () {
-//     // You would need to populate referenceId and then access its amount field
-//     if (this.referenceModel === 'Transaction' && this.referenceId && this.referenceId.amount) {
-//         const currency = await getCurrency();
-//         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(this.referenceId.amount);
-//     }
-//     return null;
+//     // You would need to populate referenceId and then access its amount field
+//     if (this.referenceModel === 'Transaction' && this.referenceId && this.referenceId.amount) {
+//         const currency = await getCurrency();
+//         return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(this.referenceId.amount);
+//     }
+//     return null;
 // });
 
 module.exports = mongoose.model('Notification', notificationSchema);

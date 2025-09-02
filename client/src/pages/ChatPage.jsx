@@ -34,7 +34,19 @@ const ChatPage = () => {
     setLoading(true);
     try {
       const response = await chatService.getChatChannels();
-      setChannels(response.data.data || []);
+      console.log('Chat channels response:', response);
+      
+      // Handle different response structures
+      let channelsData = [];
+      if (response && response.data && response.data.data) {
+        channelsData = response.data.data;
+      } else if (response && response.data) {
+        channelsData = response.data;
+      } else if (response) {
+        channelsData = response;
+      }
+      
+      setChannels(channelsData || []);
     } catch (error) {
       console.error("Failed to load channels:", error);
       toast.error("Failed to load channels");

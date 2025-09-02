@@ -57,7 +57,7 @@ accountSchema.virtual('formattedBalance').get(async function () {
   const currency = await getCurrencyFromSettings();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency,
+    currency,
   }).format(this.balance);
 });
 

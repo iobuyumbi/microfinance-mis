@@ -224,7 +224,7 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
 // @desc    Get current logged-in user
 // @route   GET /api/auth/me
 // @access  Private
-exports.getMe = asyncHandler(async (req, res) => {
+exports.getMe = asyncHandler(async (req, res, next) => {
   // req.user is populated by the protect middleware
   const user = req.user;
 
@@ -244,8 +244,40 @@ exports.getMe = asyncHandler(async (req, res) => {
       email: fullUser.email,
       role: fullUser.role,
       status: fullUser.status,
+      phone: fullUser.phone,
+      address: fullUser.address,
       // Add any other user-specific fields you want the client to have
     },
+  });
+});
+
+// @desc    Update current user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+exports.updateProfile = asyncHandler(async (req, res, next) => {
+  const { name, phone, address, bio } = req.body;
+  const userId = req.user.id;
+
+  // Find and update user
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { 
+      name: name || req.user.name,
+      phone: phone || req.user.phone,
+      address: address || req.user.address,
+      bio: bio || req.user.bio
+    },
+    { new: true, runValidators: true }
+  ).select('-password');
+
+  if (!updatedUser) {
+    return next(new ErrorResponse('User not found.', 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully.',
+    data: updatedUser,
   });
 });
 

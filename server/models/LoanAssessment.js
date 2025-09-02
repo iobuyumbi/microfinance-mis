@@ -106,7 +106,7 @@ const loanAssessmentSchema = new mongoose.Schema(
     // Expiry date for assessment
     expiresAt: {
       type: Date,
-      default: function () {
+      default () {
         return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
       },
     },
@@ -131,7 +131,7 @@ loanAssessmentSchema
     const currency = await getCurrencyFromSettings();
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency,
     }).format(this.individualSavings);
   });
 
@@ -141,7 +141,7 @@ loanAssessmentSchema
     const currency = await getCurrencyFromSettings();
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency,
     }).format(this.groupTotalSavings);
   });
 
@@ -152,7 +152,7 @@ loanAssessmentSchema
     const currency = await getCurrencyFromSettings();
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency,
     }).format(this.recommendedAmount);
   });
 
@@ -163,7 +163,7 @@ loanAssessmentSchema
     const currency = await getCurrencyFromSettings();
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency,
     }).format(this.maxEligibleAmount);
   });
 

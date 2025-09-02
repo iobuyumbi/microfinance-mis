@@ -13,16 +13,16 @@ const mongoose = require('mongoose'); // For ObjectId validation
 const getAccountBalance = async (ownerId, ownerModel, accountType) => {
   const account = await Account.findOne({
     owner: ownerId,
-    ownerModel: ownerModel,
+    ownerModel,
     type: accountType,
     status: 'active',
   });
   return account ? account.balance : 0;
 };
 
-// @desc    Create a new loan assessment
-// @route   POST /api/loan-assessments
-// @access  Private (Admin, Officer)
+// @desc    Create a new loan assessment
+// @route   POST /api/loan-assessments
+// @access  Private (Admin, Officer)
 exports.createAssessment = asyncHandler(async (req, res, next) => {
   const {
     memberId,
@@ -91,13 +91,13 @@ exports.createAssessment = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get all assessments (filtered by role and query params)
-// @route   GET /api/loan-assessments
-// @access  Private (filterDataByRole middleware handles access)
+// @desc    Get all assessments (filtered by role and query params)
+// @route   GET /api/loan-assessments
+// @access  Private (filterDataByRole middleware handles access)
 exports.getAssessments = asyncHandler(async (req, res, next) => {
   const { memberId, groupId, status } = req.query;
 
-  let filter = req.dataFilter || {}; // Use filter from filterDataByRole middleware
+  const filter = req.dataFilter || {}; // Use filter from filterDataByRole middleware
   // Apply additional query filters
 
   if (memberId) {
@@ -125,7 +125,7 @@ exports.getAssessments = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get assessment by ID
+// @desc    Get assessment by ID
 // @route   GET /api/loan-assessments/:id
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAssessmentById = asyncHandler(async (req, res, next) => {
@@ -154,7 +154,7 @@ exports.getAssessmentById = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Update assessment status
+// @desc    Update assessment status
 // @route   PUT /api/loan-assessments/:id/status
 // @access  Private (Admin, Officer)
 exports.updateAssessmentStatus = asyncHandler(async (req, res, next) => {
@@ -202,12 +202,12 @@ exports.updateAssessmentStatus = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get loan assessment statistics
+// @desc    Get loan assessment statistics
 // @route   GET /api/loan-assessments/stats
 // @access  Private (filterDataByRole middleware handles access)
 exports.getAssessmentStats = asyncHandler(async (req, res, next) => {
   const { groupId } = req.query;
-  let filter = req.dataFilter || {}; // Use filter from filterDataByRole middleware
+  const filter = req.dataFilter || {}; // Use filter from filterDataByRole middleware
 
   if (groupId) {
     if (!mongoose.Types.ObjectId.isValid(groupId))
@@ -268,7 +268,7 @@ exports.getAssessmentStats = asyncHandler(async (req, res, next) => {
   res.status(200).json({ success: true, data: stats[0] || {} }); // Ensure to return the first element or empty object
 });
 
-// @desc    Perform a quick loan assessment (real-time calculation without saving)
+// @desc    Perform a quick loan assessment (real-time calculation without saving)
 // @route   GET /api/loan-assessments/quick
 // @access  Private (Admin, Officer)
 exports.quickAssessment = asyncHandler(async (req, res, next) => {
