@@ -28,6 +28,29 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Normalize message from API/socket into a consistent shape
+  const normalizeMessage = (m) => {
+    const senderObj = m.sender || m.user || {};
+    return {
+      _id: m._id || m.id,
+      id: m._id || m.id,
+      content: m.content,
+      sender: {
+        _id: senderObj._id || senderObj.id,
+        id: senderObj._id || senderObj.id,
+        name: senderObj.name || m.senderName || "Unknown",
+        avatar: senderObj.avatar,
+      },
+      chatId: m.chatId,
+      chatType: m.chatType,
+      groupId: m.groupId,
+      createdAt: m.createdAt || m.timestamp,
+      edited: !!m.edited,
+      readBy: m.readBy || [],
+      isTemp: !!m.isTemp,
+    };
+  };
+
   // Join/leave group chat room when selected channel changes
   useEffect(() => {
     if (!socket || !selectedChannel) return;
@@ -47,7 +70,6 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
   useEffect(() => {
     if (!selectedChannel) return;
     loadMessages();
-    markMessagesAsRead();
   }, [selectedChannel]);
 
   // Listen for new messages
@@ -62,8 +84,11 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
             data.chatType === "group" &&
             data.message.groupId === selectedChannel.groupId))
       ) {
-        setMessages((prev) => [...prev, data.message]);
-        markMessagesAsRead();
+        setMessages((prev) => [...prev, normalizeMessage(data.message)]);
+        // Mark just-received message as read if it's from others
+        if (data.message.sender?._id !== user.id) {
+          safeMarkAsRead([data.message._id || data.message.id]);
+        }
       }
     };
 
@@ -84,7 +109,17 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
         chatType: selectedChannel.type,
         groupId: selectedChannel.groupId,
       });
-      setMessages(response.data.data || []);
+      const raw = response.data?.data || response.data || [];
+      const normalized = (raw || []).map(normalizeMessage);
+      setMessages(normalized);
+
+      // After loading, mark unread messages as read
+      const unreadIds = normalized
+        .filter((m) => m.sender?.id !== user.id && !(m.readBy || []).includes(user.id))
+        .map((m) => m._id || m.id);
+      if (unreadIds.length > 0) {
+        safeMarkAsRead(unreadIds);
+      }
     } catch (error) {
       console.error("Failed to load messages:", error);
       toast.error("Failed to load messages");
@@ -93,16 +128,15 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
     }
   };
 
-  const markMessagesAsRead = async () => {
-    if (!selectedChannel) return;
-    
+  const safeMarkAsRead = async (messageIds) => {
     try {
-      const result = await chatService.markAsRead({
+      if (!selectedChannel || !Array.isArray(messageIds) || messageIds.length === 0) return;
+      await chatService.markAsRead({
         chatId: selectedChannel.id,
-        chatType: selectedChannel.type,
-        groupId: selectedChannel.groupId,
+        messageIds,
       });
     } catch (error) {
+      // Keep silent to avoid user noise; logs help during dev
       console.error("Failed to mark messages as read:", error);
     }
   };
@@ -113,20 +147,16 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
 
     // Create a temporary message for optimistic UI update
     const tempId = `temp-${Date.now()}`;
-    const tempMessage = {
+    const tempMessage = normalizeMessage({
       id: tempId,
       content: newMessage,
-      sender: {
-        id: user.id,
-        name: user.name,
-        avatar: user.avatar,
-      },
+      sender: { _id: user.id, id: user.id, name: user.name, avatar: user.avatar },
       chatId: selectedChannel.id,
       chatType: selectedChannel.type,
       groupId: selectedChannel.groupId,
       createdAt: new Date().toISOString(),
       isTemp: true,
-    };
+    });
 
     // Add temporary message to the UI
     setMessages((prev) => [...prev, tempMessage]);
@@ -140,15 +170,15 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
         chatType: selectedChannel.type,
         groupId: selectedChannel.groupId,
       });
-      
+
       // Notify parent component that a message was sent
       if (onMessageSent) onMessageSent();
     } catch (error) {
       console.error("Failed to send message:", error);
       toast.error("Failed to send message");
-      
+
       // Remove the temporary message on error
-      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      setMessages((prev) => prev.filter((msg) => (msg._id || msg.id) !== tempId));
     }
   };
 
@@ -213,7 +243,7 @@ const ChatInterface = ({ selectedChannel, onMessageSent }) => {
                 const isCurrentUser = message.sender.id === user.id;
                 return (
                   <div
-                    key={message.id}
+                    key={message._id || message.id}
                     className={`flex ${isCurrentUser ? "justify-end" : ""}`}
                   >
                     <div
