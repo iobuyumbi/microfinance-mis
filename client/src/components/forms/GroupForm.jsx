@@ -25,16 +25,30 @@ const GroupForm = ({ onSubmit, onCancel, group }) => {
   useEffect(() => {
     const loadUsers = async () => {
       try {
+        console.log("Loading users for leader selection...");
         const response = await userService.getAll();
+        console.log("User service response:", response);
+        
         const usersData = response.data?.data || [];
-        // Filter to only include users who can be leaders (member, leader, officer, admin)
+        console.log("Users data:", usersData);
+        
+        // Filter to only include users who can be leaders (user, member, leader, officer, admin)
+        // Note: 'user' is the default role, so we include it as well
         const eligibleUsers = usersData.filter(user => 
-          ['member', 'leader', 'officer', 'admin'].includes(user.role)
+          ['user', 'member', 'leader', 'officer', 'admin'].includes(user.role)
         );
+        console.log("Eligible users:", eligibleUsers);
+        
         setUsers(eligibleUsers);
+        
+        if (eligibleUsers.length === 0) {
+          toast.warning("No users found in the system. Please create users first before creating groups.");
+        } else {
+          console.log(`Found ${eligibleUsers.length} eligible users for group leadership`);
+        }
       } catch (error) {
         console.error("Error loading users:", error);
-        toast.error("Failed to load users for leader selection");
+        toast.error("Failed to load users for leader selection: " + error.message);
       }
     };
     
@@ -154,18 +168,30 @@ const GroupForm = ({ onSubmit, onCancel, group }) => {
           <Select 
             value={formData.leaderId} 
             onValueChange={(value) => handleChange("leaderId", value)}
+            disabled={users.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select a group leader" />
+              <SelectValue placeholder={users.length === 0 ? "No eligible users available" : "Select a group leader"} />
             </SelectTrigger>
             <SelectContent>
-              {users.map((user) => (
-                <SelectItem key={user._id} value={user._id}>
-                  {user.name} ({user.role})
+              {users.length === 0 ? (
+                <SelectItem value="" disabled>
+                  No eligible users found
                 </SelectItem>
-              ))}
+              ) : (
+                users.map((user) => (
+                  <SelectItem key={user._id} value={user._id}>
+                    {user.name} ({user.role})
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
+          {users.length === 0 && (
+            <p className="text-sm text-amber-600">
+              No users available for group leadership. Please create users with member, leader, officer, or admin roles first.
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
