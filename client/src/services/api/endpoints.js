@@ -90,6 +90,7 @@ export const ENDPOINTS = {
     MESSAGE: (id) => `/chat/messages/${id}`,
     SEND_MESSAGE: '/chat/messages',
     READ: '/chat/messages/read',
+    MARK_READ: '/chat/messages/read', // Alias for READ
     BY_GROUP: (groupId) => `/chat/messages/group/${groupId}`,
     STATS: '/chat/stats'
   },
