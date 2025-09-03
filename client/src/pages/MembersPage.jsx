@@ -1,20 +1,60 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { toast } from "../components/ui/use-toast";
-import { useSocket } from "../contexts/SocketContext";
+import { toast } from "sonner";
+import { useSocket } from "../context/SocketContext";
 import { memberService } from "../services/memberService";
 import { groupService } from "../services/groupService";
-import { Plus, Search, RefreshCw, Users, UserCheck, UserX, ArrowLeft, Mail, Phone, MapPin, Calendar, Edit, Eye, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  RefreshCw,
+  Users,
+  UserCheck,
+  UserX,
+  ArrowLeft,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Edit,
+  Eye,
+  Trash2,
+} from "lucide-react";
 import MemberForm from "../components/forms/MemberForm";
 import { ErrorMessage } from "../components/custom/ErrorBoundary";
 
@@ -41,7 +81,7 @@ const MembersPage = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const groupId = params.get('groupId');
+    const groupId = params.get("groupId");
     if (groupId) {
       fetchGroupDetails(groupId);
     }
@@ -54,10 +94,10 @@ const MembersPage = () => {
       // Fetch members for this specific group
       fetchGroupMembers(groupId);
     } catch (error) {
-      console.error('Error fetching group details:', error);
-      toast.error('Failed to load group details');
+      console.error("Error fetching group details:", error);
+      toast.error("Failed to load group details");
       // Redirect to members list if group not found
-      navigate('/members');
+      navigate("/members");
     }
   };
 
@@ -70,10 +110,10 @@ const MembersPage = () => {
       setMembers(membersData);
       updateStats(membersData);
     } catch (error) {
-      console.error('Error fetching group members:', error);
-      setError(error.message || 'Failed to fetch members');
+      console.error("Error fetching group members:", error);
+      setError(error.message || "Failed to fetch members");
       setMembers([]);
-      toast.error('Failed to load group members');
+      toast.error("Failed to load group members");
     } finally {
       setLoading(false);
     }
@@ -88,10 +128,10 @@ const MembersPage = () => {
       setMembers(membersData);
       updateStats(membersData);
     } catch (error) {
-      console.error('Error fetching members:', error);
-      setError(error.message || 'Failed to fetch members');
+      console.error("Error fetching members:", error);
+      setError(error.message || "Failed to fetch members");
       setMembers([]);
-      toast.error('Failed to load members');
+      toast.error("Failed to load members");
     } finally {
       setLoading(false);
     }
@@ -101,15 +141,14 @@ const MembersPage = () => {
     if (!currentGroup) {
       fetchAllMembers();
     }
-    // Socket listeners setup...
-  }, [currentGroup, socket]);
+  }, [currentGroup]);
 
   const updateStats = (membersData) => {
     const newStats = {
       total: membersData.length,
-      active: membersData.filter(m => m.status === 'active').length,
-      inactive: membersData.filter(m => m.status === 'inactive').length,
-      suspended: membersData.filter(m => m.status === 'suspended').length,
+      active: membersData.filter((m) => m.status === "active").length,
+      inactive: membersData.filter((m) => m.status === "inactive").length,
+      suspended: membersData.filter((m) => m.status === "suspended").length,
     };
     setStats(newStats);
   };
@@ -154,18 +193,18 @@ const MembersPage = () => {
   }, [socket]);
 
   const handleMemberCreated = (newMember) => {
-    setMembers(prev => [newMember, ...prev]);
-    setStats(prev => ({
+    setMembers((prev) => [newMember, ...prev]);
+    setStats((prev) => ({
       ...prev,
       total: prev.total + 1,
-      [newMember.status]: prev[newMember.status] + 1
+      [newMember.status]: prev[newMember.status] + 1,
     }));
     toast.success(`New member ${newMember.name} added`);
   };
 
   const handleMemberUpdated = (updatedMember) => {
-    setMembers(prev => 
-      prev.map(member => 
+    setMembers((prev) =>
+      prev.map((member) =>
         member._id === updatedMember._id ? updatedMember : member
       )
     );
@@ -173,10 +212,12 @@ const MembersPage = () => {
   };
 
   const handleMemberDeleted = (deletedMemberId) => {
-    setMembers(prev => prev.filter(member => member._id !== deletedMemberId));
-    setStats(prev => ({
+    setMembers((prev) =>
+      prev.filter((member) => member._id !== deletedMemberId)
+    );
+    setStats((prev) => ({
       ...prev,
-      total: prev.total - 1
+      total: prev.total - 1,
     }));
     toast.info("Member removed");
   };
@@ -186,20 +227,20 @@ const MembersPage = () => {
       if (currentGroup) {
         // Add member to specific group
         await groupService.addMember(currentGroup._id, memberData);
-        toast.success('Member added to group successfully');
+        toast.success("Member added to group successfully");
       } else {
         // Create member without group
         const response = await memberService.createMember(memberData);
         if (!socket) {
-          setMembers(prev => [response.data, ...prev]);
+          setMembers((prev) => [response.data, ...prev]);
           updateStats([...members, response.data]);
         }
-        toast.success('Member created successfully');
+        toast.success("Member created successfully");
       }
       setShowAddForm(false);
     } catch (error) {
-      console.error('Failed to create member:', error);
-      toast.error(error.response?.data?.message || 'Failed to create member');
+      console.error("Failed to create member:", error);
+      toast.error(error.response?.data?.message || "Failed to create member");
     }
   };
 
@@ -216,7 +257,7 @@ const MembersPage = () => {
         // Update member in the group context
         await memberService.updateMember(editingMember._id, {
           ...memberData,
-          groupId: currentGroup._id
+          groupId: currentGroup._id,
         });
       } else {
         // Update member without group context
@@ -225,19 +266,22 @@ const MembersPage = () => {
 
       if (!socket) {
         const updatedMember = { ...editingMember, ...memberData };
-        setMembers(prev =>
-          prev.map(member =>
+        setMembers((prev) =>
+          prev.map((member) =>
             member._id === editingMember._id ? updatedMember : member
           )
         );
-        updateStats([...members.filter(m => m._id !== editingMember._id), updatedMember]);
+        updateStats([
+          ...members.filter((m) => m._id !== editingMember._id),
+          updatedMember,
+        ]);
       }
 
       setEditingMember(null);
-      toast.success('Member updated successfully');
+      toast.success("Member updated successfully");
     } catch (error) {
-      console.error('Failed to update member:', error);
-      toast.error(error.response?.data?.message || 'Failed to update member');
+      console.error("Failed to update member:", error);
+      toast.error(error.response?.data?.message || "Failed to update member");
     }
   };
 
@@ -252,14 +296,14 @@ const MembersPage = () => {
       }
 
       if (!socket) {
-        setMembers(prev => prev.filter(member => member._id !== memberId));
-        updateStats(members.filter(member => member._id !== memberId));
+        setMembers((prev) => prev.filter((member) => member._id !== memberId));
+        updateStats(members.filter((member) => member._id !== memberId));
       }
 
-      toast.success('Member removed successfully');
+      toast.success("Member removed successfully");
     } catch (error) {
-      console.error('Failed to delete member:', error);
-      toast.error(error.response?.data?.message || 'Failed to remove member');
+      console.error("Failed to delete member:", error);
+      toast.error(error.response?.data?.message || "Failed to remove member");
     }
   };
 
@@ -272,19 +316,21 @@ const MembersPage = () => {
             <Button
               variant="ghost"
               className="mb-2"
-              onClick={() => navigate('/groups')}
+              onClick={() => navigate("/groups")}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Groups
             </Button>
           )}
           <h1 className="text-3xl font-bold tracking-tight">
-            {currentGroup ? `${currentGroup.name} - Members` : 'Members Management'}
+            {currentGroup
+              ? `${currentGroup.name} - Members`
+              : "Members Management"}
           </h1>
           <p className="text-muted-foreground">
-            {currentGroup 
+            {currentGroup
               ? `Manage members of ${currentGroup.name}`
-              : 'View and manage all members across groups'}
+              : "View and manage all members across groups"}
           </p>
         </div>
       </div>
@@ -299,13 +345,15 @@ const MembersPage = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">
-              {currentGroup ? `in ${currentGroup.name}` : 'across all groups'}
+              {currentGroup ? `in ${currentGroup.name}` : "across all groups"}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Members
+            </CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -317,7 +365,9 @@ const MembersPage = () => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Inactive Members
+            </CardTitle>
             <UserX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -329,13 +379,16 @@ const MembersPage = () => {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suspended Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Suspended Members
+            </CardTitle>
             <UserX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.suspended}</div>
             <p className="text-xs text-muted-foreground">
-              {((stats.suspended / stats.total) * 100 || 0).toFixed(1)}% of total
+              {((stats.suspended / stats.total) * 100 || 0).toFixed(1)}% of
+              total
             </p>
           </CardContent>
         </Card>
@@ -354,10 +407,7 @@ const MembersPage = () => {
                 className="pl-8"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-            >
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -372,7 +422,11 @@ const MembersPage = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => currentGroup ? fetchGroupMembers(currentGroup._id) : fetchAllMembers()}
+                onClick={() =>
+                  currentGroup
+                    ? fetchGroupMembers(currentGroup._id)
+                    : fetchAllMembers()
+                }
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -397,7 +451,9 @@ const MembersPage = () => {
               <p className="text-red-500 mb-4">{error}</p>
               <Button
                 onClick={() =>
-                  currentGroup ? fetchGroupMembers(currentGroup._id) : fetchAllMembers()
+                  currentGroup
+                    ? fetchGroupMembers(currentGroup._id)
+                    : fetchAllMembers()
                 }
               >
                 Try Again
@@ -445,7 +501,9 @@ const MembersPage = () => {
                     </div>
                     <div className="flex items-center space-x-4">
                       <Badge
-                        variant={member.status === "active" ? "success" : "secondary"}
+                        variant={
+                          member.status === "active" ? "success" : "secondary"
+                        }
                       >
                         {member.status}
                       </Badge>
@@ -467,8 +525,8 @@ const MembersPage = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Member</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete {member.name}? This action
-                                cannot be undone.
+                                Are you sure you want to delete {member.name}?
+                                This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -493,7 +551,10 @@ const MembersPage = () => {
       </Card>
 
       {/* Add/Edit Member Dialog */}
-      <Dialog open={showAddForm || editingMember} onOpenChange={handleDialogChange}>
+      <Dialog
+        open={showAddForm || editingMember}
+        onOpenChange={handleDialogChange}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>

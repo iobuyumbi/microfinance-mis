@@ -1,28 +1,59 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { groupService } from "../services/groupService";
+import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
+import {
+  Building2,
+  Users,
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  MapPin,
+  Calendar,
+  Eye,
+  UserPlus,
+} from "lucide-react";
+import GroupForm from "../components/forms/GroupForm";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { Plus, Search, Edit2, Trash2, Users, MapPin, Calendar, Eye } from 'lucide-react';
-import { toast } from 'sonner';
-import GroupForm from '../components/forms/GroupForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../components/ui/alert-dialog';
-import { groupService } from '../services/groupService';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import { useNavigate } from 'react-router-dom';
-
-export default function GroupsPage() {
+const GroupsPage = () => {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
-  const [actionLoading, setActionLoading] = useState({});
-  
-  const navigate = useNavigate();
+  const [deleteGroupId, setDeleteGroupId] = useState(null);
 
   useEffect(() => {
     fetchGroups();
@@ -31,11 +62,11 @@ export default function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      const response = await groupService.getAllGroups();
-      setGroups(response.data || []);
+      const response = await groupService.getAll();
+      setGroups(response.data?.data || []);
     } catch (error) {
-      console.error('Error fetching groups:', error);
-      toast.error('Failed to fetch groups');
+      console.error("Error fetching groups:", error);
+      toast.error("Failed to fetch groups. Please check the server connection.");
       setGroups([]);
     } finally {
       setLoading(false);
@@ -44,42 +75,40 @@ export default function GroupsPage() {
 
   const handleCreateGroup = async (groupData) => {
     try {
-      const response = await groupService.createGroup(groupData);
-      setGroups(prev => [...prev, response.data]);
+      const response = await groupService.create(groupData);
+      setGroups((prev) => [...prev, response.data?.data]);
       setIsDialogOpen(false);
-      toast.success('Group created successfully');
+      toast.success("Group created successfully");
     } catch (error) {
-      console.error('Error creating group:', error);
-      toast.error(error.response?.data?.message || 'Failed to create group');
+      console.error("Error creating group:", error);
+      toast.error("Failed to create group. " + error.message);
     }
   };
 
   const handleUpdateGroup = async (id, groupData) => {
     try {
-      const response = await groupService.updateGroup(id, groupData);
-      setGroups(prev => prev.map(group => 
-        group._id === id ? response.data : group
-      ));
+      const response = await groupService.update(id, groupData);
+      setGroups((prev) =>
+        prev.map((group) => (group._id === id ? response.data?.data : group))
+      );
       setEditingGroup(null);
       setIsDialogOpen(false);
-      toast.success('Group updated successfully');
+      toast.success("Group updated successfully");
     } catch (error) {
-      console.error('Error updating group:', error);
-      toast.error(error.response?.data?.message || 'Failed to update group');
+      console.error("Error updating group:", error);
+      toast.error("Failed to update group. " + error.message);
     }
   };
 
   const handleDeleteGroup = async (id) => {
     try {
-      setActionLoading(prev => ({ ...prev, [id]: true }));
-      await groupService.deleteGroup(id);
-      setGroups(prev => prev.filter(group => group._id !== id));
-      toast.success('Group deleted successfully');
+      await groupService.delete(id);
+      setGroups((prev) => prev.filter((group) => group._id !== id));
+      setDeleteGroupId(null);
+      toast.success("Group deleted successfully");
     } catch (error) {
-      console.error('Error deleting group:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete group');
-    } finally {
-      setActionLoading(prev => ({ ...prev, [id]: false }));
+      console.error("Error deleting group:", error);
+      toast.error("Failed to delete group. " + error.message);
     }
   };
 
@@ -91,31 +120,73 @@ export default function GroupsPage() {
     navigate(`/members?groupId=${groupId}`);
   };
 
+  const filteredGroups = groups.filter(
+    (group) =>
+      group.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.leader?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.location?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusColor = (status) => {
+    const colors = {
+      active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+      inactive: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",
+      pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+      dissolved: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    };
+    return colors[status] || colors.inactive;
+  };
+
+  const getMemberInitials = (name) => {
+    return name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "?";
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 p-6 pb-16">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Groups Management</h1>
-          <p className="text-muted-foreground">Manage microfinance groups and their members</p>
+          <p className="text-muted-foreground">
+            Manage microfinance groups and their members
+          </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingGroup(null)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               New Group
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
-                {editingGroup ? 'Edit Group' : 'Create New Group'}
+                {editingGroup ? "Edit Group" : "Create New Group"}
               </DialogTitle>
+              <DialogDescription>
+                {editingGroup
+                  ? "Update the group's information below."
+                  : "Fill in the details to create a new microfinance group."}
+              </DialogDescription>
             </DialogHeader>
             <GroupForm
               group={editingGroup}
-              onSubmit={editingGroup ? 
-                (data) => handleUpdateGroup(editingGroup._id, data) : 
-                handleCreateGroup
+              onSubmit={
+                editingGroup
+                  ? (data) => handleUpdateGroup(editingGroup._id, data)
+                  : handleCreateGroup
               }
               onCancel={() => setIsDialogOpen(false)}
             />
@@ -141,11 +212,13 @@ export default function GroupsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Groups</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{groups.length}</div>
-            <p className="text-xs text-muted-foreground">Active and inactive groups</p>
+            <p className="text-xs text-muted-foreground">
+              Active and inactive groups
+            </p>
           </CardContent>
         </Card>
 
@@ -156,9 +229,11 @@ export default function GroupsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {groups.filter(g => g.status === 'active').length}
+              {groups.filter((g) => g.status === "active").length}
             </div>
-            <p className="text-xs text-muted-foreground">Currently active groups</p>
+            <p className="text-xs text-muted-foreground">
+              Currently active groups
+            </p>
           </CardContent>
         </Card>
 
@@ -169,7 +244,10 @@ export default function GroupsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {groups.reduce((total, group) => total + (group.members?.length || 0), 0)}
+              {groups.reduce(
+                (total, group) => total + (group.members?.length || 0),
+                0
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Across all groups</p>
           </CardContent>
@@ -182,7 +260,14 @@ export default function GroupsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {groups.length ? Math.round(groups.reduce((total, group) => total + (group.members?.length || 0), 0) / groups.length) : 0}
+              {groups.length
+                ? Math.round(
+                    groups.reduce(
+                      (total, group) => total + (group.members?.length || 0),
+                      0
+                    ) / groups.length
+                  )
+                : 0}
             </div>
             <p className="text-xs text-muted-foreground">Members per group</p>
           </CardContent>
@@ -192,11 +277,14 @@ export default function GroupsPage() {
       {/* Groups Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredGroups.map((group) => (
-          <Card key={group._id} className="hover:shadow-lg transition-all duration-200">
+          <Card
+            key={group._id}
+            className="transition-all duration-200 hover:shadow-lg"
+          >
             <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-lg mb-1">{group.name}</CardTitle>
+                  <CardTitle className="mb-1 text-lg">{group.name}</CardTitle>
                   <Badge className={getStatusColor(group.status)}>
                     {group.status}
                   </Badge>
@@ -210,45 +298,57 @@ export default function GroupsPage() {
             <CardContent>
               <div className="space-y-3">
                 {group.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm line-clamp-2 text-muted-foreground">
                     {group.description}
                   </p>
                 )}
-                
+
                 {group.leader && (
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback className="text-xs">
-                        {group.leader.name?.charAt(0) || 'L'}
+                        {getMemberInitials(group.leader.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="text-sm font-medium">{group.leader.name}</div>
-                      <div className="text-xs text-muted-foreground">Group Leader</div>
+                      <div className="text-sm font-medium">
+                        {group.leader.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Group Leader
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {group.location && (
                   <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 mr-2" />
+                    <MapPin className="mr-2 h-4 w-4" />
                     {group.location}
                   </div>
                 )}
 
-                {group.meetingSchedule && (
+                {group.meetingFrequency && (
                   <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {group.meetingSchedule}
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {group.meetingFrequency}
                   </div>
                 )}
 
                 <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={() => handleViewMembers(group._id)}>
-                    <Users className="h-4 w-4 mr-1" /> Members
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewMembers(group._id)}
+                  >
+                    <Users className="mr-1 h-4 w-4" /> Members
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleViewGroup(group._id)}>
-                    <Eye className="h-4 w-4 mr-1" /> Details
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewGroup(group._id)}
+                  >
+                    <Eye className="mr-1 h-4 w-4" /> Details
                   </Button>
                   <Button
                     variant="outline"
@@ -262,7 +362,11 @@ export default function GroupsPage() {
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteGroupId(group._id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
@@ -270,13 +374,14 @@ export default function GroupsPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Group</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this group? This action cannot be undone.
+                          Are you sure you want to delete this group? This
+                          action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => handleDeleteGroup(group._id)}
+                          onClick={() => handleDeleteGroup(deleteGroupId)}
                           className="bg-red-600 hover:bg-red-700"
                         >
                           Delete
@@ -290,217 +395,20 @@ export default function GroupsPage() {
           </Card>
         ))}
       </div>
-    </div>
-  );
-
-  const filteredGroups = groups.filter(group =>
-    group.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.leader?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.location?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getStatusColor = (status) => {
-    const colors = {
-      active: 'bg-green-100 text-green-800',
-      inactive: 'bg-red-100 text-red-800',
-      pending: 'bg-yellow-100 text-yellow-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  if (loading) return <LoadingSpinner />;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Groups Management</h1>
-          <p className="text-muted-foreground">Manage microfinance groups and their members</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingGroup(null)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Group
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingGroup ? 'Edit Group' : 'Create New Group'}
-              </DialogTitle>
-            </DialogHeader>
-            <GroupForm
-              group={editingGroup}
-              onSubmit={editingGroup ? 
-                (data) => handleUpdateGroup(editingGroup._id, data) : 
-                handleCreateGroup
-              }
-              onCancel={() => setIsDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Search */}
-      <div className="flex items-center space-x-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by group name, leader, or location..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-      </div>
-
-      {/* Groups Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredGroups.map((group) => (
-          <Card key={group._id} className="hover:shadow-lg transition-all duration-200">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg mb-1">{group.name}</CardTitle>
-                  <Badge className={getStatusColor(group.status)}>
-                    {group.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  {group.members?.length || 0}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {group.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {group.description}
-                  </p>
-                )}
-                
-                {group.leader && (
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-xs">
-                        {group.leader.name?.charAt(0) || 'L'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="text-sm font-medium">{group.leader.name}</div>
-                      <div className="text-xs text-muted-foreground">Group Leader</div>
-                    </div>
-                  </div>
-                )}
-
-                {group.location && (
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    {group.location}
-                  </div>
-                )}
-
-                {group.meetingSchedule && (
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {group.meetingSchedule}
-                  </div>
-                )}
-
-                {group.members && group.members.length > 0 && (
-                  <div className="flex -space-x-2">
-                    {group.members.slice(0, 3).map((member, index) => (
-                      <Avatar key={member._id || index} className="h-8 w-8 border-2 border-background">
-                        <AvatarFallback className="text-xs">
-                          {member.name?.charAt(0) || 'M'}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))}
-                    {group.members.length > 3 && (
-                      <div className="h-8 w-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                        <span className="text-xs font-medium">
-                          +{group.members.length - 3}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center pt-3 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewGroup(group._id)}
-                  >
-                    <Eye className="h-4 w-4 mr-1" />
-                    View
-                  </Button>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingGroup(group);
-                        setIsDialogOpen(true);
-                      }}
-                      disabled={actionLoading[group._id]}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={actionLoading[group._id]}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Group</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{group.name}"? This will remove all members and cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteGroup(group._id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete Group
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       {filteredGroups.length === 0 && !loading && (
         <Card>
-          <CardContent className="text-center py-12">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No groups found</h3>
-            <p className="text-muted-foreground mb-4">
-              {searchTerm 
-                ? 'Try adjusting your search criteria'
-                : 'Get started by creating your first microfinance group'
-              }
+          <CardContent className="py-12 text-center">
+            <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-semibold">No groups found</h3>
+            <p className="mb-4 text-muted-foreground">
+              {searchTerm
+                ? "Try adjusting your search criteria"
+                : "Get started by creating your first microfinance group"}
             </p>
             {!searchTerm && (
               <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 Create First Group
               </Button>
             )}
@@ -509,4 +417,6 @@ export default function GroupsPage() {
       )}
     </div>
   );
-}
+};
+
+export default GroupsPage;

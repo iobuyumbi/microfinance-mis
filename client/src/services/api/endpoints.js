@@ -41,10 +41,10 @@ export const ENDPOINTS = {
   // Groups
   GROUPS: {
     BASE: '/groups',
-    BY_ID: '/groups/:id',
-    MEMBERS: '/groups/:id/members',
+    BY_ID: (id) => `/groups/${id}`,
+    MEMBERS: (id) => `/groups/${id}/members`,
     STATS: '/groups/stats',
-    ACTIVITIES: '/groups/:id/activities'
+    ACTIVITIES: (id) => `/groups/${id}/activities`
   },
 
   // Members
@@ -85,10 +85,13 @@ export const ENDPOINTS = {
 
   // Chat
   CHAT: {
+    CHANNELS: '/chat/channels',
     MESSAGES: '/chat/messages',
-    BY_ID: '/chat/messages/:id',
+    MESSAGE: (id) => `/chat/messages/${id}`,
+    SEND_MESSAGE: '/chat/messages',
     READ: '/chat/messages/read',
-    BY_GROUP: '/chat/messages/group/:groupId'
+    BY_GROUP: (groupId) => `/chat/messages/group/${groupId}`,
+    STATS: '/chat/stats'
   },
 
   // Meetings

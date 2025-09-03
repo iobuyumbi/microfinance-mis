@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { User, Mail, Phone, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
-const MemberForm = ({ initialData, onSubmit }) => {
+const MemberForm = ({ initialData, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
@@ -23,6 +23,7 @@ const MemberForm = ({ initialData, onSubmit }) => {
     gender: initialData?.gender || "",
     address: initialData?.address || "",
     nationalID: initialData?.nationalID || "",
+    status: initialData?.status || "active",
   });
 
   const handleChange = (field, value) => {
@@ -34,50 +35,22 @@ const MemberForm = ({ initialData, onSubmit }) => {
     setLoading(true);
 
     try {
-      if (onSubmit) {
-        // Use the onSubmit prop if provided
-        await onSubmit(formData);
-        if (!initialData) {
-          // Reset form only for new member creation
-          setFormData({
-            name: "",
-            email: "",
-            password: "",
-            phone: "",
-            gender: "",
-            address: "",
-            nationalID: "",
-          });
-        }
-      } else {
-        // Fallback to direct API call if no onSubmit provided
-        const res = await fetch("/api/members", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(formData),
+      await onSubmit(formData);
+      if (!initialData) {
+        // Reset form only for new member creation
+        setFormData({
+          name: "",
+          email: "",
+          password: "",
+          phone: "",
+          gender: "",
+          address: "",
+          nationalID: "",
+          status: "active",
         });
-
-        if (res.ok) {
-          toast.success("Member registered successfully!");
-          setFormData({
-            name: "",
-            email: "",
-            password: "",
-            phone: "",
-            gender: "",
-            address: "",
-            nationalID: "",
-          });
-        } else {
-          const data = await res.json().catch(() => ({}));
-          toast.error(data?.message || "Failed to register member");
-        }
       }
     } catch (error) {
-      toast.error("Error registering member");
+      toast.error("Error saving member");
     } finally {
       setLoading(false);
     }
@@ -180,7 +153,7 @@ const MemberForm = ({ initialData, onSubmit }) => {
             <div>
               <Label htmlFor="status">Status</Label>
               <Select
-                value={formData.status || initialData.status || ""}
+                value={formData.status}
                 onValueChange={(value) => handleChange("status", value)}
               >
                 <SelectTrigger>
@@ -190,22 +163,32 @@ const MemberForm = ({ initialData, onSubmit }) => {
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
-          >
-            {loading
-              ? "Saving..."
-              : initialData
-              ? "Update Member"
-              : "Register Member"}
-          </Button>
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onCancel?.(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 transition-colors"
+            >
+              {loading
+                ? "Saving..."
+                : initialData
+                ? "Update Member"
+                : "Register Member"}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

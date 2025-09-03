@@ -21,7 +21,8 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     address: '',
@@ -38,7 +39,8 @@ const ProfilePage = () => {
   useEffect(() => {
     if (user) {
       setProfile({
-        name: user.name || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email || '',
         phone: user.phone || '',
         address: user.address || '',
@@ -138,13 +140,8 @@ const ProfilePage = () => {
     }
   };
 
-  const getInitials = (name) => {
-    if (!name) return '';
-    const parts = name.split(' ');
-    if (parts.length >= 2) {
-      return `${parts[0]?.charAt(0) || ''}${parts[1]?.charAt(0) || ''}`.toUpperCase();
-    }
-    return name.charAt(0)?.toUpperCase() || '';
+  const getInitials = (firstName, lastName) => {
+    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
 
   const getRoleBadgeColor = (role) => {
@@ -186,9 +183,9 @@ const ProfilePage = () => {
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Avatar className="h-20 w-20">
-                <AvatarImage src={profile.avatar} alt={profile.name} />
+                <AvatarImage src={profile.avatar} alt={`${profile.firstName} ${profile.lastName}`} />
                 <AvatarFallback className="text-lg">
-                  {getInitials(profile.name)}
+                  {getInitials(profile.firstName, profile.lastName)}
                 </AvatarFallback>
               </Avatar>
               <label className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1 cursor-pointer hover:bg-primary/90">
@@ -203,7 +200,7 @@ const ProfilePage = () => {
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-semibold">
-                {profile.name}
+                {profile.firstName} {profile.lastName}
               </h2>
               <p className="text-gray-600 dark:text-gray-400 flex items-center mt-1">
                 <Mail className="h-4 w-4 mr-1" />
@@ -243,11 +240,20 @@ const ProfilePage = () => {
               <form onSubmit={handleProfileUpdate} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="firstName">First Name</Label>
                     <Input
-                      id="name"
-                      value={profile.name}
-                      onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
+                      id="firstName"
+                      value={profile.firstName}
+                      onChange={(e) => setProfile(prev => ({ ...prev, firstName: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={profile.lastName}
+                      onChange={(e) => setProfile(prev => ({ ...prev, lastName: e.target.value }))}
                       required
                     />
                   </div>
