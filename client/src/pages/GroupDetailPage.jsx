@@ -70,12 +70,35 @@ const GroupDetailPage = () => {
     setLoading(true);
     try {
       const response = await groupService.getById(id);
-      setGroup(response.data.data);
+      console.log('Group response:', response); // Debug log
+      
+      // Handle different response structures
+      let groupData;
+      if (response && response.data && response.data.data) {
+        groupData = response.data.data;
+      } else if (response && response.data) {
+        groupData = response.data;
+      } else if (response) {
+        groupData = response;
+      }
+      
+      setGroup(groupData);
 
       // Load chat channel for this group
       const channelsResponse = await chatService.getChatChannels();
-      const channels = channelsResponse.data.data || [];
-      const groupChannel = channels.find(
+      console.log('Channels response:', channelsResponse); // Debug log
+      
+      // Handle different response structures for channels
+      let channelsData = [];
+      if (channelsResponse && channelsResponse.data && channelsResponse.data.data) {
+        channelsData = channelsResponse.data.data;
+      } else if (channelsResponse && channelsResponse.data) {
+        channelsData = channelsResponse.data;
+      } else if (channelsResponse) {
+        channelsData = channelsResponse;
+      }
+      
+      const groupChannel = channelsData.find(
         (channel) => channel.type === "group" && channel.groupId === id
       );
 
@@ -83,8 +106,8 @@ const GroupDetailPage = () => {
         setChatChannel(groupChannel);
       }
     } catch (error) {
-      toast.error("Failed to load group details");
       console.error("Error loading group details:", error);
+      toast.error("Failed to load group details");
     } finally {
       setLoading(false);
     }

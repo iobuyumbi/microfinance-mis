@@ -204,19 +204,30 @@ exports.getChatChannels = asyncHandler(async (req, res) => {
     });
   }
 
-  // Get user's groups for group chats
+  // Get user's groups for group chats - check both members array and leader field
   const userGroups = await Group.find({
-    $or: [{ members: req.user.id }, { leader: req.user.id }],
-  }).select('name members leader'); // Select only necessary fields
+    $or: [
+      { members: req.user.id }, // User is in members array
+      { leader: req.user.id }  // User is the leader
+    ],
+    status: { $ne: 'dissolved' } // Exclude dissolved groups
+  }).select('name members leader membersCount'); // Select necessary fields
 
-  const groupChannels = userGroups.map(group => ({
-    id: `group-${group._id.toString()}`, // Ensure consistent string ID for client
-    name: group.name,
-    type: 'group',
-    groupId: group._id.toString(), // Ensure consistent string ID
-    description: `${group.members.length} members`,
-    unreadCount: 0, // TODO: Implement real-time unread count logic
-  }));
+  const groupChannels = userGroups.map(group => {
+    // Ensure the user is counted in members if they're the leader
+    const memberCount = group.members.includes(req.user.id) 
+      ? group.membersCount 
+      : group.membersCount + 1; // Add 1 if leader is not in members array
+    
+    return {
+      id: `group-${group._id.toString()}`, // Ensure consistent string ID for client
+      name: group.name,
+      type: 'group',
+      groupId: group._id.toString(), // Ensure consistent string ID
+      description: `${memberCount} members`,
+      unreadCount: 0, // TODO: Implement real-time unread count logic
+    };
+  });
 
   channels.push(...groupChannels);
 

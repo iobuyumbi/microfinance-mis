@@ -7,16 +7,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Building2, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { userService } from "../../services/userService";
 
 const GroupForm = ({ onSubmit, onCancel, group }) => {
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     location: "",
     meetingFrequency: "",
     status: "active",
+    leaderId: "",
   });
+
+  // Load available users for leader selection
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const response = await userService.getAll();
+        const usersData = response.data?.data || [];
+        // Filter to only include users who can be leaders (member, leader, officer, admin)
+        const eligibleUsers = usersData.filter(user => 
+          ['member', 'leader', 'officer', 'admin'].includes(user.role)
+        );
+        setUsers(eligibleUsers);
+      } catch (error) {
+        console.error("Error loading users:", error);
+        toast.error("Failed to load users for leader selection");
+      }
+    };
+    
+    loadUsers();
+  }, []);
 
   // Load initial data if provided (for edit mode)
   useEffect(() => {
@@ -27,6 +50,7 @@ const GroupForm = ({ onSubmit, onCancel, group }) => {
         location: group.location || "",
         meetingFrequency: group.meetingFrequency || "",
         status: group.status || "active",
+        leaderId: group.leader?._id || group.leader || "",
       });
     }
   }, [group]);
@@ -48,6 +72,11 @@ const GroupForm = ({ onSubmit, onCancel, group }) => {
       toast.error("Group location is required");
       return;
     }
+
+    if (!formData.leaderId) {
+      toast.error("Group leader is required");
+      return;
+    }
     
     setLoading(true);
 
@@ -63,6 +92,7 @@ const GroupForm = ({ onSubmit, onCancel, group }) => {
           location: "",
           meetingFrequency: "",
           status: "active",
+          leaderId: "",
         });
       }
     } catch (error) {
@@ -118,21 +148,41 @@ const GroupForm = ({ onSubmit, onCancel, group }) => {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="status">Status</Label>
-        <Select 
-          value={formData.status} 
-          onValueChange={(value) => handleChange("status", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="leaderId">Group Leader</Label>
+          <Select 
+            value={formData.leaderId} 
+            onValueChange={(value) => handleChange("leaderId", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a group leader" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map((user) => (
+                <SelectItem key={user._id} value={user._id}>
+                  {user.name} ({user.role})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select 
+            value={formData.status} 
+            onValueChange={(value) => handleChange("status", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex justify-end gap-2">

@@ -45,7 +45,7 @@ exports.createGroup = asyncHandler(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // 1. Create the Group
+    // 1. Create the Group with leader in members array
     const group = await Group.create(
       [
         {
@@ -54,6 +54,8 @@ exports.createGroup = asyncHandler(async (req, res, next) => {
           meetingFrequency,
           description,
           leader: leaderId,
+          members: [leaderId], // Add leader to members array immediately
+          membersCount: 1, // Set initial count
           status: 'active',
         },
       ],
